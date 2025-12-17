@@ -1364,18 +1364,51 @@ const App = {
         }
 
         container.innerHTML = workouts.map(w => `
-            <div class="workout-history-item">
-                <div class="workout-info">
-                    <strong>${w.name || 'Allenamento'}</strong>
-                    <small>${this.formatDate(new Date(w.date))}</small>
+            <div class="workout-history-item" data-workout-id="${w.id}">
+                <div class="workout-main-info">
+                    <div class="workout-info">
+                        <strong>${w.name || 'Allenamento'}</strong>
+                        <small>${this.formatDate(new Date(w.date))}</small>
+                    </div>
+                    <div class="workout-stats">
+                        <span>${Math.round(w.duration / 60)} min</span>
+                        <span>${this.formatNumber(w.totalVolume)} kg</span>
+                        <span>${w.totalSets} set</span>
+                    </div>
                 </div>
-                <div class="workout-stats">
-                    <span>${Math.round(w.duration / 60)} min</span>
-                    <span>${this.formatNumber(w.totalVolume)} kg</span>
-                    <span>${w.totalSets} set</span>
-                </div>
+                <button class="delete-workout-btn" onclick="App.deleteWorkoutSession(${w.id}, event)" title="Elimina allenamento">
+                    <span class="delete-icon">🗑️</span>
+                </button>
             </div>
         `).join('');
+    },
+
+    deleteWorkoutSession(workoutId, event) {
+        // Prevent event bubbling
+        if (event) event.stopPropagation();
+
+        const workout = Storage.getWorkoutById(workoutId);
+        if (!workout) {
+            this.showNotification('Allenamento non trovato', 'error');
+            return;
+        }
+
+        const workoutName = workout.name || 'Allenamento';
+        const workoutDate = this.formatDate(new Date(workout.date));
+
+        if (confirm(`Eliminare "${workoutName}" del ${workoutDate}?\n\nQuesta azione non può essere annullata.`)) {
+            Storage.deleteWorkout(workoutId);
+            this.showNotification('Allenamento eliminato', 'success');
+
+            // Refresh the history list and dashboard
+            this.loadWorkoutHistory();
+            this.loadDashboard();
+
+            // Refresh charts if visible
+            if (document.getElementById('page-progress').classList.contains('active')) {
+                this.initCharts();
+            }
+        }
     },
 
     loadPersonalRecords() {
@@ -1770,12 +1803,37 @@ style.textContent = `
         background: var(--bg-hover);
         border-radius: var(--radius-sm);
         margin-bottom: 10px;
+        gap: 10px;
+    }
+    .workout-main-info {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
     }
     .workout-stats {
         display: flex;
         gap: 15px;
         font-size: 0.9rem;
         color: var(--text-secondary);
+    }
+    .delete-workout-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s;
+        opacity: 0.6;
+    }
+    .delete-workout-btn:hover {
+        background: rgba(239, 68, 68, 0.2);
+        opacity: 1;
+    }
+    .delete-workout-btn .delete-icon {
+        font-size: 1.1rem;
     }
 
     /* Measurements table */
