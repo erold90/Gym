@@ -661,7 +661,9 @@ const App = {
             startTime: Date.now(),
             exercises: workout.exercises.map(ex => ({
                 ...ex,
-                sets: Array(ex.sets).fill(null).map(() => ({
+                targetSets: ex.sets,  // Save original set count
+                targetReps: ex.reps,  // Save original rep range
+                setsData: Array(ex.sets).fill(null).map(() => ({
                     weight: '',
                     reps: '',
                     completed: false
@@ -715,52 +717,72 @@ const App = {
 
         const exerciseData = EXERCISES_DB[exercise.exerciseId];
         const container = document.getElementById('current-exercise');
+        const completedSets = exercise.setsData.filter(s => s.completed).length;
 
         container.innerHTML = `
-            <div class="exercise-header">
-                <div>
-                    <div class="exercise-title">${exercise.name}</div>
-                    <div class="exercise-muscles">
-                        ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag">${m}</span>`).join('') || ''}
-                    </div>
+            <div class="exercise-header-mobile">
+                <div class="exercise-progress-badge">
+                    ${this.currentExerciseIndex + 1}/${this.activeWorkout.exercises.length}
                 </div>
-                <div class="exercise-progress">
-                    ${this.currentExerciseIndex + 1} / ${this.activeWorkout.exercises.length}
+                <h3 class="exercise-title-mobile">${exercise.name}</h3>
+                <div class="exercise-muscles-mobile">
+                    ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
                 </div>
             </div>
-            <div class="exercise-target">
-                <span>Obiettivo: ${exercise.sets} x ${exercise.reps}</span>
-                <span>Pausa: ${exercise.rest}s</span>
+            <div class="exercise-target-mobile">
+                <div class="target-item">
+                    <span class="target-label">Serie</span>
+                    <span class="target-value">${exercise.targetSets}</span>
+                </div>
+                <div class="target-item">
+                    <span class="target-label">Reps</span>
+                    <span class="target-value">${exercise.targetReps}</span>
+                </div>
+                <div class="target-item">
+                    <span class="target-label">Pausa</span>
+                    <span class="target-value">${exercise.rest}s</span>
+                </div>
             </div>
-            <div class="sets-container">
-                ${exercise.sets.map((set, idx) => `
-                    <div class="set-row ${set.completed ? 'completed' : ''}" data-set="${idx}">
-                        <div class="set-number">${idx + 1}</div>
-                        <div class="set-input">
-                            <label>KG</label>
-                            <input type="number" step="0.5" value="${set.weight}" placeholder="-"
-                                onchange="App.updateSet(${idx}, 'weight', this.value)">
+            <div class="sets-progress-bar">
+                <div class="sets-progress-fill" style="width: ${(completedSets / exercise.targetSets) * 100}%"></div>
+                <span class="sets-progress-text">${completedSets}/${exercise.targetSets} completate</span>
+            </div>
+            <div class="sets-container-mobile">
+                ${exercise.setsData.map((set, idx) => `
+                    <div class="set-row-mobile ${set.completed ? 'completed' : ''}" data-set="${idx}">
+                        <div class="set-number-mobile">${idx + 1}</div>
+                        <div class="set-inputs-mobile">
+                            <div class="input-group">
+                                <input type="number" inputmode="decimal" step="0.5"
+                                    value="${set.weight}" placeholder="kg"
+                                    onchange="App.updateSet(${idx}, 'weight', this.value)"
+                                    onfocus="this.select()">
+                                <span class="input-suffix">kg</span>
+                            </div>
+                            <span class="set-x">×</span>
+                            <div class="input-group">
+                                <input type="number" inputmode="numeric"
+                                    value="${set.reps}" placeholder="reps"
+                                    onchange="App.updateSet(${idx}, 'reps', this.value)"
+                                    onfocus="this.select()">
+                                <span class="input-suffix">reps</span>
+                            </div>
                         </div>
-                        <div class="set-input">
-                            <label>REPS</label>
-                            <input type="number" value="${set.reps}" placeholder="-"
-                                onchange="App.updateSet(${idx}, 'reps', this.value)">
-                        </div>
-                        <button class="set-complete-btn ${set.completed ? 'completed' : ''}"
+                        <button class="set-done-btn ${set.completed ? 'done' : ''}"
                             onclick="App.completeSet(${idx})">
-                            ${set.completed ? '✓' : '○'}
+                            ${set.completed ? '✓' : ''}
                         </button>
                     </div>
                 `).join('')}
             </div>
-            <div class="exercise-navigation">
-                <button class="btn btn-secondary" onclick="App.previousExercise()"
+            <div class="exercise-nav-mobile">
+                <button class="nav-btn prev" onclick="App.previousExercise()"
                     ${this.currentExerciseIndex === 0 ? 'disabled' : ''}>
-                    ← Precedente
+                    <span>‹</span> Prec
                 </button>
-                <button class="btn btn-primary" onclick="App.nextExercise()"
+                <button class="nav-btn next" onclick="App.nextExercise()"
                     ${this.currentExerciseIndex === this.activeWorkout.exercises.length - 1 ? 'disabled' : ''}>
-                    Prossimo →
+                    Succ <span>›</span>
                 </button>
             </div>
         `;
@@ -769,14 +791,14 @@ const App = {
     updateSet(setIndex, field, value) {
         if (!this.activeWorkout) return;
         const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
-        exercise.sets[setIndex][field] = value;
+        exercise.setsData[setIndex][field] = value;
     },
 
     completeSet(setIndex) {
         if (!this.activeWorkout) return;
 
         const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
-        const set = exercise.sets[setIndex];
+        const set = exercise.setsData[setIndex];
 
         // Toggle completion
         set.completed = !set.completed;
@@ -839,7 +861,7 @@ const App = {
         let totalSets = 0;
 
         this.activeWorkout.exercises.forEach(ex => {
-            ex.sets.forEach(set => {
+            ex.setsData.forEach(set => {
                 if (set.completed && set.weight && set.reps) {
                     totalVolume += parseFloat(set.weight) * parseInt(set.reps);
                     totalSets++;
@@ -847,11 +869,15 @@ const App = {
             });
         });
 
-        // Save workout
+        // Save workout with properly formatted exercises
         const workoutData = {
             name: this.activeWorkout.type || 'Allenamento',
             type: this.activeWorkout.type,
-            exercises: this.activeWorkout.exercises,
+            exercises: this.activeWorkout.exercises.map(ex => ({
+                exerciseId: ex.exerciseId,
+                name: ex.name,
+                sets: ex.setsData  // Save completed sets data
+            })),
             duration: duration,
             totalVolume: Math.round(totalVolume),
             totalSets: totalSets

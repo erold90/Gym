@@ -1180,3 +1180,417 @@ body {
         margin-left: 0;
     }
 }
+
+/* ========================================
+   MOBILE-OPTIMIZED WORKOUT STYLES
+   ======================================== */
+
+/* Mobile Exercise Header */
+.exercise-header-mobile {
+    text-align: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 15px;
+}
+
+.exercise-progress-badge {
+    display: inline-block;
+    background: var(--accent-gradient);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.exercise-title-mobile {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+}
+
+.exercise-muscles-mobile {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.muscle-tag-sm {
+    padding: 3px 10px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Mobile Exercise Target */
+.exercise-target-mobile {
+    display: flex;
+    justify-content: space-around;
+    background: var(--bg-hover);
+    border-radius: var(--radius);
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.target-item {
+    text-align: center;
+}
+
+.target-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.target-value {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Sets Progress Bar */
+.sets-progress-bar {
+    position: relative;
+    height: 32px;
+    background: var(--bg-hover);
+    border-radius: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.sets-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 16px;
+    transition: width 0.3s ease;
+}
+
+.sets-progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    z-index: 1;
+}
+
+/* Mobile Sets Container */
+.sets-container-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* Mobile Set Row */
+.set-row-mobile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-hover);
+    border-radius: var(--radius);
+    padding: 12px 15px;
+    transition: all 0.2s ease;
+}
+
+.set-row-mobile.completed {
+    background: rgba(6, 214, 160, 0.15);
+    border: 1px solid var(--success);
+}
+
+.set-number-mobile {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.set-row-mobile.completed .set-number-mobile {
+    background: var(--success);
+    color: white;
+}
+
+/* Mobile Set Inputs */
+.set-inputs-mobile {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-group {
+    flex: 1;
+    position: relative;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 10px;
+    padding-right: 35px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.input-group input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.input-suffix {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.set-x {
+    font-size: 1rem;
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
+/* Done Button */
+.set-done-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 3px solid var(--border-color);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.set-done-btn:active {
+    transform: scale(0.95);
+}
+
+.set-done-btn.done {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+/* Mobile Navigation */
+.exercise-nav-mobile {
+    display: flex;
+    gap: 12px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.nav-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.nav-btn.prev {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.nav-btn.next {
+    background: var(--accent-gradient);
+    color: white;
+}
+
+.nav-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nav-btn span {
+    font-size: 1.3rem;
+}
+
+/* Mobile Warmup Improvements */
+.warmup-section {
+    border-left: none;
+    border-top: 4px solid var(--warning);
+}
+
+.warmup-exercise {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.warmup-exercise .description {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.warmup-exercise .duration {
+    align-self: flex-end;
+    background: var(--bg-primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+/* Mobile Header Bar */
+@media (max-width: 768px) {
+    .workout-header-bar {
+        padding: 12px 15px;
+        margin-bottom: 15px;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        border-radius: 0;
+        z-index: 50;
+    }
+
+    .workout-timer {
+        font-size: 1.5rem;
+    }
+
+    #workout-active {
+        padding-top: 70px;
+    }
+
+    /* Compact stats on mobile */
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-card {
+        padding: 15px;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.3rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+    }
+
+    /* Current exercise card */
+    .current-exercise,
+    #current-exercise {
+        background: var(--bg-card);
+        border-radius: var(--radius);
+        padding: 20px 15px;
+        border: none;
+        box-shadow: var(--shadow);
+    }
+
+    /* Rest timer mobile */
+    .rest-timer-modal {
+        padding: 20px;
+    }
+
+    .rest-timer-display {
+        font-size: 6rem;
+    }
+
+    .rest-timer-progress {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    /* Better touch targets */
+    .btn {
+        min-height: 48px;
+    }
+
+    .filter-tab {
+        padding: 12px 18px;
+        white-space: nowrap;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+    .exercise-title-mobile {
+        font-size: 1.2rem;
+    }
+
+    .target-value {
+        font-size: 1.1rem;
+    }
+
+    .input-group input {
+        padding: 10px 8px;
+        font-size: 1rem;
+    }
+
+    .set-done-btn {
+        width: 42px;
+        height: 42px;
+    }
+}
+
+/* Remove number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
