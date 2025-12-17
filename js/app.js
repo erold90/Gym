@@ -732,21 +732,37 @@ const App = {
         const lastPerformance = Storage.getLastPerformance(exercise.exerciseId);
         const pr = Storage.getExercisePR(exercise.exerciseId);
         const profile = Storage.getProfile();
+        const bodyWeight = profile.weight || 0;
 
         // Check if this is a bodyweight exercise
         const isBodyweight = exerciseData?.category === 'corpo-libero' ||
             exerciseData?.equipment?.includes('corpo-libero') ||
-            ['pull-up', 'chin-up', 'dips', 'push-up', 'plank', 'crunch', 'leg-raise', 'hanging-leg-raise'].includes(exercise.exerciseId);
+            ['pull-up', 'chin-up', 'dips', 'push-up', 'plank', 'crunch', 'leg-raise', 'hanging-leg-raise', 'muscle-up', 'pistol-squat'].includes(exercise.exerciseId);
 
-        // Auto-fill weight for empty sets from last performance
+        // Initialize bodyweight mode if not set
+        if (isBodyweight && !exercise.bwMode) {
+            exercise.bwMode = 'solo'; // solo, assisted, weighted
+            exercise.bwModifier = 0;
+        }
+
+        // Calculate effective weight for bodyweight exercises
+        const getEffectiveWeight = () => {
+            if (!isBodyweight) return null;
+            if (exercise.bwMode === 'solo') return bodyWeight;
+            if (exercise.bwMode === 'assisted') return Math.max(0, bodyWeight - Math.abs(exercise.bwModifier || 0));
+            if (exercise.bwMode === 'weighted') return bodyWeight + Math.abs(exercise.bwModifier || 0);
+            return bodyWeight;
+        };
+
+        const effectiveWeight = getEffectiveWeight();
+
+        // Auto-fill weight for empty sets from last performance or effective weight
         exercise.setsData.forEach((set, idx) => {
             if (!set.weight && !set.autoFilled) {
                 if (isBodyweight) {
-                    // For bodyweight: use body weight or leave empty
-                    set.weight = profile.weight || '';
+                    set.weight = effectiveWeight || '';
                     set.isBodyweight = true;
                 } else if (lastPerformance) {
-                    // Use last performance weight
                     set.weight = lastPerformance.weight;
                 }
                 set.autoFilled = true;
@@ -777,11 +793,48 @@ const App = {
             `;
         }
 
-        // Bodyweight indicator
-        const bodyweightIndicator = isBodyweight ? `
-            <div class="bodyweight-indicator">
-                <span class="bw-icon">🏋️</span>
-                <span class="bw-text">Corpo libero${profile.weight ? ` (${profile.weight}kg)` : ''}</span>
+        // Bodyweight mode selector
+        const bodyweightSelector = isBodyweight ? `
+            <div class="bw-mode-selector">
+                <div class="bw-mode-header">
+                    <span class="bw-icon">🏋️</span>
+                    <span class="bw-label">Corpo libero (${bodyWeight}kg)</span>
+                </div>
+                <div class="bw-mode-options">
+                    <button class="bw-mode-btn ${exercise.bwMode === 'solo' ? 'active' : ''}"
+                        onclick="App.setBwMode('solo')">
+                        Solo BW
+                    </button>
+                    <button class="bw-mode-btn ${exercise.bwMode === 'assisted' ? 'active' : ''}"
+                        onclick="App.setBwMode('assisted')">
+                        Assistito
+                    </button>
+                    <button class="bw-mode-btn ${exercise.bwMode === 'weighted' ? 'active' : ''}"
+                        onclick="App.setBwMode('weighted')">
+                        Zavorra
+                    </button>
+                </div>
+                ${exercise.bwMode !== 'solo' ? `
+                    <div class="bw-modifier-row">
+                        <span class="bw-modifier-label">
+                            ${exercise.bwMode === 'assisted' ? 'Assistenza:' : 'Zavorra:'}
+                        </span>
+                        <div class="bw-modifier-input">
+                            <button class="bw-mod-btn" onclick="App.adjustBwModifier(-2.5)">−</button>
+                            <input type="number" value="${Math.abs(exercise.bwModifier || 0)}"
+                                onchange="App.setBwModifier(this.value)"
+                                min="0" step="2.5" inputmode="decimal">
+                            <button class="bw-mod-btn" onclick="App.adjustBwModifier(2.5)">+</button>
+                            <span class="bw-mod-unit">kg</span>
+                        </div>
+                        <div class="bw-effective">
+                            <span class="bw-eff-label">Peso effettivo:</span>
+                            <span class="bw-eff-value ${exercise.bwMode === 'assisted' ? 'assisted' : 'weighted'}">
+                                ${effectiveWeight}kg
+                            </span>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         ` : '';
 
@@ -794,8 +847,8 @@ const App = {
                 <div class="exercise-muscles-mobile">
                     ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
                 </div>
-                ${bodyweightIndicator}
             </div>
+            ${bodyweightSelector}
             <div class="exercise-info-bar">
                 ${lastPerfHTML}
                 ${prHTML}
@@ -825,11 +878,11 @@ const App = {
                         <div class="set-inputs-mobile">
                             <div class="input-group">
                                 <input type="number" inputmode="decimal" step="0.5"
-                                    value="${set.weight}" placeholder="${isBodyweight ? 'BW' : 'kg'}"
+                                    value="${set.weight || (isBodyweight ? effectiveWeight : '')}"
+                                    placeholder="${isBodyweight ? effectiveWeight : 'kg'}"
                                     onchange="App.updateSet(${idx}, 'weight', this.value)"
-                                    onfocus="this.select()"
-                                    ${isBodyweight && !set.weight ? 'class="bodyweight-input"' : ''}>
-                                <span class="input-suffix">${isBodyweight && set.isBodyweight ? 'BW' : 'kg'}</span>
+                                    onfocus="this.select()">
+                                <span class="input-suffix">kg</span>
                             </div>
                             <span class="set-x">×</span>
                             <div class="input-group">
@@ -858,6 +911,57 @@ const App = {
                 </button>
             </div>
         `;
+    },
+
+    // Bodyweight mode functions
+    setBwMode(mode) {
+        if (!this.activeWorkout) return;
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        exercise.bwMode = mode;
+        if (mode === 'solo') exercise.bwModifier = 0;
+
+        // Update all sets with new effective weight
+        const profile = Storage.getProfile();
+        const bodyWeight = profile.weight || 0;
+        let effectiveWeight = bodyWeight;
+        if (mode === 'assisted') effectiveWeight = Math.max(0, bodyWeight - Math.abs(exercise.bwModifier || 0));
+        if (mode === 'weighted') effectiveWeight = bodyWeight + Math.abs(exercise.bwModifier || 0);
+
+        exercise.setsData.forEach(set => {
+            if (!set.completed) {
+                set.weight = effectiveWeight;
+            }
+        });
+
+        this.displayCurrentExercise();
+    },
+
+    setBwModifier(value) {
+        if (!this.activeWorkout) return;
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        exercise.bwModifier = Math.abs(parseFloat(value) || 0);
+
+        // Update all incomplete sets with new effective weight
+        const profile = Storage.getProfile();
+        const bodyWeight = profile.weight || 0;
+        let effectiveWeight = bodyWeight;
+        if (exercise.bwMode === 'assisted') effectiveWeight = Math.max(0, bodyWeight - exercise.bwModifier);
+        if (exercise.bwMode === 'weighted') effectiveWeight = bodyWeight + exercise.bwModifier;
+
+        exercise.setsData.forEach(set => {
+            if (!set.completed) {
+                set.weight = effectiveWeight;
+            }
+        });
+
+        this.displayCurrentExercise();
+    },
+
+    adjustBwModifier(delta) {
+        if (!this.activeWorkout) return;
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        const newValue = Math.max(0, (exercise.bwModifier || 0) + delta);
+        this.setBwModifier(newValue);
     },
 
     updateSet(setIndex, field, value) {

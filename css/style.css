@@ -1391,26 +1391,143 @@ body {
     color: var(--warning);
 }
 
-/* Bodyweight Indicator */
-.bodyweight-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 4px 12px;
-    background: rgba(67, 97, 238, 0.15);
-    border-radius: 12px;
-    font-size: 0.8rem;
-    color: var(--accent-primary);
+/* Bodyweight Mode Selector */
+.bw-mode-selector {
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 15px;
 }
 
-.bw-icon {
+.bw-mode-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.bw-mode-header .bw-icon {
+    font-size: 1.1rem;
+}
+
+.bw-mode-header .bw-label {
+    font-weight: 600;
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
-.bw-text {
+.bw-mode-options {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.bw-mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
     font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bw-mode-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.bw-mode-btn.active {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+.bw-modifier-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+.bw-modifier-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.bw-modifier-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bw-mod-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bw-mod-btn:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+.bw-modifier-input input {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.bw-mod-unit {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.bw-effective {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.bw-eff-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.bw-eff-value {
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+}
+
+.bw-eff-value.assisted {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--success);
+}
+
+.bw-eff-value.weighted {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
 }
 
 /* New PR Row Highlight */
