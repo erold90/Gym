@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GymTracker Pro - Il Tuo Personal Trainer Digitale</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💪</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">GymTracker<span>Pro</span></h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="workout">
+                    <span class="nav-icon">🏋️</span>
+                    <span class="nav-text">Allenamento</span>
+                </li>
+                <li class="nav-item" data-page="exercises">
+                    <span class="nav-icon">💪</span>
+                    <span class="nav-text">Esercizi</span>
+                </li>
+                <li class="nav-item" data-page="programs">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">Schede</span>
+                </li>
+                <li class="nav-item" data-page="progress">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Progressi</span>
+                </li>
+                <li class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profilo</span>
+                </li>
+                <li class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Impostazioni</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Mobile Header -->
+            <header class="mobile-header">
+                <button class="menu-toggle" id="menuToggle">☰</button>
+                <h1 class="mobile-logo">GymTracker<span>Pro</span></h1>
+            </header>
+
+            <!-- Dashboard Page -->
+            <section class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <h2>Dashboard</h2>
+                    <p class="greeting" id="greeting">Buongiorno!</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-streak">0</span>
+                            <span class="stat-label">Giorni consecutivi</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏋️</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-workouts">0</span>
+                            <span class="stat-label">Allenamenti totali</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-volume">0</span>
+                            <span class="stat-label">Volume totale (kg)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="stat-prs">0</span>
+                            <span class="stat-label">Record personali</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card next-workout">
+                        <h3>Prossimo Allenamento</h3>
+                        <div id="next-workout-content">
+                            <p class="empty-state">Nessuna scheda attiva. Vai su "Schede" per generarne una!</p>
+                        </div>
+                        <button class="btn btn-primary" id="start-workout-btn" style="display: none;">
+                            Inizia Allenamento
+                        </button>
+                    </div>
+
+                    <div class="card weekly-overview">
+                        <h3>Panoramica Settimanale</h3>
+                        <div class="week-days" id="week-days">
+                            <div class="day" data-day="1"><span>L</span></div>
+                            <div class="day" data-day="2"><span>M</span></div>
+                            <div class="day" data-day="3"><span>M</span></div>
+                            <div class="day" data-day="4"><span>G</span></div>
+                            <div class="day" data-day="5"><span>V</span></div>
+                            <div class="day" data-day="6"><span>S</span></div>
+                            <div class="day" data-day="0"><span>D</span></div>
+                        </div>
+                    </div>
+
+                    <div class="card recent-activity">
+                        <h3>Attività Recente</h3>
+                        <ul class="activity-list" id="activity-list">
+                            <li class="empty-state">Nessuna attività recente</li>
+                        </ul>
+                    </div>
+
+                    <div class="card body-stats">
+                        <h3>Statistiche Corporee</h3>
+                        <div class="body-stats-content" id="body-stats-content">
+                            <p class="empty-state">Configura il tuo profilo per vedere le statistiche</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workout Page -->
+            <section class="page" id="page-workout">
+                <div class="page-header">
+                    <h2>Allenamento</h2>
+                </div>
+
+                <!-- Workout Not Started -->
+                <div id="workout-not-started">
+                    <div class="card">
+                        <h3>Pronto per allenarti?</h3>
+                        <p>Seleziona una scheda o inizia un allenamento libero</p>
+                        <div class="workout-options">
+                            <button class="btn btn-primary" id="start-scheduled-workout">
+                                Inizia Scheda del Giorno
+                            </button>
+                            <button class="btn btn-secondary" id="start-free-workout">
+                                Allenamento Libero
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Workout -->
+                <div id="workout-active" style="display: none;">
+                    <div class="workout-header-bar">
+                        <div class="workout-timer" id="workout-timer">00:00:00</div>
+                        <button class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
+                    </div>
+
+                    <!-- Warm-up Section -->
+                    <div class="card warmup-section" id="warmup-section">
+                        <h3>🔥 Riscaldamento Dinamico</h3>
+                        <div class="warmup-exercises" id="warmup-exercises"></div>
+                        <button class="btn btn-primary" id="skip-warmup">Salta al Workout</button>
+                    </div>
+
+                    <!-- Exercise List -->
+                    <div class="exercise-list-container" id="exercise-list-container">
+                        <div class="current-exercise" id="current-exercise">
+                            <!-- Current exercise will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Rest Timer Modal -->
+                    <div class="rest-timer-modal" id="rest-timer-modal" style="display: none;">
+                        <div class="rest-timer-content">
+                            <h3>Pausa</h3>
+                            <div class="rest-timer-display" id="rest-timer-display">90</div>
+                            <div class="rest-timer-progress">
+                                <div class="rest-timer-bar" id="rest-timer-bar"></div>
+                            </div>
+                            <div class="rest-timer-controls">
+                                <button class="btn btn-sm" id="rest-minus-15">-15s</button>
+                                <button class="btn btn-sm" id="rest-plus-15">+15s</button>
+                            </div>
+                            <button class="btn btn-primary" id="skip-rest">Salta Pausa</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Exercises Database Page -->
+            <section class="page" id="page-exercises">
+                <div class="page-header">
+                    <h2>Database Esercizi</h2>
+                    <div class="search-bar">
+                        <input type="text" id="exercise-search" placeholder="Cerca esercizio...">
+                    </div>
+                </div>
+
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-category="all">Tutti</button>
+                    <button class="filter-tab" data-category="macchine">Macchine</button>
+                    <button class="filter-tab" data-category="bilanciere">Bilanciere</button>
+                    <button class="filter-tab" data-category="manubri">Manubri</button>
+                    <button class="filter-tab" data-category="cavi">Cavi</button>
+                    <button class="filter-tab" data-category="corpo-libero">Corpo Libero</button>
+                    <button class="filter-tab" data-category="accessori">Accessori</button>
+                </div>
+
+                <div class="muscle-filter">
+                    <select id="muscle-filter">
+                        <option value="all">Tutti i muscoli</option>
+                        <option value="petto">Petto</option>
+                        <option value="schiena">Schiena</option>
+                        <option value="spalle">Spalle</option>
+                        <option value="bicipiti">Bicipiti</option>
+                        <option value="tricipiti">Tricipiti</option>
+                        <option value="quadricipiti">Quadricipiti</option>
+                        <option value="femorali">Femorali</option>
+                        <option value="glutei">Glutei</option>
+                        <option value="polpacci">Polpacci</option>
+                        <option value="addome">Addome</option>
+                        <option value="avambracci">Avambracci</option>
+                        <option value="trapezio">Trapezio</option>
+                    </select>
+                </div>
+
+                <div class="exercises-grid" id="exercises-grid">
+                    <!-- Exercises will be rendered here -->
+                </div>
+            </section>
+
+            <!-- Programs Page -->
+            <section class="page" id="page-programs">
+                <div class="page-header">
+                    <h2>Schede di Allenamento</h2>
+                </div>
+
+                <div class="programs-container">
+                    <!-- Generate Program Card -->
+                    <div class="card generate-program">
+                        <h3>🤖 Genera Scheda Personalizzata</h3>
+                        <p>L'algoritmo creerà una scheda ottimizzata basata sui tuoi dati</p>
+                        <div class="program-options">
+                            <div class="option-group">
+                                <label>Obiettivo</label>
+                                <select id="program-goal">
+                                    <option value="recomp">Ricomposizione Corporea</option>
+                                    <option value="hypertrophy">Ipertrofia Pura</option>
+                                    <option value="strength">Forza</option>
+                                    <option value="endurance">Resistenza</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Giorni a settimana</label>
+                                <select id="program-days">
+                                    <option value="3">3 giorni</option>
+                                    <option value="4" selected>4 giorni</option>
+                                    <option value="5">5 giorni</option>
+                                    <option value="6">6 giorni</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Split</label>
+                                <select id="program-split">
+                                    <option value="upper-lower">Upper/Lower</option>
+                                    <option value="push-pull-legs">Push/Pull/Legs</option>
+                                    <option value="full-body">Full Body</option>
+                                    <option value="bro-split">Bro Split</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label>Durata sessione</label>
+                                <select id="program-duration">
+                                    <option value="45">45 minuti</option>
+                                    <option value="60" selected>60 minuti</option>
+                                    <option value="75">75 minuti</option>
+                                    <option value="90">90 minuti</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-large" id="generate-program-btn">
+                            Genera Scheda
+                        </button>
+                    </div>
+
+                    <!-- Active Program -->
+                    <div class="card active-program" id="active-program-card" style="display: none;">
+                        <div class="program-header">
+                            <h3>📋 Scheda Attiva</h3>
+                            <button class="btn btn-sm btn-danger" id="delete-program-btn">Elimina</button>
+                        </div>
+                        <div id="active-program-content"></div>
+                    </div>
+
+                    <!-- Saved Programs -->
+                    <div class="card saved-programs">
+                        <h3>📁 Schede Salvate</h3>
+                        <div id="saved-programs-list">
+                            <p class="empty-state">Nessuna scheda salvata</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Page -->
+            <section class="page" id="page-progress">
+                <div class="page-header">
+                    <h2>I Tuoi Progressi</h2>
+                </div>
+
+                <div class="progress-tabs">
+                    <button class="progress-tab active" data-tab="overview">Panoramica</button>
+                    <button class="progress-tab" data-tab="body">Corpo</button>
+                    <button class="progress-tab" data-tab="strength">Forza</button>
+                    <button class="progress-tab" data-tab="history">Storico</button>
+                </div>
+
+                <!-- Overview Tab -->
+                <div class="progress-content active" id="progress-overview">
+                    <div class="charts-grid">
+                        <div class="card chart-card">
+                            <h3>Volume Settimanale</h3>
+                            <canvas id="volume-chart"></canvas>
+                        </div>
+                        <div class="card chart-card">
+                            <h3>Frequenza Allenamenti</h3>
+                            <canvas id="frequency-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card prs-card">
+                        <h3>🏆 Record Personali</h3>
+                        <div id="prs-list" class="prs-grid">
+                            <p class="empty-state">Completa qualche allenamento per vedere i tuoi PR!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body Tab -->
+                <div class="progress-content" id="progress-body">
+                    <div class="card">
+                        <h3>Traccia Misurazioni</h3>
+                        <form id="body-measurement-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Peso (kg)</label>
+                                    <input type="number" step="0.1" id="measure-weight" placeholder="90.0">
+                                </div>
+                                <div class="form-group">
+                                    <label>% Grasso (opzionale)</label>
+                                    <input type="number" step="0.1" id="measure-bodyfat" placeholder="20.0">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Salva Misurazione</button>
+                        </form>
+                    </div>
+                    <div class="card chart-card">
+                        <h3>Andamento Peso</h3>
+                        <canvas id="weight-chart"></canvas>
+                    </div>
+                    <div class="card">
+                        <h3>Storico Misurazioni</h3>
+                        <div id="measurements-history"></div>
+                    </div>
+                </div>
+
+                <!-- Strength Tab -->
+                <div class="progress-content" id="progress-strength">
+                    <div class="card">
+                        <h3>Seleziona Esercizio</h3>
+                        <select id="strength-exercise-select">
+                            <option value="">Seleziona un esercizio...</option>
+                        </select>
+                    </div>
+                    <div class="card chart-card">
+                        <h3>Progressione Carico</h3>
+                        <canvas id="strength-chart"></canvas>
+                    </div>
+                    <div class="card">
+                        <h3>Estimated 1RM</h3>
+                        <div id="estimated-1rm"></div>
+                    </div>
+                </div>
+
+                <!-- History Tab -->
+                <div class="progress-content" id="progress-history">
+                    <div class="card">
+                        <h3>Storico Allenamenti</h3>
+                        <div id="workout-history-list">
+                            <p class="empty-state">Nessun allenamento registrato</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section class="page" id="page-profile">
+                <div class="page-header">
+                    <h2>Il Tuo Profilo</h2>
+                </div>
+
+                <div class="profile-container">
+                    <div class="card profile-card">
+                        <div class="profile-avatar">
+                            <span>👤</span>
+                        </div>
+                        <form id="profile-form">
+                            <div class="form-section">
+                                <h3>Dati Personali</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Nome</label>
+                                        <input type="text" id="profile-name" placeholder="Il tuo nome">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Sesso</label>
+                                        <select id="profile-gender">
+                                            <option value="male">Uomo</option>
+                                            <option value="female">Donna</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Data di nascita</label>
+                                        <input type="date" id="profile-birthdate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Altezza (cm)</label>
+                                        <input type="number" id="profile-height" placeholder="180">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Peso attuale (kg)</label>
+                                        <input type="number" step="0.1" id="profile-weight" placeholder="90">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>% Grasso corporeo</label>
+                                        <input type="number" step="0.1" id="profile-bodyfat" placeholder="20">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3>Esperienza</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Livello</label>
+                                        <select id="profile-level">
+                                            <option value="beginner">Principiante (0-1 anni)</option>
+                                            <option value="intermediate">Intermedio (1-3 anni)</option>
+                                            <option value="advanced">Avanzato (3-5 anni)</option>
+                                            <option value="expert">Esperto (5+ anni)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Background</label>
+                                        <select id="profile-background">
+                                            <option value="none">Nessuno</option>
+                                            <option value="bodybuilding">Bodybuilding</option>
+                                            <option value="powerlifting">Powerlifting</option>
+                                            <option value="crossfit">CrossFit</option>
+                                            <option value="calisthenics">Calisthenics</option>
+                                            <option value="sport">Sport specifico</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3>Obiettivi</h3>
+                                <div class="form-group">
+                                    <label>Obiettivo principale</label>
+                                    <select id="profile-goal">
+                                        <option value="recomp">Ricomposizione corporea</option>
+                                        <option value="bulk">Aumento massa</option>
+                                        <option value="cut">Definizione</option>
+                                        <option value="strength">Forza</option>
+                                        <option value="maintenance">Mantenimento</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Peso obiettivo (kg)</label>
+                                    <input type="number" step="0.1" id="profile-target-weight" placeholder="85">
+                                </div>
+                                <div class="form-group">
+                                    <label>% Grasso obiettivo</label>
+                                    <input type="number" step="0.1" id="profile-target-bf" placeholder="12">
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3>Disponibilità</h3>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Giorni a settimana</label>
+                                        <select id="profile-days">
+                                            <option value="2">2 giorni</option>
+                                            <option value="3">3 giorni</option>
+                                            <option value="4">4 giorni</option>
+                                            <option value="5">5 giorni</option>
+                                            <option value="6">6 giorni</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Tempo per sessione</label>
+                                        <select id="profile-session-time">
+                                            <option value="45">45 minuti</option>
+                                            <option value="60">60 minuti</option>
+                                            <option value="75">75 minuti</option>
+                                            <option value="90">90 minuti</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-section">
+                                <h3>Attrezzatura Disponibile</h3>
+                                <div class="equipment-checkboxes" id="equipment-checkboxes">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="bilanciere" checked>
+                                        <span>Bilanciere</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="manubri" checked>
+                                        <span>Manubri</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="macchine" checked>
+                                        <span>Macchine</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="cavi" checked>
+                                        <span>Cavi</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="kettlebell">
+                                        <span>Kettlebell</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="trx">
+                                        <span>TRX</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="elastici">
+                                        <span>Elastici</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="sbarra">
+                                        <span>Sbarra trazioni</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="parallele">
+                                        <span>Parallele</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" name="equipment" value="panca">
+                                        <span>Panca regolabile</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-large">Salva Profilo</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Page -->
+            <section class="page" id="page-settings">
+                <div class="page-header">
+                    <h2>Impostazioni</h2>
+                </div>
+
+                <div class="settings-container">
+                    <div class="card">
+                        <h3>Preferenze Allenamento</h3>
+                        <div class="setting-item">
+                            <label>Pausa default esercizi compound (sec)</label>
+                            <input type="number" id="setting-rest-compound" value="90" min="30" max="300">
+                        </div>
+                        <div class="setting-item">
+                            <label>Pausa default esercizi isolamento (sec)</label>
+                            <input type="number" id="setting-rest-isolation" value="60" min="30" max="180">
+                        </div>
+                        <div class="setting-item">
+                            <label>Suono fine pausa</label>
+                            <select id="setting-rest-sound">
+                                <option value="beep">Beep</option>
+                                <option value="bell">Campana</option>
+                                <option value="none">Nessuno</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Vibrazione</label>
+                            <input type="checkbox" id="setting-vibration" checked>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Aspetto</h3>
+                        <div class="setting-item">
+                            <label>Tema</label>
+                            <select id="setting-theme">
+                                <option value="dark">Scuro</option>
+                                <option value="light">Chiaro</option>
+                                <option value="auto">Automatico</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Unità di misura peso</label>
+                            <select id="setting-weight-unit">
+                                <option value="kg">Chilogrammi (kg)</option>
+                                <option value="lb">Libbre (lb)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Dati</h3>
+                        <div class="data-buttons">
+                            <button class="btn btn-secondary" id="export-data-btn">
+                                📤 Esporta Dati (JSON)
+                            </button>
+                            <button class="btn btn-secondary" id="import-data-btn">
+                                📥 Importa Dati
+                            </button>
+                            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                            <button class="btn btn-danger" id="reset-data-btn">
+                                🗑️ Cancella Tutti i Dati
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Informazioni</h3>
+                        <p><strong>GymTracker Pro</strong> v1.0.0</p>
+                        <p>Il tuo personal trainer digitale basato sulla scienza.</p>
+                        <p class="text-muted">I dati sono salvati localmente nel browser.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Exercise Detail Modal -->
+    <div class="modal" id="exercise-modal">
+        <div class="modal-content">
+            <button class="modal-close" id="close-exercise-modal">&times;</button>
+            <div id="exercise-modal-content"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/data/exercises.js"></script>
+    <script src="js/data/warmups.js"></script>
+    <script src="js/modules/storage.js"></script>
+    <script src="js/modules/algorithm.js"></script>
+    <script src="js/modules/timer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
