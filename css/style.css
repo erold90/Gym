@@ -1969,3 +1969,415 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+
+/* ========================================
+   Exercise Info Modal Styles
+   ======================================== */
+
+/* Info Button */
+.exercise-info-btn {
+    background: linear-gradient(135deg, #4361ee, #7209b7);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+.exercise-info-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(67, 97, 238, 0.4);
+}
+
+.exercise-info-btn:active {
+    transform: scale(0.95);
+}
+
+/* Exercise Info Modal */
+#exercise-info-modal {
+    z-index: 1001;
+}
+
+.exercise-info-modal-content {
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.exercise-info-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.exercise-info-header {
+    padding: 25px 30px;
+    background: var(--accent-gradient);
+    color: white;
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.exercise-info-header h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Exercise Media (GIF/SVG) */
+.exercise-info-media {
+    padding: 20px;
+    background: var(--bg-secondary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.exercise-gif-container {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.exercise-gif-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--radius);
+}
+
+.exercise-gif-container .exercise-svg-animation {
+    width: 80%;
+    height: 80%;
+}
+
+.gif-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    color: var(--text-secondary);
+}
+
+.gif-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.gif-error {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 40px 20px;
+}
+
+.gif-error-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+/* Exercise Info Details */
+.exercise-info-details {
+    padding: 25px 30px;
+}
+
+.exercise-info-section {
+    margin-bottom: 25px;
+}
+
+.exercise-info-section:last-child {
+    margin-bottom: 0;
+}
+
+.exercise-info-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-icon {
+    font-size: 1.2rem;
+}
+
+/* Execution Steps */
+.execution-steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 0;
+}
+
+.execution-steps li {
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.execution-steps li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-gradient);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Tips */
+.execution-tips {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.execution-tips li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.execution-tips li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--success);
+    font-weight: bold;
+}
+
+/* Common Mistakes */
+.common-mistakes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.common-mistakes li {
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.common-mistakes li::before {
+    content: "✗";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--danger);
+    font-weight: bold;
+}
+
+/* Breathing Info */
+.breathing-info {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 15px;
+    background: rgba(67, 97, 238, 0.1);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent-primary);
+}
+
+/* Muscles Info */
+.muscles-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.muscle-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.muscle-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 80px;
+}
+
+.muscle-label.primary {
+    color: var(--accent-primary);
+}
+
+.muscle-label.secondary {
+    color: var(--accent-secondary);
+}
+
+.muscle-name {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Exercise card info button positioning */
+.exercise-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.exercise-card-title {
+    flex: 1;
+}
+
+/* Warmup/Cooldown exercise item with info button */
+.warmup-exercise-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.warmup-exercise-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.warmup-exercise-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cooldown-exercise-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.cooldown-exercise-item .cooldown-exercise-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.cooldown-exercise-item .exercise-info-btn {
+    flex-shrink: 0;
+}
+
+/* Current exercise header with info button */
+.current-exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.current-exercise-title {
+    flex: 1;
+}
+
+/* Exercise grid card with info button */
+.exercise-grid-card {
+    position: relative;
+}
+
+.exercise-grid-card .exercise-info-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+}
+
+/* Program exercise item with info button */
+.program-exercise-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.program-exercise-content {
+    flex: 1;
+}
+
+/* Mobile adjustments for exercise info modal */
+@media (max-width: 768px) {
+    .exercise-info-modal-content {
+        max-width: 95%;
+        max-height: 95vh;
+        margin: 2.5vh auto;
+    }
+
+    .exercise-info-header {
+        padding: 20px;
+    }
+
+    .exercise-info-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .exercise-info-media {
+        padding: 15px;
+    }
+
+    .exercise-gif-container {
+        max-width: 300px;
+    }
+
+    .exercise-info-details {
+        padding: 20px;
+    }
+
+    .exercise-info-section h4 {
+        font-size: 1rem;
+    }
+
+    .execution-steps li {
+        font-size: 0.9rem;
+    }
+
+    .execution-tips li,
+    .common-mistakes li {
+        font-size: 0.9rem;
+    }
+
+    .exercise-info-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+    }
+}
