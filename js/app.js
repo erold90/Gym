@@ -923,14 +923,14 @@ const App = {
         const container = document.getElementById('warmup-exercises');
 
         container.innerHTML = warmup.exercises.map(ex => `
-            <div class="warmup-exercise warmup-exercise-item">
-                <div class="warmup-exercise-content">
+            <div class="warmup-exercise warmup-exercise-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <div class="warmup-exercise-content" style="flex:1;">
                     <span class="name">${ex.name}</span>
                     <small class="description">${ex.description}</small>
                 </div>
-                <div class="warmup-exercise-actions">
+                <div class="warmup-exercise-actions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                     <span class="duration">${ex.duration}</span>
-                    <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                    <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione" style="background:linear-gradient(135deg,#4361ee,#7209b7);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;">
                         ℹ️
                     </button>
                 </div>
@@ -1069,8 +1069,8 @@ const App = {
         ` : '';
 
         container.innerHTML = `
-            <div class="exercise-header-mobile current-exercise-header">
-                <div class="current-exercise-title">
+            <div class="exercise-header-mobile current-exercise-header" style="display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px;">
+                <div class="current-exercise-title" style="flex:1;">
                     <div class="exercise-progress-badge">
                         ${this.currentExerciseIndex + 1}/${this.activeWorkout.exercises.length}
                     </div>
@@ -1079,7 +1079,7 @@ const App = {
                         ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
                     </div>
                 </div>
-                <button class="exercise-info-btn" onclick="App.showExerciseInfoModal('${exercise.exerciseId}', '${exercise.name}', 'workout')" title="Vedi esecuzione">
+                <button class="exercise-info-btn" onclick="App.showExerciseInfoModal('${exercise.exerciseId}', '${exercise.name}', 'workout')" title="Vedi esecuzione" style="background:linear-gradient(135deg,#4361ee,#7209b7);border:none;color:white;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">
                     ℹ️
                 </button>
             </div>
@@ -1311,14 +1311,14 @@ const App = {
         // Render cooldown exercises
         const exercisesEl = document.getElementById('cooldown-exercises');
         exercisesEl.innerHTML = cooldown.exercises.map((ex, index) => `
-            <div class="cooldown-exercise cooldown-exercise-item">
+            <div class="cooldown-exercise cooldown-exercise-item" style="display:flex;align-items:center;gap:12px;">
                 <div class="cooldown-exercise-number">${index + 1}</div>
-                <div class="cooldown-exercise-content">
+                <div class="cooldown-exercise-content" style="flex:1;">
                     <div class="cooldown-exercise-name">${ex.name}</div>
                     <div class="cooldown-exercise-duration">${ex.duration}</div>
                     <div class="cooldown-exercise-description">${ex.description}</div>
                 </div>
-                <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione" style="background:linear-gradient(135deg,#4361ee,#7209b7);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;">
                     ℹ️
                 </button>
             </div>
