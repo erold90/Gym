@@ -291,6 +291,74 @@ const Storage = {
         return prs[exerciseId] ? prs[exerciseId].history : [];
     },
 
+    // Get last performance for an exercise (most recent workout)
+    getLastPerformance(exerciseId) {
+        const workouts = this.getWorkouts();
+
+        for (const workout of workouts) {
+            if (!workout.exercises) continue;
+
+            const exercise = workout.exercises.find(ex => ex.exerciseId === exerciseId);
+            if (exercise && exercise.sets && exercise.sets.length > 0) {
+                // Find the best completed set from this workout
+                const completedSets = exercise.sets.filter(s => s.completed && s.weight && s.reps);
+
+                if (completedSets.length > 0) {
+                    // Return the heaviest set
+                    const bestSet = completedSets.reduce((best, set) => {
+                        const volume = parseFloat(set.weight) * parseInt(set.reps);
+                        const bestVolume = parseFloat(best.weight) * parseInt(best.reps);
+                        return volume > bestVolume ? set : best;
+                    });
+
+                    return {
+                        weight: parseFloat(bestSet.weight),
+                        reps: parseInt(bestSet.reps),
+                        date: workout.date,
+                        allSets: completedSets.map(s => ({
+                            weight: parseFloat(s.weight),
+                            reps: parseInt(s.reps)
+                        }))
+                    };
+                }
+            }
+        }
+
+        return null;
+    },
+
+    // Get PR for an exercise
+    getExercisePR(exerciseId) {
+        const prs = this.getPersonalRecords();
+        return prs[exerciseId] || null;
+    },
+
+    // Check if a set is a new PR
+    checkForNewPR(exerciseId, weight, reps) {
+        const prs = this.getPersonalRecords();
+        const current = prs[exerciseId];
+
+        if (!current) {
+            return { isNewPR: true, type: 'first' };
+        }
+
+        weight = parseFloat(weight);
+        reps = parseInt(reps);
+
+        // Check max weight
+        if (weight > current.maxWeight) {
+            return { isNewPR: true, type: 'weight', oldValue: current.maxWeight };
+        }
+
+        // Check estimated 1RM
+        const newE1RM = weight * (1 + reps / 30);
+        if (newE1RM > current.estimated1RM) {
+            return { isNewPR: true, type: 'e1rm', oldValue: current.estimated1RM, newValue: Math.round(newE1RM * 10) / 10 };
+        }
+
+        return { isNewPR: false };
+    },
+
     // ========================================
     // STREAK
     // ========================================

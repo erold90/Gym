@@ -728,6 +728,63 @@ const App = {
         const container = document.getElementById('current-exercise');
         const completedSets = exercise.setsData.filter(s => s.completed).length;
 
+        // Get last performance and PR data
+        const lastPerformance = Storage.getLastPerformance(exercise.exerciseId);
+        const pr = Storage.getExercisePR(exercise.exerciseId);
+        const profile = Storage.getProfile();
+
+        // Check if this is a bodyweight exercise
+        const isBodyweight = exerciseData?.category === 'corpo-libero' ||
+            exerciseData?.equipment?.includes('corpo-libero') ||
+            ['pull-up', 'chin-up', 'dips', 'push-up', 'plank', 'crunch', 'leg-raise', 'hanging-leg-raise'].includes(exercise.exerciseId);
+
+        // Auto-fill weight for empty sets from last performance
+        exercise.setsData.forEach((set, idx) => {
+            if (!set.weight && !set.autoFilled) {
+                if (isBodyweight) {
+                    // For bodyweight: use body weight or leave empty
+                    set.weight = profile.weight || '';
+                    set.isBodyweight = true;
+                } else if (lastPerformance) {
+                    // Use last performance weight
+                    set.weight = lastPerformance.weight;
+                }
+                set.autoFilled = true;
+            }
+        });
+
+        // Build last performance info HTML
+        let lastPerfHTML = '';
+        if (lastPerformance) {
+            const daysAgo = Math.floor((Date.now() - new Date(lastPerformance.date).getTime()) / (1000 * 60 * 60 * 24));
+            const daysText = daysAgo === 0 ? 'oggi' : daysAgo === 1 ? 'ieri' : `${daysAgo}g fa`;
+            lastPerfHTML = `
+                <div class="last-performance">
+                    <span class="last-perf-label">Ultima volta (${daysText}):</span>
+                    <span class="last-perf-value">${lastPerformance.weight}kg × ${lastPerformance.reps}</span>
+                </div>
+            `;
+        }
+
+        // Build PR info HTML
+        let prHTML = '';
+        if (pr && pr.maxWeight) {
+            prHTML = `
+                <div class="pr-info">
+                    <span class="pr-badge">PR</span>
+                    <span class="pr-value">${pr.maxWeight}kg × ${pr.maxWeightReps || '?'}</span>
+                </div>
+            `;
+        }
+
+        // Bodyweight indicator
+        const bodyweightIndicator = isBodyweight ? `
+            <div class="bodyweight-indicator">
+                <span class="bw-icon">🏋️</span>
+                <span class="bw-text">Corpo libero${profile.weight ? ` (${profile.weight}kg)` : ''}</span>
+            </div>
+        ` : '';
+
         container.innerHTML = `
             <div class="exercise-header-mobile">
                 <div class="exercise-progress-badge">
@@ -737,6 +794,11 @@ const App = {
                 <div class="exercise-muscles-mobile">
                     ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
                 </div>
+                ${bodyweightIndicator}
+            </div>
+            <div class="exercise-info-bar">
+                ${lastPerfHTML}
+                ${prHTML}
             </div>
             <div class="exercise-target-mobile">
                 <div class="target-item">
@@ -758,15 +820,16 @@ const App = {
             </div>
             <div class="sets-container-mobile">
                 ${exercise.setsData.map((set, idx) => `
-                    <div class="set-row-mobile ${set.completed ? 'completed' : ''}" data-set="${idx}">
+                    <div class="set-row-mobile ${set.completed ? 'completed' : ''} ${set.isNewPR ? 'new-pr' : ''}" data-set="${idx}">
                         <div class="set-number-mobile">${idx + 1}</div>
                         <div class="set-inputs-mobile">
                             <div class="input-group">
                                 <input type="number" inputmode="decimal" step="0.5"
-                                    value="${set.weight}" placeholder="kg"
+                                    value="${set.weight}" placeholder="${isBodyweight ? 'BW' : 'kg'}"
                                     onchange="App.updateSet(${idx}, 'weight', this.value)"
-                                    onfocus="this.select()">
-                                <span class="input-suffix">kg</span>
+                                    onfocus="this.select()"
+                                    ${isBodyweight && !set.weight ? 'class="bodyweight-input"' : ''}>
+                                <span class="input-suffix">${isBodyweight && set.isBodyweight ? 'BW' : 'kg'}</span>
                             </div>
                             <span class="set-x">×</span>
                             <div class="input-group">
@@ -779,7 +842,7 @@ const App = {
                         </div>
                         <button class="set-done-btn ${set.completed ? 'done' : ''}"
                             onclick="App.completeSet(${idx})">
-                            ${set.completed ? '✓' : ''}
+                            ${set.completed ? '✓' : ''}${set.isNewPR ? '🏆' : ''}
                         </button>
                     </div>
                 `).join('')}
@@ -811,6 +874,29 @@ const App = {
 
         // Toggle completion
         set.completed = !set.completed;
+
+        // Check for new PR when completing a set
+        if (set.completed && set.weight && set.reps) {
+            const prCheck = Storage.checkForNewPR(exercise.exerciseId, set.weight, set.reps);
+
+            if (prCheck.isNewPR) {
+                set.isNewPR = true;
+
+                // Show PR notification
+                if (prCheck.type === 'first') {
+                    this.showNotification(`🏆 Prima volta per ${exercise.name}! ${set.weight}kg × ${set.reps}`, 'success');
+                } else if (prCheck.type === 'weight') {
+                    this.showNotification(`🏆 NUOVO PR DI PESO! ${set.weight}kg (prima: ${prCheck.oldValue}kg)`, 'success');
+                } else if (prCheck.type === 'e1rm') {
+                    this.showNotification(`🏆 Nuovo record stimato 1RM: ${prCheck.newValue}kg!`, 'success');
+                }
+
+                // Play celebration sound
+                Timer.playCompletionSound();
+            }
+        } else {
+            set.isNewPR = false;
+        }
 
         // Update UI
         this.displayCurrentExercise();

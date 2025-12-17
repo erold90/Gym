@@ -1337,6 +1337,112 @@ body {
    MOBILE-OPTIMIZED WORKOUT STYLES
    ======================================== */
 
+/* Exercise Info Bar (Last Performance + PR) */
+.exercise-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px 12px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+}
+
+.last-performance {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.last-perf-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.last-perf-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.pr-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pr-badge {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.pr-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--warning);
+}
+
+/* Bodyweight Indicator */
+.bodyweight-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: rgba(67, 97, 238, 0.15);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+}
+
+.bw-icon {
+    font-size: 0.9rem;
+}
+
+.bw-text {
+    font-weight: 500;
+}
+
+/* New PR Row Highlight */
+.set-row-mobile.new-pr {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 170, 0, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    animation: pr-glow 1s ease-out;
+}
+
+@keyframes pr-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+    }
+}
+
+.set-row-mobile.new-pr .set-number-mobile {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e;
+}
+
+/* Bodyweight input styling */
+.bodyweight-input {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
 /* Mobile Exercise Header */
 .exercise-header-mobile {
     text-align: center;
