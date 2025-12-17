@@ -1976,19 +1976,23 @@ input[type="number"] {
 
 /* Info Button */
 .exercise-info-btn {
-    background: var(--accent-gradient);
+    background: linear-gradient(135deg, #4361ee, #7209b7);
     border: none;
     color: white;
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     border-radius: 50%;
     cursor: pointer;
-    display: flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    transition: var(--transition);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
     flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
 }
 
 .exercise-info-btn:hover {
@@ -2260,17 +2264,38 @@ input[type="number"] {
 }
 
 /* Warmup/Cooldown exercise item with info button */
-.warmup-exercise-item,
-.cooldown-exercise-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
+.warmup-exercise-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 10px !important;
 }
 
-.warmup-exercise-content,
-.cooldown-exercise-content {
+.warmup-exercise-content {
     flex: 1;
+    min-width: 0;
+}
+
+.warmup-exercise-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cooldown-exercise-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.cooldown-exercise-item .cooldown-exercise-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.cooldown-exercise-item .exercise-info-btn {
+    flex-shrink: 0;
 }
 
 /* Current exercise header with info button */

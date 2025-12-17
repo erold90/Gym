@@ -928,10 +928,12 @@ const App = {
                     <span class="name">${ex.name}</span>
                     <small class="description">${ex.description}</small>
                 </div>
-                <span class="duration">${ex.duration}</span>
-                <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
-                    ℹ️
-                </button>
+                <div class="warmup-exercise-actions">
+                    <span class="duration">${ex.duration}</span>
+                    <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                        ℹ️
+                    </button>
+                </div>
             </div>
         `).join('');
 
