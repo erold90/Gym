@@ -218,6 +218,17 @@ const App = {
                 document.getElementById('exercise-modal').classList.remove('active');
             }
         });
+
+        // Exercise info modal (GIF + detailed instructions)
+        document.getElementById('close-exercise-info-modal')?.addEventListener('click', () => {
+            document.getElementById('exercise-info-modal').classList.remove('active');
+        });
+
+        document.getElementById('exercise-info-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'exercise-info-modal') {
+                document.getElementById('exercise-info-modal').classList.remove('active');
+            }
+        });
     },
 
     // ========================================
@@ -398,7 +409,10 @@ const App = {
         const exerciseList = exercises || getAllExercises();
 
         container.innerHTML = exerciseList.map(ex => `
-            <div class="exercise-card" data-id="${ex.id}">
+            <div class="exercise-card exercise-grid-card" data-id="${ex.id}">
+                <button class="exercise-info-btn" data-exercise-id="${ex.id}" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                    ℹ️
+                </button>
                 <h4>${ex.name}</h4>
                 <div class="muscle-tags">
                     ${ex.primaryMuscles.map(m => `<span class="muscle-tag">${m}</span>`).join('')}
@@ -408,10 +422,20 @@ const App = {
             </div>
         `).join('');
 
-        // Add click handlers
+        // Add click handlers for cards
         container.querySelectorAll('.exercise-card').forEach(card => {
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (e) => {
+                // Don't open detail modal if clicking info button
+                if (e.target.classList.contains('exercise-info-btn')) return;
                 this.showExerciseDetail(card.dataset.id);
+            });
+        });
+
+        // Add click handlers for info buttons
+        container.querySelectorAll('.exercise-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showExerciseInfoModal(btn.dataset.exerciseId, btn.dataset.exerciseName, 'workout');
             });
         });
     },
@@ -441,6 +465,184 @@ const App = {
         }
         const filtered = getExercisesByPrimaryMuscle(muscle);
         this.renderExercises(filtered);
+    },
+
+    /**
+     * Show exercise info modal with GIF and detailed instructions
+     * @param {string} exerciseId - The exercise ID
+     * @param {string} exerciseName - The exercise name (for fallback)
+     * @param {string} type - Type: 'workout', 'warmup', 'cooldown'
+     */
+    showExerciseInfoModal(exerciseId, exerciseName, type = 'workout') {
+        const modal = document.getElementById('exercise-info-modal');
+        const titleEl = document.getElementById('exercise-info-title');
+        const gifContainer = document.getElementById('exercise-gif-container');
+        const stepsEl = document.getElementById('execution-steps');
+        const tipsEl = document.getElementById('execution-tips');
+        const mistakesEl = document.getElementById('common-mistakes');
+        const mistakesSection = document.getElementById('common-mistakes-section');
+        const breathingEl = document.getElementById('breathing-info');
+        const breathingSection = document.getElementById('breathing-section');
+        const musclesEl = document.getElementById('muscles-info');
+        const musclesSection = document.getElementById('muscles-section');
+
+        // Get media info from exerciseMedia module
+        const mediaInfo = getExerciseMediaInfo(exerciseId, exerciseName, type);
+
+        // Set title
+        titleEl.textContent = mediaInfo.name;
+
+        // Set GIF or SVG animation
+        if (mediaInfo.gifUrl) {
+            gifContainer.innerHTML = `
+                <div class="gif-loading">
+                    <div class="gif-loading-spinner"></div>
+                    <span>Caricamento...</span>
+                </div>
+            `;
+
+            const img = new Image();
+            img.onload = () => {
+                gifContainer.innerHTML = `<img src="${mediaInfo.gifUrl}" alt="${mediaInfo.name}" />`;
+            };
+            img.onerror = () => {
+                if (mediaInfo.svgAnimation) {
+                    gifContainer.innerHTML = mediaInfo.svgAnimation;
+                } else {
+                    gifContainer.innerHTML = `
+                        <div class="gif-error">
+                            <div class="gif-error-icon">🏋️</div>
+                            <p>Immagine non disponibile</p>
+                        </div>
+                    `;
+                }
+            };
+            img.src = mediaInfo.gifUrl;
+        } else if (mediaInfo.svgAnimation) {
+            gifContainer.innerHTML = mediaInfo.svgAnimation;
+        } else {
+            gifContainer.innerHTML = `
+                <div class="gif-error">
+                    <div class="gif-error-icon">🏋️</div>
+                    <p>Immagine non disponibile</p>
+                </div>
+            `;
+        }
+
+        // Set execution details
+        if (mediaInfo.details) {
+            // Steps
+            if (mediaInfo.details.steps && mediaInfo.details.steps.length > 0) {
+                stepsEl.innerHTML = mediaInfo.details.steps.map(step => `<li>${step}</li>`).join('');
+            } else {
+                // Fallback to exercise instructions
+                const exercise = getExerciseById(exerciseId);
+                if (exercise && exercise.instructions) {
+                    stepsEl.innerHTML = `<li>${exercise.instructions}</li>`;
+                } else {
+                    stepsEl.innerHTML = '<li>Esegui l\'esercizio seguendo la corretta tecnica</li>';
+                }
+            }
+
+            // Tips
+            if (mediaInfo.details.tips && mediaInfo.details.tips.length > 0) {
+                tipsEl.innerHTML = mediaInfo.details.tips.map(tip => `<li>${tip}</li>`).join('');
+            } else {
+                // Fallback to exercise tips
+                const exercise = getExerciseById(exerciseId);
+                if (exercise && exercise.tips && exercise.tips.length > 0) {
+                    tipsEl.innerHTML = exercise.tips.map(tip => `<li>${tip}</li>`).join('');
+                } else {
+                    tipsEl.innerHTML = '<li>Mantieni sempre il controllo del movimento</li>';
+                }
+            }
+
+            // Common mistakes
+            if (mediaInfo.details.commonMistakes && mediaInfo.details.commonMistakes.length > 0) {
+                mistakesEl.innerHTML = mediaInfo.details.commonMistakes.map(m => `<li>${m}</li>`).join('');
+                mistakesSection.style.display = 'block';
+            } else {
+                mistakesSection.style.display = 'none';
+            }
+
+            // Breathing
+            if (mediaInfo.details.breathing) {
+                breathingEl.textContent = mediaInfo.details.breathing;
+                breathingSection.style.display = 'block';
+            } else {
+                breathingSection.style.display = 'none';
+            }
+
+            // Muscles
+            if (mediaInfo.details.muscles) {
+                musclesEl.innerHTML = `
+                    <div class="muscle-group">
+                        <span class="muscle-label primary">Primari:</span>
+                        <span class="muscle-name">${mediaInfo.details.muscles.primary}</span>
+                    </div>
+                    ${mediaInfo.details.muscles.secondary ? `
+                        <div class="muscle-group">
+                            <span class="muscle-label secondary">Secondari:</span>
+                            <span class="muscle-name">${mediaInfo.details.muscles.secondary}</span>
+                        </div>
+                    ` : ''}
+                `;
+                musclesSection.style.display = 'block';
+            } else {
+                // Fallback to exercise muscles
+                const exercise = getExerciseById(exerciseId);
+                if (exercise) {
+                    musclesEl.innerHTML = `
+                        <div class="muscle-group">
+                            <span class="muscle-label primary">Primari:</span>
+                            <span class="muscle-name">${exercise.primaryMuscles.join(', ')}</span>
+                        </div>
+                        ${exercise.secondaryMuscles.length > 0 ? `
+                            <div class="muscle-group">
+                                <span class="muscle-label secondary">Secondari:</span>
+                                <span class="muscle-name">${exercise.secondaryMuscles.join(', ')}</span>
+                            </div>
+                        ` : ''}
+                    `;
+                    musclesSection.style.display = 'block';
+                } else {
+                    musclesSection.style.display = 'none';
+                }
+            }
+        } else {
+            // No detailed info, use basic exercise data
+            const exercise = getExerciseById(exerciseId);
+            if (exercise) {
+                stepsEl.innerHTML = `<li>${exercise.instructions || 'Esegui l\'esercizio seguendo la corretta tecnica'}</li>`;
+                tipsEl.innerHTML = exercise.tips && exercise.tips.length > 0
+                    ? exercise.tips.map(tip => `<li>${tip}</li>`).join('')
+                    : '<li>Mantieni sempre il controllo del movimento</li>';
+                mistakesSection.style.display = 'none';
+                breathingSection.style.display = 'none';
+                musclesEl.innerHTML = `
+                    <div class="muscle-group">
+                        <span class="muscle-label primary">Primari:</span>
+                        <span class="muscle-name">${exercise.primaryMuscles.join(', ')}</span>
+                    </div>
+                    ${exercise.secondaryMuscles.length > 0 ? `
+                        <div class="muscle-group">
+                            <span class="muscle-label secondary">Secondari:</span>
+                            <span class="muscle-name">${exercise.secondaryMuscles.join(', ')}</span>
+                        </div>
+                    ` : ''}
+                `;
+                musclesSection.style.display = 'block';
+            } else {
+                // Warmup/cooldown without exercise data
+                stepsEl.innerHTML = '<li>Segui le indicazioni dell\'esercizio</li>';
+                tipsEl.innerHTML = '<li>Esegui il movimento in modo controllato</li>';
+                mistakesSection.style.display = 'none';
+                breathingSection.style.display = 'none';
+                musclesSection.style.display = 'none';
+            }
+        }
+
+        modal.classList.add('active');
     },
 
     showExerciseDetail(exerciseId) {
@@ -560,9 +762,14 @@ const App = {
                     <p class="day-focus">${day.focus}</p>
                     <div class="day-exercises">
                         ${day.exercises.map(ex => `
-                            <div class="program-exercise">
-                                <span class="exercise-name">${ex.name}</span>
-                                <span class="exercise-details">${ex.sets} x ${ex.reps}</span>
+                            <div class="program-exercise program-exercise-item">
+                                <div class="program-exercise-content">
+                                    <span class="exercise-name">${ex.name}</span>
+                                    <span class="exercise-details">${ex.sets} x ${ex.reps}</span>
+                                </div>
+                                <button class="exercise-info-btn" data-exercise-id="${ex.exerciseId || ''}" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                                    ℹ️
+                                </button>
                             </div>
                         `).join('')}
                     </div>
@@ -587,6 +794,16 @@ const App = {
         }
 
         content.innerHTML = html;
+
+        // Add click handlers for info buttons in program
+        content.querySelectorAll('.exercise-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const exerciseId = btn.dataset.exerciseId || null;
+                const exerciseName = btn.dataset.exerciseName;
+                this.showExerciseInfoModal(exerciseId, exerciseName, 'workout');
+            });
+        });
     },
 
     displaySavedPrograms() {
@@ -706,14 +923,25 @@ const App = {
         const container = document.getElementById('warmup-exercises');
 
         container.innerHTML = warmup.exercises.map(ex => `
-            <div class="warmup-exercise">
-                <div>
+            <div class="warmup-exercise warmup-exercise-item">
+                <div class="warmup-exercise-content">
                     <span class="name">${ex.name}</span>
                     <small class="description">${ex.description}</small>
                 </div>
                 <span class="duration">${ex.duration}</span>
+                <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                    ℹ️
+                </button>
             </div>
         `).join('');
+
+        // Add click handlers for info buttons
+        container.querySelectorAll('.exercise-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showExerciseInfoModal(null, btn.dataset.exerciseName, 'warmup');
+            });
+        });
 
         document.getElementById('warmup-section').style.display = 'block';
     },
@@ -839,14 +1067,19 @@ const App = {
         ` : '';
 
         container.innerHTML = `
-            <div class="exercise-header-mobile">
-                <div class="exercise-progress-badge">
-                    ${this.currentExerciseIndex + 1}/${this.activeWorkout.exercises.length}
+            <div class="exercise-header-mobile current-exercise-header">
+                <div class="current-exercise-title">
+                    <div class="exercise-progress-badge">
+                        ${this.currentExerciseIndex + 1}/${this.activeWorkout.exercises.length}
+                    </div>
+                    <h3 class="exercise-title-mobile">${exercise.name}</h3>
+                    <div class="exercise-muscles-mobile">
+                        ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
+                    </div>
                 </div>
-                <h3 class="exercise-title-mobile">${exercise.name}</h3>
-                <div class="exercise-muscles-mobile">
-                    ${exerciseData?.primaryMuscles.map(m => `<span class="muscle-tag-sm">${m}</span>`).join('') || ''}
-                </div>
+                <button class="exercise-info-btn" onclick="App.showExerciseInfoModal('${exercise.exerciseId}', '${exercise.name}', 'workout')" title="Vedi esecuzione">
+                    ℹ️
+                </button>
             </div>
             ${bodyweightSelector}
             <div class="exercise-info-bar">
@@ -1076,15 +1309,26 @@ const App = {
         // Render cooldown exercises
         const exercisesEl = document.getElementById('cooldown-exercises');
         exercisesEl.innerHTML = cooldown.exercises.map((ex, index) => `
-            <div class="cooldown-exercise">
+            <div class="cooldown-exercise cooldown-exercise-item">
                 <div class="cooldown-exercise-number">${index + 1}</div>
-                <div class="cooldown-exercise-info">
+                <div class="cooldown-exercise-content">
                     <div class="cooldown-exercise-name">${ex.name}</div>
                     <div class="cooldown-exercise-duration">${ex.duration}</div>
                     <div class="cooldown-exercise-description">${ex.description}</div>
                 </div>
+                <button class="exercise-info-btn" data-exercise-name="${ex.name}" title="Vedi esecuzione">
+                    ℹ️
+                </button>
             </div>
         `).join('');
+
+        // Add click handlers for info buttons
+        exercisesEl.querySelectorAll('.exercise-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showExerciseInfoModal(null, btn.dataset.exerciseName, 'cooldown');
+            });
+        });
 
         // Show modal
         document.getElementById('cooldown-modal').style.display = 'flex';
