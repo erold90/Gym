@@ -946,6 +946,158 @@ body {
     margin-bottom: 20px;
 }
 
+/* Cooldown Modal */
+.cooldown-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.cooldown-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.cooldown-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cooldown-header h3 {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    color: var(--accent-secondary);
+}
+
+.cooldown-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.cooldown-info {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.cooldown-duration {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-hover);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+}
+
+.duration-icon {
+    font-size: 1.2rem;
+}
+
+.duration-text {
+    font-weight: 600;
+}
+
+.cooldown-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.cooldown-exercise {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--accent-secondary);
+}
+
+.cooldown-exercise-number {
+    width: 28px;
+    height: 28px;
+    background: var(--accent-secondary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.cooldown-exercise-info {
+    flex: 1;
+}
+
+.cooldown-exercise-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.cooldown-exercise-duration {
+    font-size: 0.85rem;
+    color: var(--accent-secondary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.cooldown-exercise-description {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.cooldown-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.cooldown-actions .btn {
+    min-width: 140px;
+}
+
+/* Cooldown Mobile Responsive */
+@media (max-width: 480px) {
+    .cooldown-content {
+        padding: 20px;
+    }
+
+    .cooldown-header h3 {
+        font-size: 1.5rem;
+    }
+
+    .cooldown-exercise {
+        padding: 10px;
+    }
+
+    .cooldown-actions {
+        flex-direction: column;
+    }
+
+    .cooldown-actions .btn {
+        width: 100%;
+    }
+}
+
 /* Settings */
 .settings-container {
     max-width: 600px;

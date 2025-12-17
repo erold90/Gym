@@ -136,6 +136,15 @@ const App = {
             Timer.skipRest();
         });
 
+        // Cooldown controls
+        document.getElementById('skip-cooldown')?.addEventListener('click', () => {
+            this.finishWorkout();
+        });
+
+        document.getElementById('complete-cooldown')?.addEventListener('click', () => {
+            this.finishWorkout();
+        });
+
         // Exercise search
         document.getElementById('exercise-search')?.addEventListener('input', (e) => {
             this.filterExercises(e.target.value);
@@ -852,38 +861,79 @@ const App = {
 
         if (!confirm('Terminare l\'allenamento?')) return;
 
-        // Stop timers
-        const duration = Timer.stopWorkoutTimer();
+        // Stop rest timer but keep workout timer running
         Timer.stopRestTimer();
+        document.getElementById('rest-timer-modal').style.display = 'none';
+
+        // Show cooldown section
+        this.showCooldown();
+    },
+
+    showCooldown() {
+        // Get cooldown based on workout type
+        const workoutType = this.activeWorkout?.type || 'full-body';
+        const cooldown = getCooldownForWorkout(workoutType);
+
+        // Render cooldown info
+        const infoEl = document.getElementById('cooldown-info');
+        infoEl.innerHTML = `
+            <div class="cooldown-duration">
+                <span class="duration-icon">⏱️</span>
+                <span class="duration-text">${cooldown.duration}</span>
+            </div>
+        `;
+
+        // Render cooldown exercises
+        const exercisesEl = document.getElementById('cooldown-exercises');
+        exercisesEl.innerHTML = cooldown.exercises.map((ex, index) => `
+            <div class="cooldown-exercise">
+                <div class="cooldown-exercise-number">${index + 1}</div>
+                <div class="cooldown-exercise-info">
+                    <div class="cooldown-exercise-name">${ex.name}</div>
+                    <div class="cooldown-exercise-duration">${ex.duration}</div>
+                    <div class="cooldown-exercise-description">${ex.description}</div>
+                </div>
+            </div>
+        `).join('');
+
+        // Show modal
+        document.getElementById('cooldown-modal').style.display = 'flex';
+    },
+
+    finishWorkout() {
+        // Stop workout timer
+        const duration = Timer.stopWorkoutTimer();
 
         // Calculate workout stats
         let totalVolume = 0;
         let totalSets = 0;
 
-        this.activeWorkout.exercises.forEach(ex => {
-            ex.setsData.forEach(set => {
-                if (set.completed && set.weight && set.reps) {
-                    totalVolume += parseFloat(set.weight) * parseInt(set.reps);
-                    totalSets++;
-                }
+        if (this.activeWorkout) {
+            this.activeWorkout.exercises.forEach(ex => {
+                ex.setsData.forEach(set => {
+                    if (set.completed && set.weight && set.reps) {
+                        totalVolume += parseFloat(set.weight) * parseInt(set.reps);
+                        totalSets++;
+                    }
+                });
             });
-        });
 
-        // Save workout with properly formatted exercises
-        const workoutData = {
-            name: this.activeWorkout.type || 'Allenamento',
-            type: this.activeWorkout.type,
-            exercises: this.activeWorkout.exercises.map(ex => ({
-                exerciseId: ex.exerciseId,
-                name: ex.name,
-                sets: ex.setsData  // Save completed sets data
-            })),
-            duration: duration,
-            totalVolume: Math.round(totalVolume),
-            totalSets: totalSets
-        };
+            // Save workout with properly formatted exercises
+            const workoutData = {
+                name: this.activeWorkout.type || 'Allenamento',
+                type: this.activeWorkout.type,
+                exercises: this.activeWorkout.exercises.map(ex => ({
+                    exerciseId: ex.exerciseId,
+                    name: ex.name,
+                    sets: ex.setsData  // Save completed sets data
+                })),
+                duration: duration,
+                totalVolume: Math.round(totalVolume),
+                totalSets: totalSets
+            };
 
-        Storage.saveWorkout(workoutData);
+            Storage.saveWorkout(workoutData);
+        }
 
         // Reset state
         this.activeWorkout = null;
@@ -893,6 +943,7 @@ const App = {
         document.getElementById('workout-not-started').style.display = 'block';
         document.getElementById('workout-active').style.display = 'none';
         document.getElementById('rest-timer-modal').style.display = 'none';
+        document.getElementById('cooldown-modal').style.display = 'none';
 
         // Update dashboard
         this.loadDashboard();

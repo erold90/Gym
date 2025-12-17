@@ -669,3 +669,480 @@ function getWarmupForMuscles(primaryMuscles) {
 function getWarmupByMuscle(muscle) {
     return WARMUPS_DB[muscle] || WARMUPS_DB["full-body"];
 }
+
+// ========================================
+// STATIC STRETCHING DATABASE (POST-WORKOUT)
+// ========================================
+
+const COOLDOWN_DB = {
+    "upper": {
+        name: "Stretching Upper Body",
+        duration: "8-10 minuti",
+        exercises: [
+            {
+                name: "Chest Doorway Stretch",
+                duration: "30 sec per lato",
+                description: "Braccio contro lo stipite, ruota il corpo per allungare il petto"
+            },
+            {
+                name: "Cross-Body Shoulder Stretch",
+                duration: "30 sec per braccio",
+                description: "Tira il braccio attraverso il petto con l'altro braccio"
+            },
+            {
+                name: "Tricep Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa, spingi il gomito con l'altra mano"
+            },
+            {
+                name: "Bicep Wall Stretch",
+                duration: "30 sec per braccio",
+                description: "Palmo contro il muro, ruota il corpo per allungare il bicipite"
+            },
+            {
+                name: "Lat Stretch",
+                duration: "30 sec per lato",
+                description: "Braccio in alto, inclina lateralmente il busto"
+            },
+            {
+                name: "Neck Stretches",
+                duration: "20 sec per direzione",
+                description: "Inclina la testa lateralmente e in avanti, delicatamente"
+            },
+            {
+                name: "Upper Back Stretch",
+                duration: "30 sec",
+                description: "Mani intrecciate davanti, arrotonda la schiena spingendo in avanti"
+            },
+            {
+                name: "Child's Pose",
+                duration: "45 sec",
+                description: "In ginocchio, siediti sui talloni e allunga le braccia in avanti"
+            }
+        ]
+    },
+
+    "lower": {
+        name: "Stretching Lower Body",
+        duration: "10-12 minuti",
+        exercises: [
+            {
+                name: "Standing Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "In piedi, tira il tallone verso il gluteo"
+            },
+            {
+                name: "Standing Hamstring Stretch",
+                duration: "30 sec per gamba",
+                description: "Piede su rialzo, piegati in avanti con schiena dritta"
+            },
+            {
+                name: "Hip Flexor Stretch (Lunge)",
+                duration: "30 sec per lato",
+                description: "In affondo, spingi il bacino in avanti"
+            },
+            {
+                name: "Pigeon Pose",
+                duration: "45 sec per lato",
+                description: "Gamba piegata davanti, l'altra distesa dietro"
+            },
+            {
+                name: "Butterfly Stretch",
+                duration: "45 sec",
+                description: "Seduto, piante dei piedi unite, spingi le ginocchia verso il basso"
+            },
+            {
+                name: "Seated Forward Fold",
+                duration: "45 sec",
+                description: "Gambe distese, piegati in avanti verso le punte"
+            },
+            {
+                name: "Figure-4 Stretch",
+                duration: "30 sec per lato",
+                description: "Sdraiato, caviglia sulla coscia opposta, tira verso di te"
+            },
+            {
+                name: "Calf Stretch",
+                duration: "30 sec per gamba",
+                description: "Piede indietro, tallone a terra, spingi contro il muro"
+            },
+            {
+                name: "Lying Spinal Twist",
+                duration: "30 sec per lato",
+                description: "Sdraiato, ginocchia da un lato, spalle a terra"
+            }
+        ]
+    },
+
+    "petto": {
+        name: "Stretching Petto",
+        duration: "5-6 minuti",
+        exercises: [
+            {
+                name: "Doorway Chest Stretch",
+                duration: "30 sec per lato",
+                description: "Avambraccio contro lo stipite, fai un passo avanti"
+            },
+            {
+                name: "Chest Opener",
+                duration: "30 sec",
+                description: "Mani intrecciate dietro la schiena, petto in fuori"
+            },
+            {
+                name: "Floor Chest Stretch",
+                duration: "30 sec per lato",
+                description: "A pancia in giù, braccio a 90°, ruota il corpo"
+            },
+            {
+                name: "Corner Stretch",
+                duration: "45 sec",
+                description: "Mani sulle pareti di un angolo, piegati in avanti"
+            }
+        ]
+    },
+
+    "schiena": {
+        name: "Stretching Schiena",
+        duration: "6-8 minuti",
+        exercises: [
+            {
+                name: "Cat-Cow Stretch",
+                duration: "10 ripetizioni lente",
+                description: "A quattro zampe, alterna inarcamento e flessione"
+            },
+            {
+                name: "Child's Pose",
+                duration: "45 sec",
+                description: "Seduto sui talloni, braccia distese in avanti"
+            },
+            {
+                name: "Lat Stretch",
+                duration: "30 sec per lato",
+                description: "In ginocchio, braccio disteso in avanti, ruota il busto"
+            },
+            {
+                name: "Seated Spinal Twist",
+                duration: "30 sec per lato",
+                description: "Seduto, ruota il busto, gomito fuori dal ginocchio opposto"
+            },
+            {
+                name: "Knee-to-Chest Stretch",
+                duration: "30 sec per gamba",
+                description: "Sdraiato, tira un ginocchio al petto"
+            },
+            {
+                name: "Cobra Stretch",
+                duration: "30 sec",
+                description: "A pancia in giù, solleva il petto con le braccia"
+            }
+        ]
+    },
+
+    "spalle": {
+        name: "Stretching Spalle",
+        duration: "5-6 minuti",
+        exercises: [
+            {
+                name: "Cross-Body Stretch",
+                duration: "30 sec per braccio",
+                description: "Tira il braccio attraverso il petto"
+            },
+            {
+                name: "Overhead Tricep/Shoulder Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa, spingi il gomito"
+            },
+            {
+                name: "Thread the Needle",
+                duration: "30 sec per lato",
+                description: "A quattro zampe, passa il braccio sotto il corpo"
+            },
+            {
+                name: "Eagle Arms",
+                duration: "30 sec per lato",
+                description: "Braccia incrociate davanti, gomiti uniti"
+            },
+            {
+                name: "Wall Shoulder Stretch",
+                duration: "30 sec per braccio",
+                description: "Mano sul muro all'altezza della spalla, ruota"
+            }
+        ]
+    },
+
+    "bicipiti": {
+        name: "Stretching Braccia",
+        duration: "4-5 minuti",
+        exercises: [
+            {
+                name: "Wall Bicep Stretch",
+                duration: "30 sec per braccio",
+                description: "Palmo sul muro dietro di te, ruota il corpo"
+            },
+            {
+                name: "Seated Bicep Stretch",
+                duration: "30 sec",
+                description: "Mani a terra dietro di te, dita verso l'esterno, siediti indietro"
+            },
+            {
+                name: "Tricep Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa, spingi il gomito"
+            },
+            {
+                name: "Wrist Flexor Stretch",
+                duration: "20 sec per mano",
+                description: "Braccio teso, tira le dita verso di te"
+            },
+            {
+                name: "Wrist Extensor Stretch",
+                duration: "20 sec per mano",
+                description: "Braccio teso, spingi le dita verso il basso"
+            }
+        ]
+    },
+
+    "quadricipiti": {
+        name: "Stretching Quadricipiti",
+        duration: "5-6 minuti",
+        exercises: [
+            {
+                name: "Standing Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "Tira il tallone verso il gluteo"
+            },
+            {
+                name: "Kneeling Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "In ginocchio su una gamba, tira il piede posteriore"
+            },
+            {
+                name: "Lying Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "Su un fianco, tira il tallone verso il gluteo"
+            },
+            {
+                name: "Couch Stretch",
+                duration: "45 sec per gamba",
+                description: "Ginocchio a terra, piede contro il muro dietro di te"
+            }
+        ]
+    },
+
+    "femorali": {
+        name: "Stretching Femorali",
+        duration: "6-8 minuti",
+        exercises: [
+            {
+                name: "Standing Toe Touch",
+                duration: "30 sec",
+                description: "In piedi, piegati verso le punte dei piedi"
+            },
+            {
+                name: "Seated Forward Fold",
+                duration: "45 sec",
+                description: "Gambe distese, piegati verso le punte"
+            },
+            {
+                name: "Single Leg Forward Fold",
+                duration: "30 sec per gamba",
+                description: "Una gamba distesa, l'altra piegata, piegati verso la punta"
+            },
+            {
+                name: "Lying Hamstring Stretch",
+                duration: "30 sec per gamba",
+                description: "Sdraiato, tira la gamba verso di te con le mani o una fascia"
+            },
+            {
+                name: "Standing Hamstring Stretch",
+                duration: "30 sec per gamba",
+                description: "Piede su rialzo, piegati in avanti"
+            }
+        ]
+    },
+
+    "glutei": {
+        name: "Stretching Glutei",
+        duration: "5-6 minuti",
+        exercises: [
+            {
+                name: "Figure-4 Stretch",
+                duration: "30 sec per lato",
+                description: "Sdraiato, caviglia sulla coscia opposta, tira"
+            },
+            {
+                name: "Pigeon Pose",
+                duration: "45 sec per lato",
+                description: "Gamba piegata davanti, l'altra distesa dietro"
+            },
+            {
+                name: "Knee-to-Chest",
+                duration: "30 sec per gamba",
+                description: "Sdraiato, abbraccia il ginocchio al petto"
+            },
+            {
+                name: "Seated Glute Stretch",
+                duration: "30 sec per lato",
+                description: "Seduto, caviglia sulla coscia opposta, piegati in avanti"
+            }
+        ]
+    },
+
+    "addome": {
+        name: "Stretching Core",
+        duration: "4-5 minuti",
+        exercises: [
+            {
+                name: "Cobra Stretch",
+                duration: "30 sec",
+                description: "A pancia in giù, solleva il petto con le braccia"
+            },
+            {
+                name: "Lying Side Stretch",
+                duration: "30 sec per lato",
+                description: "Sdraiato, braccia sopra la testa, inclinati lateralmente"
+            },
+            {
+                name: "Cat-Cow",
+                duration: "10 ripetizioni",
+                description: "Mobilità della colonna"
+            },
+            {
+                name: "Lying Spinal Twist",
+                duration: "30 sec per lato",
+                description: "Sdraiato, ginocchia da un lato, spalle a terra"
+            }
+        ]
+    },
+
+    "full-body": {
+        name: "Stretching Completo",
+        duration: "10-12 minuti",
+        exercises: [
+            {
+                name: "Neck Rolls",
+                duration: "30 sec",
+                description: "Rotazioni lente del collo"
+            },
+            {
+                name: "Shoulder Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio attraverso il petto"
+            },
+            {
+                name: "Tricep Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa"
+            },
+            {
+                name: "Chest Opener",
+                duration: "30 sec",
+                description: "Mani dietro la schiena, petto in fuori"
+            },
+            {
+                name: "Cat-Cow",
+                duration: "10 ripetizioni",
+                description: "Mobilità spinale"
+            },
+            {
+                name: "Child's Pose",
+                duration: "45 sec",
+                description: "Rilassamento schiena"
+            },
+            {
+                name: "Hip Flexor Stretch",
+                duration: "30 sec per lato",
+                description: "Affondo con bacino in avanti"
+            },
+            {
+                name: "Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "Tallone verso il gluteo"
+            },
+            {
+                name: "Hamstring Stretch",
+                duration: "30 sec per gamba",
+                description: "Piede avanti, piegati verso la punta"
+            },
+            {
+                name: "Figure-4",
+                duration: "30 sec per lato",
+                description: "Stretch glutei"
+            },
+            {
+                name: "Calf Stretch",
+                duration: "30 sec per gamba",
+                description: "Tallone a terra, spingi contro il muro"
+            },
+            {
+                name: "Deep Breathing",
+                duration: "60 sec",
+                description: "Respiri profondi per rilassare il sistema nervoso"
+            }
+        ]
+    }
+};
+
+// Get cooldown for workout type
+function getCooldownForWorkout(workoutType) {
+    const cooldownMap = {
+        "upper-a": "upper",
+        "upper-b": "upper",
+        "Upper A": "upper",
+        "Upper B": "upper",
+        "lower-a": "lower",
+        "lower-b": "lower",
+        "Lower A": "lower",
+        "Lower B": "lower",
+        "push": "upper",
+        "Push": "upper",
+        "pull": "schiena",
+        "Pull": "schiena",
+        "legs": "lower",
+        "Legs": "lower",
+        "chest": "petto",
+        "Chest": "petto",
+        "back": "schiena",
+        "Back": "schiena",
+        "shoulders": "spalle",
+        "Shoulders": "spalle",
+        "arms": "bicipiti",
+        "Arms": "bicipiti",
+        "full-body": "full-body",
+        "Full Body": "full-body"
+    };
+
+    return COOLDOWN_DB[cooldownMap[workoutType]] || COOLDOWN_DB["full-body"];
+}
+
+// Get cooldown by muscle groups trained
+function getCooldownForMuscles(muscles) {
+    if (!muscles || muscles.length === 0) {
+        return COOLDOWN_DB["full-body"];
+    }
+
+    // Check which body part was most trained
+    const upperMuscles = ["petto", "schiena", "spalle", "bicipiti", "tricipiti"];
+    const lowerMuscles = ["quadricipiti", "femorali", "glutei", "polpacci"];
+
+    let upperCount = 0;
+    let lowerCount = 0;
+
+    muscles.forEach(m => {
+        if (upperMuscles.includes(m)) upperCount++;
+        if (lowerMuscles.includes(m)) lowerCount++;
+    });
+
+    if (upperCount > lowerCount) {
+        return COOLDOWN_DB["upper"];
+    } else if (lowerCount > upperCount) {
+        return COOLDOWN_DB["lower"];
+    }
+
+    return COOLDOWN_DB["full-body"];
+}
+
+// Get specific cooldown by muscle
+function getCooldownByMuscle(muscle) {
+    return COOLDOWN_DB[muscle] || COOLDOWN_DB["full-body"];
+}
