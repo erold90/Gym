@@ -2381,3 +2381,66 @@ input[type="number"] {
         font-size: 0.9rem;
     }
 }
+
+
+/* ========================================
+   Update Banner
+   ======================================== */
+.update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #4361ee, #7209b7);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    z-index: 10000;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.update-banner span {
+    font-weight: 500;
+}
+
+.update-banner button {
+    background: white;
+    color: #4361ee;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.update-banner button:hover {
+    background: #f0f0f5;
+    transform: scale(1.05);
+}
+
+.update-banner .close-btn {
+    background: transparent;
+    color: white;
+    font-size: 1.5rem;
+    padding: 0 8px;
+    opacity: 0.8;
+}
+
+.update-banner .close-btn:hover {
+    opacity: 1;
+    background: transparent;
+}

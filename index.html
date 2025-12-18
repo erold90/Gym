@@ -734,6 +734,13 @@
         </div>
     </div>
 
+    <!-- Update Banner -->
+    <div id="update-banner" class="update-banner" style="display: none;">
+        <span>Nuova versione disponibile!</span>
+        <button onclick="location.reload()">Aggiorna</button>
+        <button onclick="this.parentElement.style.display='none'" class="close-btn">&times;</button>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/data/exercises.js"></script>
@@ -743,5 +750,42 @@
     <script src="js/modules/timer.js"></script>
     <script src="js/modules/exerciseMedia.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registrato:', registration.scope);
+
+                        // Controlla aggiornamenti ogni 60 secondi
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000);
+
+                        // Controlla subito se c'è un aggiornamento
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Nuova versione pronta
+                                    document.getElementById('update-banner').style.display = 'flex';
+                                }
+                            });
+                        });
+                    })
+                    .catch((err) => console.error('SW errore:', err));
+
+                // Ascolta messaggi dal SW
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data.type === 'SW_UPDATED') {
+                        console.log('App aggiornata alla versione:', event.data.version);
+                        document.getElementById('update-banner').style.display = 'flex';
+                    }
+                });
+            });
+        }
+    </script>
 </body>
 </html>
