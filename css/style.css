@@ -1697,6 +1697,18 @@ body {
     color: var(--text-primary);
 }
 
+/* Tempo indicator - subtle styling */
+.tempo-item {
+    cursor: help;
+}
+
+.tempo-value {
+    font-size: 1rem !important;
+    color: var(--primary) !important;
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
 /* Sets Progress Bar */
 .sets-progress-bar {
     position: relative;

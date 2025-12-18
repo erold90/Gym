@@ -1023,6 +1023,10 @@ const App = {
         const profile = Storage.getProfile();
         const bodyWeight = profile.weight || 0;
 
+        // Get tempo from active program
+        const activeProgram = Storage.getActiveProgram();
+        const tempo = activeProgram?.metadata?.tempo;
+
         // Check if this is a bodyweight exercise
         const isBodyweight = exerciseData?.category === 'corpo-libero' ||
             exerciseData?.equipment?.includes('corpo-libero') ||
@@ -1160,6 +1164,12 @@ const App = {
                     <span class="target-label">Pausa</span>
                     <span class="target-value">${exercise.rest}s</span>
                 </div>
+                ${tempo ? `
+                <div class="target-item tempo-item" title="${tempo.detail}">
+                    <span class="target-label">Tempo</span>
+                    <span class="target-value tempo-value">${tempo.notation}</span>
+                </div>
+                ` : ''}
             </div>
             <div class="sets-progress-bar">
                 <div class="sets-progress-fill" style="width: ${(completedSets / exercise.targetSets) * 100}%"></div>
