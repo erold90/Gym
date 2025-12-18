@@ -9,14 +9,34 @@ GymTracker Pro è una Progressive Web App (PWA) per il tracciamento degli allena
 
 **LAVORA SEMPRE SULLA BRANCH PRINCIPALE `claude/main-IDVRj`**
 
-NON creare nuove branch! Lavora direttamente su `claude/main-IDVRj` e fai push con:
+### Flusso di Lavoro Automatizzato
+1. Lavora localmente su `claude/main-IDVRj`
+2. Pusha su `claude/main-<TUO_SESSION_ID>`
+3. GitHub Actions fa **merge automatico** in `claude/main-IDVRj`
+4. GitHub Actions **elimina automaticamente** il branch sorgente
+5. Sincronizza il tuo branch locale
 
 ```bash
+# 1. Checkout branch principale
+git fetch origin claude/main-IDVRj
 git checkout claude/main-IDVRj
-# ... fai le modifiche ...
+
+# 2. Fai le modifiche e commit
 git add -A && git commit -m "tipo: descrizione"
+
+# 3. Push sul tuo branch (verrà auto-merged e auto-deleted)
 git push -u origin claude/main-IDVRj:claude/main-<TUO_SESSION_ID>
+
+# 4. Aspetta ~10 secondi, poi sincronizza
+git fetch origin claude/main-IDVRj
+git reset --hard origin/claude/main-IDVRj
+git branch --set-upstream-to=origin/claude/main-IDVRj
 ```
+
+### Importante
+- Il pattern del branch DEVE essere `claude/main-*` per attivare il workflow
+- NON usare `claude/initial-setup-*` o altri pattern
+- Dopo il push, il workflow elimina automaticamente il tuo branch
 
 ---
 
@@ -53,44 +73,54 @@ Per sicurezza, Claude può pushare **SOLO** su branch che terminano con il suo I
 
 Se Claude prova a pushare su un branch con ID diverso → **errore 403**.
 
-### Soluzione: Push con Sintassi Speciale
-Claude usa questo comando per pushare dal branch locale a un branch remoto con il suo ID:
-
-```bash
-git push -u origin claude/main-IDVRj:claude/main-NUOVO_ID
-```
-
-Questo crea un nuovo branch `claude/main-NUOVO_ID` con i contenuti del branch locale.
-
 ### Deploy Automatico con GitHub Actions
-Per fare merge automatico senza intervento manuale, crea questo file:
 
 **File**: `.github/workflows/auto-merge-claude.yml`
 
+Il workflow fa **3 cose automaticamente**:
+1. **Merge** del branch `claude/main-*` in `claude/main-IDVRj`
+2. **Delete** del branch sorgente dopo il merge
+3. **Deploy** su GitHub Pages (automatico)
+
 ```yaml
-name: Auto-merge Claude branches
+name: Auto-merge Claude branches to deploy
 
 on:
   push:
     branches:
       - 'claude/main-*'
 
+permissions:
+  contents: write
+
 jobs:
-  merge:
+  merge-to-deploy:
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/claude/main-IDVRj'
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
       - name: Merge to deploy branch
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          git fetch origin claude/main-IDVRj:claude/main-IDVRj || true
           git checkout claude/main-IDVRj || git checkout -b claude/main-IDVRj
-          git merge ${{ github.ref_name }} --no-edit
+          git merge origin/${{ github.ref_name }} --no-edit -m "Auto-merge: ${{ github.ref_name }}"
           git push origin claude/main-IDVRj
+
+      - name: Delete source branch
+        if: success()
+        run: |
+          git push origin --delete "${{ github.ref_name }}" || true
 ```
 
 ### Configurazione GitHub Pages
@@ -103,21 +133,28 @@ jobs:
 - **Sito**: https://erold90.github.io/Gym
 - **Deploy automatico** ad ogni push (~1-2 minuti)
 
-### Comandi Git per Claude
+### Comandi Git Completi per Claude
 ```bash
-# Checkout branch principale
+# === INIZIO SESSIONE ===
 git fetch origin claude/main-IDVRj
 git checkout claude/main-IDVRj
+git reset --hard origin/claude/main-IDVRj
 
-# Commit modifiche
+# === DOPO MODIFICHE ===
 git add -A && git commit -m "tipo: descrizione"
 
-# Push con ID sessione corrente (sostituire SESSIONE_ID)
-git push -u origin claude/main-IDVRj:claude/main-SESSIONE_ID
+# === PUSH (sostituire SESSION_ID con il tuo ID) ===
+git push -u origin claude/main-IDVRj:claude/main-SESSION_ID
 
-# Verificare stato
+# === DOPO IL PUSH (aspetta ~10 sec per il workflow) ===
+git fetch origin claude/main-IDVRj
+git reset --hard origin/claude/main-IDVRj
+git branch --set-upstream-to=origin/claude/main-IDVRj
+
+# === VERIFICARE STATO ===
 git status
 git log --oneline -5
+git branch -r | grep claude
 ```
 
 ## Funzionalità Implementate
@@ -238,6 +275,14 @@ body.modal-open {
 }
 ```
 
+### 10. Database Esercizi Mobile-Friendly
+**File**: `css/style.css`
+
+Layout responsive per la pagina Database Esercizi:
+- Filter tabs con scroll orizzontale
+- GIF più grandi su mobile (180px)
+- Grid a colonna singola su schermi piccoli
+
 ## Service Worker e Cache
 
 ### File: `sw.js`
@@ -251,6 +296,8 @@ body.modal-open {
 
 ### Pulsante Svuota Cache
 Posizione: Impostazioni → Gestione Dati → "Svuota Cache e Aggiorna"
+- Svuota SOLO la cache del Service Worker
+- NON elimina dati utente (profilo, schede, storico)
 
 ## GIF Esercizi
 
@@ -268,31 +315,32 @@ Mappe principali:
 
 ### Aggiungere GIF
 1. Cerca GIF professionale dell'esercizio
-2. Verifica che URL funzioni
+2. Verifica che URL funzioni (attenzione: case-sensitive!)
 3. Aggiorna `gifUrl` in exerciseMedia.js
-4. Incrementa CACHE_VERSION
-5. Push su `claude/main-IDVRj`
+4. Incrementa CACHE_VERSION in sw.js
+5. Push su `claude/main-<SESSION_ID>`
 
 ### Fallback SVG
 Se GIF non carica, mostra animazione SVG da `SVG_ANIMATIONS`.
 
 ## Checklist per Modifiche
 
-1. [ ] Checkout `claude/main-IDVRj` locale
+1. [ ] Fetch e checkout `claude/main-IDVRj` locale
 2. [ ] Fare le modifiche ai file
 3. [ ] Se modifichi exerciseMedia.js → incrementa CACHE_VERSION
 4. [ ] `git add -A`
 5. [ ] `git commit -m "tipo: descrizione"`
-6. [ ] `git push -u origin claude/main-IDVRj:claude/main-SESSIONE_ID`
-7. [ ] GitHub Actions fa merge automatico (se configurato)
-8. [ ] Aspettare deploy (~1-2 minuti)
-9. [ ] Testare su https://erold90.github.io/Gym
+6. [ ] `git push -u origin claude/main-IDVRj:claude/main-SESSION_ID`
+7. [ ] Aspettare ~10 secondi
+8. [ ] Sincronizzare: `git fetch && git reset --hard origin/claude/main-IDVRj`
+9. [ ] Aspettare deploy (~1-2 minuti)
+10. [ ] Testare su https://erold90.github.io/Gym
 
 ## Problemi Comuni
 
 ### GIF non si caricano
 1. Verificare URL corretto e funzionante
-2. Alcuni URL sono case-sensitive
+2. Alcuni URL sono case-sensitive (es: `BARBELL-SQUAT.gif`, `HiP-ABDUCTION-MACHINE.gif`)
 3. Hotlinking potrebbe essere bloccato
 4. Controllare console browser
 
@@ -303,13 +351,23 @@ Se GIF non carica, mostra animazione SVG da `SVG_ANIMATIONS`.
 
 ### Push fallisce con 403
 **Causa**: Claude può pushare solo su branch con il suo ID sessione corrente.
-**Soluzione**: Usare la sintassi `git push origin LOCAL:claude/main-SESSIONE_ID`
+**Soluzione**: Usare la sintassi `git push origin claude/main-IDVRj:claude/main-SESSION_ID`
+
+### Hook feedback "unpushed commits"
+**Causa**: Dopo che GitHub Actions fa merge, il branch locale è "ahead" del remote sbagliato.
+**Soluzione**: Sincronizzare con:
+```bash
+git fetch origin claude/main-IDVRj
+git reset --hard origin/claude/main-IDVRj
+git branch --set-upstream-to=origin/claude/main-IDVRj
+```
 
 ### Branch multipli claude/main-*
-Se si accumulano troppi branch:
-1. Su GitHub → Settings → Branches
-2. Elimina i branch vecchi `claude/main-*` (tranne quello di deploy)
-3. Oppure usa GitHub Actions per auto-merge e cleanup
+**Non più un problema!** Il workflow elimina automaticamente i branch dopo il merge.
+Se rimangono branch vecchi, eliminarli manualmente:
+```bash
+git push origin --delete claude/main-VECCHIO_ID
+```
 
 ## Repository
 - **Owner**: erold90
