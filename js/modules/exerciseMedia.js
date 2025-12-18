@@ -1671,6 +1671,36 @@ const WARMUP_DETAILS = {
                 "Ottimo per riscaldare petto e spalle"
             ]
         }
+    },
+    "Lat Stretch Dinamico": {
+        gifUrl: "https://gymvisual.com/img/p/3/3/1/4/5/33145.gif",
+        execution: {
+            steps: [
+                "In piedi vicino a un supporto (muro, rack)",
+                "Afferra il supporto con una mano",
+                "Lasciati cadere lateralmente allungando il lato",
+                "Oscilla leggermente avanti e indietro"
+            ],
+            tips: [
+                "Movimento dinamico, non statico",
+                "Senti lo stretch nel dorsale"
+            ]
+        }
+    },
+    "Dynamic Bicep Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/9/0/9/5/9095.gif",
+        execution: {
+            steps: [
+                "In piedi, porta le braccia dietro la schiena",
+                "Intreccia le dita con i palmi verso l'interno",
+                "Solleva le braccia allontanandole dal corpo",
+                "Movimento dinamico, su e giù"
+            ],
+            tips: [
+                "Mantieni le braccia dritte",
+                "Senti lo stretch nei bicipiti e nelle spalle anteriori"
+            ]
+        }
     }
 };
 
@@ -1915,6 +1945,111 @@ const COOLDOWN_DETAILS = {
                 "Concentrati sulla respirazione diaframmatica",
                 "Rilassa le spalle e il viso",
                 "Aiuta ad attivare il sistema nervoso parasimpatico"
+            ]
+        }
+    },
+    "Bicep Wall Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/9/0/9/5/9095.gif",
+        execution: {
+            steps: [
+                "In piedi di fianco a un muro",
+                "Appoggia il palmo della mano sul muro, braccio disteso",
+                "Ruota il corpo lontano dal muro",
+                "Senti lo stretch nel bicipite e nella spalla anteriore"
+            ],
+            tips: [
+                "Mantieni il braccio dritto",
+                "Non forzare la rotazione"
+            ]
+        }
+    },
+    "Wall Bicep Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/9/0/9/5/9095.gif",
+        execution: {
+            steps: [
+                "In piedi di fianco a un muro",
+                "Appoggia il palmo della mano sul muro, braccio disteso",
+                "Ruota il corpo lontano dal muro",
+                "Senti lo stretch nel bicipite e nella spalla anteriore"
+            ],
+            tips: [
+                "Mantieni il braccio dritto",
+                "Varia l'altezza per colpire diverse parti del bicipite"
+            ]
+        }
+    },
+    "Seated Bicep Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/9/0/9/5/9095.gif",
+        execution: {
+            steps: [
+                "Seduto a terra, mani dietro di te con le dita verso i piedi",
+                "Lentamente scorri il bacino in avanti",
+                "Mantieni le mani ferme a terra",
+                "Senti lo stretch nei bicipiti"
+            ],
+            tips: [
+                "Non sollevare le mani da terra",
+                "Movimento lento e controllato"
+            ]
+        }
+    },
+    "Lat Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/2/1/7/6/4/21764.gif",
+        execution: {
+            steps: [
+                "In ginocchio davanti a una panca o supporto",
+                "Appoggia le mani sulla panca",
+                "Abbassa il petto verso il pavimento",
+                "Spingi i fianchi indietro allungando i dorsali"
+            ],
+            tips: [
+                "Respira profondamente nella posizione",
+                "Mantieni la schiena dritta"
+            ]
+        }
+    },
+    "Neck Stretches": {
+        gifUrl: "https://gymvisual.com/img/p/9/1/2/6/9126.gif",
+        execution: {
+            steps: [
+                "Seduto o in piedi con buona postura",
+                "Inclina la testa verso una spalla",
+                "Usa la mano per applicare leggera pressione",
+                "Mantieni 15-20 secondi per lato"
+            ],
+            tips: [
+                "Non forzare il movimento",
+                "Mantieni le spalle rilassate e basse"
+            ]
+        }
+    },
+    "Neck Rolls": {
+        gifUrl: "https://gymvisual.com/img/p/2/2/8/7/2/22872.gif",
+        execution: {
+            steps: [
+                "Seduto o in piedi con buona postura",
+                "Lascia cadere il mento verso il petto",
+                "Ruota lentamente la testa in cerchio",
+                "Alterna la direzione"
+            ],
+            tips: [
+                "Movimento molto lento e controllato",
+                "Evita di estendere troppo il collo all'indietro"
+            ]
+        }
+    },
+    "Upper Back Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/1/2/7/9/6/12796.gif",
+        execution: {
+            steps: [
+                "In piedi o seduto, intreccia le mani davanti a te",
+                "Spingi le mani in avanti arrotondando la schiena",
+                "Porta il mento al petto",
+                "Senti lo stretch tra le scapole"
+            ],
+            tips: [
+                "Espira mentre arrotondi la schiena",
+                "Mantieni le spalle lontane dalle orecchie"
             ]
         }
     }
