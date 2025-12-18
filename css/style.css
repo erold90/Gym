@@ -2248,6 +2248,25 @@ body {
     flex-wrap: wrap;
 }
 
+/* Exercise GIF Preview */
+.exercise-gif-preview {
+    margin: 15px auto;
+    max-width: 280px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-hover);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.exercise-gif-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 200px;
+    object-fit: contain;
+    background: #f8f9fa;
+}
+
 .muscle-tag-sm {
     padding: 3px 10px;
     background: var(--accent-primary);

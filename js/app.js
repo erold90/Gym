@@ -1264,6 +1264,9 @@ const App = {
         const container = document.getElementById('current-exercise');
         const completedSets = exercise.setsData.filter(s => s.completed).length;
 
+        // Get GIF URL for this exercise
+        const gifUrl = typeof getExerciseGif === 'function' ? getExerciseGif(exercise.exerciseId) : null;
+
         // Get last performance and PR data
         const lastPerformance = Storage.getLastPerformance(exercise.exerciseId);
         const pr = Storage.getExercisePR(exercise.exerciseId);
@@ -1317,6 +1320,13 @@ const App = {
                 set.autoFilled = true;
             }
         });
+
+        // Build GIF preview HTML
+        const gifPreviewHTML = gifUrl ? `
+            <div class="exercise-gif-preview">
+                <img src="${gifUrl}" alt="${exercise.name}" loading="lazy" onerror="this.parentElement.style.display='none'">
+            </div>
+        ` : '';
 
         // Build last performance info HTML
         let lastPerfHTML = '';
@@ -1415,6 +1425,7 @@ const App = {
                     ℹ️
                 </button>
             </div>
+            ${gifPreviewHTML}
             ${bodyweightSelector}
             <div class="exercise-info-bar">
                 ${lastPerfHTML}
