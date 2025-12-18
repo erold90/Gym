@@ -1248,7 +1248,7 @@ const EXERCISE_DETAILS = {
 // Detailed info for warmup exercises
 const WARMUP_DETAILS = {
     "Arm Circles": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/arm-circles.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Arm-Circles.gif",
         svgAnimation: "arm-circles",
         execution: {
             steps: [
@@ -1281,7 +1281,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Band Pull-Apart": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Band-Pull-Apart.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Resistance-Band-Pull-Apart.gif",
         execution: {
             steps: [
                 "Tieni l'elastico con entrambe le mani davanti a te",
@@ -1315,7 +1315,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Cat-Cow": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Cat-Cow-Stretch.gif",
         execution: {
             steps: [
                 "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
@@ -1331,7 +1331,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Leg Swings Frontali": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Swings.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Front-Back-Leg-Swings.gif",
         svgAnimation: "leg-swings",
         execution: {
             steps: [
@@ -1348,7 +1348,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Leg Swings Laterali": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Side-Leg-Swings.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Side-to-Side-Leg-Swings.gif",
         svgAnimation: "leg-swings-lateral",
         execution: {
             steps: [
@@ -1364,7 +1364,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Hip Circles": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Circles.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Hip-Circles-Stretch.gif",
         svgAnimation: "hip-circles",
         execution: {
             steps: [
@@ -1395,7 +1395,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Walking Lunges": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/09/bodyweight-walking-lunge.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Walking-Lunge.gif",
         execution: {
             steps: [
                 "In piedi, fai un passo avanti lungo",
@@ -1410,7 +1410,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Glute Bridges": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge-.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge.gif",
         execution: {
             steps: [
                 "Sdraiato supino, ginocchia piegate, piedi a terra",
@@ -1440,7 +1440,7 @@ const WARMUP_DETAILS = {
         }
     },
     "World's Greatest Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/World-Greatest-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Worlds-Greatest-Stretch.gif",
         svgAnimation: "worlds-greatest-stretch",
         execution: {
             steps: [
@@ -1456,7 +1456,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Dead Bug": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Dead-Bug.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Dead-Bug.gif",
         execution: {
             steps: [
                 "Sdraiato supino, braccia verso il soffitto, ginocchia a 90°",
@@ -1486,7 +1486,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Plank Hold": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/plank.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Front-Plank.gif",
         execution: {
             steps: [
                 "Sugli avambracci, corpo in linea retta",
@@ -1516,7 +1516,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Mountain Climbers": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-climber.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif",
         execution: {
             steps: [
                 "In posizione di plank alto",
@@ -1531,7 +1531,7 @@ const WARMUP_DETAILS = {
         }
     },
     "High Knees": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/High-Knees.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/High-Knee-Run.gif",
         execution: {
             steps: [
                 "Corri sul posto sollevando le ginocchia alte",
@@ -1550,7 +1550,7 @@ const WARMUP_DETAILS = {
 // Detailed info for cooldown/stretching exercises
 const COOLDOWN_DETAILS = {
     "Chest Doorway Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/01/Doorway-chest-and-sshoulder-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Doorway-Stretch.gif",
         svgAnimation: "doorway-stretch",
         execution: {
             steps: [
@@ -1568,7 +1568,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Cross-Body Shoulder Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cross-Body-Shoulder-Stretch.gif",
         svgAnimation: "cross-body-stretch",
         execution: {
             steps: [
@@ -1584,7 +1584,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Tricep Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Stretch.gif",
         svgAnimation: "tricep-stretch",
         execution: {
             steps: [
@@ -1600,7 +1600,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Child's Pose": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Childs-Pose.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Childs-Pose.gif",
         execution: {
             steps: [
                 "In ginocchio, seduto sui talloni",
@@ -1615,7 +1615,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Standing Quad Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Quad-Stretch.gif",
         svgAnimation: "quad-stretch",
         execution: {
             steps: [
@@ -1631,7 +1631,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Standing Hamstring Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Hamstring-Stretch.gif",
         svgAnimation: "hamstring-stretch",
         execution: {
             steps: [
@@ -1647,7 +1647,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Hip Flexor Stretch (Lunge)": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Flexor-Stretch.gif",
         svgAnimation: "hip-flexor-stretch",
         execution: {
             steps: [
@@ -1663,7 +1663,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Pigeon Pose": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pigeon-Pose-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Pigeon-Hip-Stretch.gif",
         svgAnimation: "pigeon-pose",
         execution: {
             steps: [
@@ -1695,7 +1695,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Seated Forward Fold": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Seated-Hamstring-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Forward-Bend.gif",
         svgAnimation: "forward-fold",
         execution: {
             steps: [
@@ -1711,7 +1711,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Figure-4 Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Lying-glute-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Figure-4-Stretch.gif",
         svgAnimation: "figure-4-stretch",
         execution: {
             steps: [
@@ -1727,7 +1727,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Calf Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Standing-Wall-Calf-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Calf-Stretch.gif",
         svgAnimation: "calf-stretch",
         execution: {
             steps: [
@@ -1759,7 +1759,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Cobra Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cobra-Stretch.gif",
         execution: {
             steps: [
                 "Sdraiato a pancia in giù, mani sotto le spalle",
@@ -1774,7 +1774,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Deep Breathing": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diaphragmatic-Breathing.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Diaphragmatic-Breathing.gif",
         svgAnimation: "breathing",
         execution: {
             steps: [
