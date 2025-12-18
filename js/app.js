@@ -79,6 +79,16 @@ const App = {
         }
     },
 
+    navigateTo(pageName) {
+        this.showPage(pageName);
+        // Update nav active state
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.page === pageName);
+        });
+        // Close mobile menu if open
+        document.getElementById('sidebar')?.classList.remove('active');
+    },
+
     // ========================================
     // EVENT LISTENERS
     // ========================================
