@@ -118,11 +118,11 @@ const App = {
             this.endWorkout();
         });
 
-        // Skip warmup - collapses the warmup section
+        // Riscaldamento finito - nasconde la sezione
         document.getElementById('skip-warmup')?.addEventListener('click', () => {
             const warmupSection = document.getElementById('warmup-section');
             if (warmupSection) {
-                warmupSection.classList.add('collapsed');
+                warmupSection.style.display = 'none';
             }
         });
 
