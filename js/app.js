@@ -437,8 +437,13 @@ const App = {
         const container = document.getElementById('exercises-grid');
         const exerciseList = exercises || getAllExercises();
 
-        container.innerHTML = exerciseList.map(ex => `
+        container.innerHTML = exerciseList.map(ex => {
+            const gifUrl = getExerciseGif(ex.id);
+            return `
             <div class="exercise-card exercise-grid-card" data-id="${ex.id}">
+                <div class="exercise-gif-container">
+                    <img src="${gifUrl}" alt="${ex.name}" class="exercise-gif" loading="lazy" onerror="this.style.display='none'">
+                </div>
                 <button class="exercise-info-btn" data-exercise-id="${ex.id}" data-exercise-name="${ex.name}" title="Vedi esecuzione">
                     ℹ️
                 </button>
@@ -449,7 +454,7 @@ const App = {
                 </div>
                 <div class="equipment">${ex.category} • ${ex.type}</div>
             </div>
-        `).join('');
+        `}).join('');
 
         // Add click handlers for cards
         container.querySelectorAll('.exercise-card').forEach(card => {
