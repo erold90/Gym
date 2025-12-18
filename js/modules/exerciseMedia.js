@@ -23,8 +23,8 @@ const EXERCISE_GIF_MAP = {
     "cable-fly-low": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Low-Cable-Crossover.gif",
     "cable-fly-mid": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Crossover.gif",
     "push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
-    "diamond-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Diamond-Push-up.gif",
-    "wide-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wide-Push-up.gif",
+    "diamond-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
+    "wide-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
     "decline-push-up": "https://fitnessprogramer.com/wp-content/uploads/2015/07/Decline-Push-Up.gif",
     "dips": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Chest-Dips.gif",
 
@@ -93,7 +93,7 @@ const EXERCISE_GIF_MAP = {
     "rope-pushdown": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Rope-Pushdown.gif",
     "overhead-cable-extension": "https://fitnessprogramer.com/wp-content/uploads/2021/04/Cable-Rope-Overhead-Triceps-Extension.gif",
     "bench-dips": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bench-Dips.gif",
-    "close-grip-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Diamond-Push-up.gif",
+    "close-grip-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
     "tricep-dip-machine": "https://fitnessprogramer.com/wp-content/uploads/2021/09/Triceps-Dip-Machine.gif",
 
     // QUADRICIPITI
