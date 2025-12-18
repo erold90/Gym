@@ -866,5 +866,148 @@ const TrainingAlgorithm = {
             type: 'maintain',
             suggestion: `Mantieni ${weight}kg e lavora sulla tecnica`
         };
+    },
+
+    // ========================================
+    // CONDITIONING SUGGESTIONS
+    // ========================================
+
+    /**
+     * Generate conditioning suggestions based on goal and program
+     * Uses scientific guidelines for HIIT/LISS integration
+     */
+    generateConditioningSuggestions(goal, level, daysPerWeek, programDays = []) {
+        // Get config from conditioningExercises.js
+        const config = typeof CONDITIONING_BY_GOAL !== 'undefined'
+            ? CONDITIONING_BY_GOAL[goal]
+            : this.getDefaultConditioningConfig(goal);
+
+        if (!config || config.frequency === 0) {
+            return {
+                enabled: false,
+                frequency: 0,
+                message: "Conditioning non consigliato per obiettivo Forza",
+                reason: "L'allenamento cardio interferisce con il recupero e gli adattamenti di forza."
+            };
+        }
+
+        // Identify leg days (to avoid HIIT near them)
+        const legDayIndices = programDays
+            .map((d, i) => {
+                const type = (d.type || '').toLowerCase();
+                return (type.includes('lower') || type.includes('leg') || type.includes('gambe')) ? i : -1;
+            })
+            .filter(i => i >= 0);
+
+        // Calculate safe days for HIIT
+        const safeDaysForHIIT = this.calculateSafeDaysForHIIT(daysPerWeek, legDayIndices);
+
+        // Get recommended protocol based on level
+        const protocol = this.getRecommendedProtocol(goal, level);
+
+        return {
+            enabled: true,
+            frequency: config.frequency,
+            maxFrequency: config.maxFrequency,
+            preferredType: config.preferredType,
+            hiitAllowed: config.hiitAllowed,
+            duration: config.preferredType === 'HIIT'
+                ? (config.hiitDuration || config.duration)
+                : (config.lissDuration || config.duration),
+            protocol: protocol,
+            safeDaysForHIIT: safeDaysForHIIT,
+            legDays: legDayIndices,
+            note: config.note,
+            message: this.getConditioningMessage(config, goal)
+        };
+    },
+
+    /**
+     * Calculate which days are safe for HIIT (not within 24h of leg day)
+     */
+    calculateSafeDaysForHIIT(daysPerWeek, legDayIndices) {
+        const safeDays = [];
+        const totalDays = 7;
+
+        for (let i = 0; i < totalDays; i++) {
+            const isLegDay = legDayIndices.includes(i % daysPerWeek);
+            const beforeLegDay = legDayIndices.includes((i + 1) % daysPerWeek);
+            const afterLegDay = legDayIndices.includes((i - 1 + daysPerWeek) % daysPerWeek);
+
+            // Safe if not leg day, not day before leg day, and not day after leg day
+            if (!isLegDay && !beforeLegDay) {
+                safeDays.push(i);
+            }
+        }
+
+        return safeDays;
+    },
+
+    /**
+     * Get recommended protocol based on goal and level
+     */
+    getRecommendedProtocol(goal, level) {
+        const protocols = {
+            tabata: { name: "Tabata", workTime: 20, restTime: 10, rounds: 8, exercisesCount: 4, difficulty: "advanced" },
+            circuit30: { name: "Circuito 30/30", workTime: 30, restTime: 30, rounds: 3, exercisesCount: 5, difficulty: "intermediate" },
+            circuit4020: { name: "Circuito 40/20", workTime: 40, restTime: 20, rounds: 3, exercisesCount: 5, difficulty: "intermediate" },
+            beginner: { name: "Principiante", workTime: 20, restTime: 40, rounds: 2, exercisesCount: 4, difficulty: "beginner" }
+        };
+
+        const levelOrder = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
+        const userLevelNum = levelOrder[level] || 2;
+
+        // Select protocol based on goal
+        let selectedProtocol;
+        switch (goal) {
+            case 'endurance':
+                selectedProtocol = protocols.tabata;
+                break;
+            case 'recomp':
+                selectedProtocol = protocols.circuit4020;
+                break;
+            case 'hypertrophy':
+                selectedProtocol = protocols.circuit30;
+                break;
+            default:
+                selectedProtocol = protocols.circuit30;
+        }
+
+        // Downgrade if too difficult
+        const protocolLevelNum = levelOrder[selectedProtocol.difficulty] || 2;
+        if (protocolLevelNum > userLevelNum) {
+            if (userLevelNum === 1) return protocols.beginner;
+            return protocols.circuit30;
+        }
+
+        return selectedProtocol;
+    },
+
+    /**
+     * Get default conditioning config if conditioningExercises.js not loaded
+     */
+    getDefaultConditioningConfig(goal) {
+        const configs = {
+            strength: { frequency: 0, maxFrequency: 1, preferredType: "LISS", hiitAllowed: false, duration: 15 },
+            hypertrophy: { frequency: 1, maxFrequency: 2, preferredType: "LISS", hiitAllowed: true, duration: 20 },
+            recomp: { frequency: 2, maxFrequency: 3, preferredType: "mixed", hiitAllowed: true, hiitDuration: 15, lissDuration: 25 },
+            endurance: { frequency: 3, maxFrequency: 4, preferredType: "HIIT", hiitAllowed: true, hiitDuration: 20, lissDuration: 30 }
+        };
+        return configs[goal] || configs.hypertrophy;
+    },
+
+    /**
+     * Generate conditioning message based on config
+     */
+    getConditioningMessage(config, goal) {
+        if (config.frequency === 0) {
+            return "Cardio non consigliato per il tuo obiettivo";
+        }
+
+        const typeText = config.preferredType === 'mixed'
+            ? "HIIT + LISS"
+            : config.preferredType;
+
+        return `${config.frequency}x ${typeText} a settimana consigliato per ${goal}`;
     }
 };

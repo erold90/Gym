@@ -3859,3 +3859,682 @@ input[type="number"] {
         font-size: 1.2rem;
     }
 }
+
+/* ========================================
+   Conditioning System (HIIT/LISS)
+   ======================================== */
+
+/* Conditioning Card (Dashboard) */
+.conditioning-card {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(255, 159, 67, 0.05));
+    border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.conditioning-card .card-icon {
+    background: linear-gradient(135deg, #ff6b35, #ff9f43);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.conditioning-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.conditioning-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid #ff6b35;
+}
+
+.conditioning-suggestion .suggestion-icon {
+    font-size: 1.5rem;
+}
+
+.conditioning-suggestion .suggestion-text {
+    flex: 1;
+}
+
+.conditioning-suggestion .suggestion-text .type {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+}
+
+.conditioning-suggestion .suggestion-text .details {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.conditioning-week-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}
+
+.conditioning-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.conditioning-stat .stat-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ff6b35;
+}
+
+.conditioning-stat .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+/* Conditioning Modal */
+.conditioning-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.conditioning-modal.active {
+    display: flex;
+}
+
+.conditioning-modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+.conditioning-modal-header {
+    padding: 25px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+
+.conditioning-modal-header h2 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+    background: linear-gradient(135deg, #ff6b35, #ff9f43);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.conditioning-modal-header .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.conditioning-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.conditioning-close-btn:hover {
+    color: var(--text-primary);
+}
+
+.conditioning-modal-body {
+    padding: 25px;
+}
+
+/* Conditioning Steps */
+.conditioning-step {
+    display: none;
+}
+
+.conditioning-step.active {
+    display: block;
+}
+
+/* Type Selection Grid */
+.conditioning-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.conditioning-type-card {
+    padding: 25px 20px;
+    background: var(--bg-hover);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.conditioning-type-card:hover {
+    border-color: var(--border-color);
+    transform: translateY(-2px);
+}
+
+.conditioning-type-card.selected {
+    border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.conditioning-type-card .type-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.conditioning-type-card .type-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.conditioning-type-card .type-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* HIIT Protocol Selection */
+.protocol-selection {
+    margin-bottom: 20px;
+}
+
+.protocol-selection label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.protocol-select {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.protocol-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid #ff6b35;
+}
+
+.protocol-info .protocol-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.protocol-info .protocol-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.protocol-info .protocol-details span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Exercise List */
+.conditioning-exercises-section h3 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+}
+
+.conditioning-exercises-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.conditioning-exercise-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.conditioning-exercise-card:hover {
+    border-color: var(--border-color);
+}
+
+.conditioning-exercise-card.selected {
+    border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.conditioning-exercise-card .exercise-gif-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--bg-secondary);
+}
+
+.conditioning-exercise-card .exercise-info {
+    flex: 1;
+}
+
+.conditioning-exercise-card .exercise-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+}
+
+.conditioning-exercise-card .exercise-category {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.conditioning-exercise-card .exercise-check {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: transparent;
+    transition: all 0.2s;
+}
+
+.conditioning-exercise-card.selected .exercise-check {
+    background: #ff6b35;
+    border-color: #ff6b35;
+    color: white;
+}
+
+/* LISS Activities */
+.liss-activities-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.liss-activity-card {
+    padding: 20px 15px;
+    background: var(--bg-hover);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.liss-activity-card:hover {
+    border-color: var(--border-color);
+}
+
+.liss-activity-card.selected {
+    border-color: #06d6a0;
+    background: rgba(6, 214, 160, 0.1);
+}
+
+.liss-activity-card .activity-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+.liss-activity-card .activity-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+/* Duration Input */
+.duration-input-group {
+    margin-bottom: 20px;
+}
+
+.duration-input-group label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.duration-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.duration-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 8px;
+    background: var(--bg-hover);
+    border-radius: 4px;
+    outline: none;
+}
+
+.duration-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    background: linear-gradient(135deg, #ff6b35, #ff9f43);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.duration-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #ff6b35;
+    min-width: 70px;
+    text-align: center;
+}
+
+/* Active Session */
+.conditioning-active-session {
+    text-align: center;
+}
+
+.session-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #ff6b35, #ff9f43);
+    color: white;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.conditioning-timer-display {
+    font-size: 4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.conditioning-timer-label {
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+}
+
+.current-exercise-display {
+    padding: 20px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    margin-bottom: 25px;
+}
+
+.current-exercise-display h4 {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.current-exercise-display .exercise-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.current-exercise-display .exercise-gif {
+    width: 200px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin: 15px auto 10px;
+    display: block;
+}
+
+.current-exercise-display .exercise-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.session-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.session-controls .btn {
+    min-width: 120px;
+}
+
+/* Complete Summary */
+.conditioning-summary {
+    text-align: center;
+}
+
+.summary-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+}
+
+.conditioning-summary h3 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 25px;
+}
+
+.summary-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.summary-stat-item {
+    padding: 20px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}
+
+.summary-stat-item .stat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.summary-stat-item .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.summary-stat-item .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.summary-stat-item.calories {
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.summary-stat-item.calories .stat-value {
+    color: #ff6b35;
+}
+
+/* Calorie Input */
+.conditioning-calorie-input {
+    margin-bottom: 20px;
+}
+
+.conditioning-calorie-input label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.calorie-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.calorie-input-row input {
+    flex: 1;
+    padding: 12px 15px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.calorie-input-row .btn-estimate {
+    padding: 12px 15px;
+    white-space: nowrap;
+}
+
+.estimated-calories-hint {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Notes */
+.conditioning-notes {
+    margin-bottom: 20px;
+}
+
+.conditioning-notes label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.conditioning-notes textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px 15px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    resize: vertical;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 480px) {
+    .conditioning-type-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .conditioning-type-card {
+        padding: 20px 15px;
+    }
+
+    .liss-activities-list {
+        grid-template-columns: 1fr;
+    }
+
+    .conditioning-timer-display {
+        font-size: 3rem;
+    }
+
+    .summary-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .session-controls {
+        flex-direction: column;
+    }
+
+    .session-controls .btn {
+        width: 100%;
+    }
+}
+
+/* Selected exercises during session */
+.selected-exercises-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.selected-exercise-tag {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(255, 107, 53, 0.2);
+    color: #ff6b35;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* LISS activity display during session */
+.liss-activity-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+}
+
+.activity-icon-large {
+    font-size: 3rem;
+}
+
+.activity-name-large {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}

@@ -14,6 +14,19 @@ const App = {
     currentSetIndex: 0,
     charts: {},
 
+    // Conditioning state
+    conditioningState: {
+        type: null,          // 'hiit' o 'liss'
+        protocol: null,      // per HIIT
+        lissActivity: null,  // per LISS
+        duration: 20,        // minuti
+        exercises: [],       // esercizi selezionati
+        step: 1,             // step corrente del modal
+        startTime: null,     // inizio sessione
+        timerInterval: null, // interval del timer
+        elapsedSeconds: 0    // secondi trascorsi
+    },
+
     // ========================================
     // INITIALIZATION
     // ========================================
@@ -294,6 +307,81 @@ const App = {
                 document.getElementById('exercise-info-modal').classList.remove('active');
             }
         });
+
+        // Conditioning event listeners
+        document.getElementById('start-conditioning-btn')?.addEventListener('click', () => {
+            this.openConditioningModal();
+        });
+
+        document.getElementById('conditioning-close-btn')?.addEventListener('click', () => {
+            this.closeConditioningModal();
+        });
+
+        document.getElementById('conditioning-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'conditioning-modal') {
+                this.closeConditioningModal();
+            }
+        });
+
+        // Type selection
+        document.querySelectorAll('.conditioning-type-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.conditioning-type-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.conditioningState.type = card.dataset.type;
+            });
+        });
+
+        // Protocol selection
+        document.getElementById('hiit-protocol-select')?.addEventListener('change', (e) => {
+            this.updateProtocolInfo(e.target.value);
+        });
+
+        // Duration slider
+        document.getElementById('conditioning-duration')?.addEventListener('input', (e) => {
+            document.getElementById('duration-value').textContent = `${e.target.value} min`;
+            this.conditioningState.duration = parseInt(e.target.value);
+        });
+
+        // LISS activity selection
+        document.querySelectorAll('.liss-activity-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.liss-activity-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.conditioningState.lissActivity = card.dataset.activity;
+            });
+        });
+
+        // Step navigation buttons
+        document.getElementById('conditioning-next-step')?.addEventListener('click', () => {
+            this.conditioningNextStep();
+        });
+
+        document.getElementById('conditioning-back-step')?.addEventListener('click', () => {
+            this.conditioningPrevStep();
+        });
+
+        document.getElementById('conditioning-start-session')?.addEventListener('click', () => {
+            this.startConditioningSession();
+        });
+
+        document.getElementById('conditioning-finish')?.addEventListener('click', () => {
+            this.finishConditioningSession();
+        });
+
+        document.getElementById('conditioning-cancel')?.addEventListener('click', () => {
+            if (confirm('Vuoi annullare la sessione?')) {
+                this.cancelConditioningSession();
+            }
+        });
+
+        document.getElementById('conditioning-save')?.addEventListener('click', () => {
+            this.saveConditioningSession();
+        });
+
+        document.getElementById('conditioning-estimate-calories')?.addEventListener('click', () => {
+            this.estimateConditioningCalories();
+        });
     },
 
     // ========================================
@@ -309,6 +397,7 @@ const App = {
         this.updateBodyStats();
         this.updateCycleCard();
         this.updateWeeklyCount();
+        this.updateConditioningCard();
     },
 
     updateGreeting() {
@@ -2698,6 +2787,466 @@ const App = {
             notification.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => notification.remove(), 300);
         }, 4000);
+    },
+
+    // ========================================
+    // CONDITIONING (HIIT/LISS)
+    // ========================================
+
+    updateConditioningCard() {
+        const container = document.getElementById('conditioning-card-content');
+        if (!container) return;
+
+        const profile = Storage.getProfile();
+        const program = Storage.getActiveProgram();
+
+        // Get conditioning suggestion if we have a program
+        let suggestion = null;
+        if (program && profile.goal) {
+            const programDays = program.schedule?.map(d => d.dayOfWeek) || [];
+            suggestion = TrainingAlgorithm.generateConditioningSuggestions(
+                profile.goal,
+                profile.level || 'intermediate',
+                profile.daysPerWeek || 4,
+                programDays
+            );
+        }
+
+        // Get weekly stats
+        const weekStats = Storage.getConditioningThisWeek();
+        const totalCalories = weekStats.reduce((sum, s) => sum + (s.calories || 0), 0);
+
+        // Build card content
+        let html = '';
+
+        // Suggestion section
+        if (suggestion && suggestion.recommended) {
+            const suggestionType = suggestion.type === 'hiit' ? 'HIIT' : 'LISS';
+            const suggestionIcon = suggestion.type === 'hiit' ? '🔥' : '🚶';
+            html += `
+                <div class="conditioning-suggestion">
+                    <span class="suggestion-icon">${suggestionIcon}</span>
+                    <div class="suggestion-text">
+                        <span class="type">${suggestionType} consigliato oggi</span>
+                        <span class="details">${suggestion.message}</span>
+                    </div>
+                </div>
+            `;
+        } else if (suggestion && !suggestion.recommended) {
+            html += `
+                <div class="conditioning-suggestion" style="border-left-color: var(--success);">
+                    <span class="suggestion-icon">✅</span>
+                    <div class="suggestion-text">
+                        <span class="type">Riposo cardio</span>
+                        <span class="details">${suggestion.message || 'Oggi concentrati sul recupero'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Week stats
+        html += `
+            <div class="conditioning-week-stats">
+                <div class="conditioning-stat">
+                    <span class="stat-value">${weekStats.length}</span>
+                    <span class="stat-label">Sessioni</span>
+                </div>
+                <div class="conditioning-stat">
+                    <span class="stat-value">${totalCalories}</span>
+                    <span class="stat-label">Calorie</span>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    },
+
+    openConditioningModal() {
+        const modal = document.getElementById('conditioning-modal');
+        if (!modal) return;
+
+        // Reset state
+        this.conditioningState = {
+            type: null,
+            protocol: null,
+            lissActivity: null,
+            duration: 20,
+            exercises: [],
+            step: 1,
+            startTime: null,
+            timerInterval: null,
+            elapsedSeconds: 0
+        };
+
+        // Reset UI
+        document.querySelectorAll('.conditioning-type-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.liss-activity-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('conditioning-duration').value = 20;
+        document.getElementById('duration-value').textContent = '20 min';
+
+        // Set default protocol based on user level
+        const profile = Storage.getProfile();
+        const defaultProtocol = this.getDefaultProtocolForLevel(profile.level);
+        document.getElementById('hiit-protocol-select').value = defaultProtocol;
+        this.updateProtocolInfo(defaultProtocol);
+
+        // Populate HIIT exercises
+        this.populateHIITExercises();
+
+        // Show step 1
+        this.showConditioningStep(1);
+
+        modal.classList.add('active');
+        document.body.classList.add('modal-open');
+    },
+
+    closeConditioningModal() {
+        const modal = document.getElementById('conditioning-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        }
+
+        // Clear any running timer
+        if (this.conditioningState.timerInterval) {
+            clearInterval(this.conditioningState.timerInterval);
+        }
+    },
+
+    getDefaultProtocolForLevel(level) {
+        const protocols = {
+            'beginner': 'beginner',
+            'intermediate': 'circuit30',
+            'advanced': 'circuit4020',
+            'expert': 'tabata'
+        };
+        return protocols[level] || 'circuit30';
+    },
+
+    updateProtocolInfo(protocolId) {
+        const protocols = {
+            tabata: { name: 'Tabata', work: 20, rest: 10, rounds: 8, description: '20s lavoro / 10s riposo × 8 round' },
+            circuit30: { name: 'Circuit 30/30', work: 30, rest: 30, rounds: 10, description: '30s lavoro / 30s riposo × 10 round' },
+            circuit4020: { name: 'Circuit 40/20', work: 40, rest: 20, rounds: 8, description: '40s lavoro / 20s riposo × 8 round' },
+            beginner: { name: 'Beginner', work: 20, rest: 40, rounds: 6, description: '20s lavoro / 40s riposo × 6 round' }
+        };
+
+        const protocol = protocols[protocolId];
+        if (!protocol) return;
+
+        this.conditioningState.protocol = protocolId;
+
+        const infoContainer = document.getElementById('protocol-info');
+        if (infoContainer) {
+            infoContainer.innerHTML = `
+                <div class="protocol-name">${protocol.name}</div>
+                <div class="protocol-details">
+                    <span>⏱️ ${protocol.work}s lavoro</span>
+                    <span>😮‍💨 ${protocol.rest}s riposo</span>
+                    <span>🔄 ${protocol.rounds} round</span>
+                </div>
+            `;
+        }
+    },
+
+    populateHIITExercises() {
+        const container = document.getElementById('hiit-exercises-list');
+        if (!container || typeof HIIT_EXERCISES === 'undefined') return;
+
+        // Convert object to array with IDs
+        const exercisesArray = Object.entries(HIIT_EXERCISES).map(([id, exercise]) => ({
+            id,
+            ...exercise
+        }));
+
+        // Filter by user level and no equipment (for now)
+        const profile = Storage.getProfile();
+        const userLevel = profile.level || 'intermediate';
+        const levelOrder = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
+        const userLevelNum = levelOrder[userLevel] || 2;
+
+        const filteredExercises = exercisesArray.filter(ex => {
+            const exLevelNum = levelOrder[ex.difficulty] || 2;
+            // Show exercises at or below user level, and only bodyweight for now
+            return exLevelNum <= userLevelNum && ex.equipment.length === 0;
+        });
+
+        container.innerHTML = filteredExercises.map(exercise => `
+            <div class="conditioning-exercise-card" data-exercise-id="${exercise.id}">
+                <img class="exercise-gif-thumb"
+                     src="${exercise.gifUrl || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%232a2a3e%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-size=%2230%22%3E🏃%3C/text%3E%3C/svg%3E'}"
+                     alt="${exercise.name}"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%232a2a3e%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-size=%2230%22%3E🏃%3C/text%3E%3C/svg%3E'">
+                <div class="exercise-info">
+                    <div class="exercise-name">${exercise.name}</div>
+                    <div class="exercise-category">${this.formatDifficulty(exercise.difficulty)}</div>
+                </div>
+                <div class="exercise-check">✓</div>
+            </div>
+        `).join('');
+
+        // Add click handlers
+        container.querySelectorAll('.conditioning-exercise-card').forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.toggle('selected');
+                const exerciseId = card.dataset.exerciseId;
+
+                if (card.classList.contains('selected')) {
+                    this.conditioningState.exercises.push(exerciseId);
+                } else {
+                    this.conditioningState.exercises = this.conditioningState.exercises.filter(id => id !== exerciseId);
+                }
+            });
+        });
+    },
+
+    formatDifficulty(difficulty) {
+        const names = {
+            'beginner': 'Facile',
+            'intermediate': 'Medio',
+            'advanced': 'Avanzato'
+        };
+        return names[difficulty] || difficulty;
+    },
+
+    formatCategoryName(category) {
+        const names = {
+            'cardio': 'Cardio',
+            'full-body': 'Full Body',
+            'lower-body': 'Gambe',
+            'upper-body': 'Upper Body',
+            'core': 'Core',
+            'plyometric': 'Pliometria'
+        };
+        return names[category] || category;
+    },
+
+    showConditioningStep(step) {
+        document.querySelectorAll('.conditioning-step').forEach(s => s.classList.remove('active'));
+        const stepEl = document.getElementById(`conditioning-step-${step}`);
+        if (stepEl) {
+            stepEl.classList.add('active');
+        }
+        this.conditioningState.step = step;
+    },
+
+    conditioningNextStep() {
+        const currentStep = this.conditioningState.step;
+
+        if (currentStep === 1) {
+            // Validate type selection
+            if (!this.conditioningState.type) {
+                this.showNotification('Seleziona un tipo di allenamento', 'warning');
+                return;
+            }
+
+            if (this.conditioningState.type === 'hiit') {
+                this.showConditioningStep(2);
+            } else {
+                // LISS - show LISS step
+                this.showConditioningStep(2);
+            }
+        } else if (currentStep === 2) {
+            // Validate selections
+            if (this.conditioningState.type === 'hiit') {
+                if (this.conditioningState.exercises.length === 0) {
+                    this.showNotification('Seleziona almeno un esercizio', 'warning');
+                    return;
+                }
+            } else {
+                if (!this.conditioningState.lissActivity) {
+                    this.showNotification('Seleziona un\'attività', 'warning');
+                    return;
+                }
+            }
+
+            // Ready to start - go to step 3 (active session)
+            this.startConditioningSession();
+        }
+    },
+
+    conditioningPrevStep() {
+        const currentStep = this.conditioningState.step;
+        if (currentStep > 1) {
+            this.showConditioningStep(currentStep - 1);
+        }
+    },
+
+    startConditioningSession() {
+        this.conditioningState.startTime = new Date();
+        this.conditioningState.elapsedSeconds = 0;
+
+        // Update UI for active session
+        this.showConditioningStep(3);
+        this.updateConditioningSessionUI();
+
+        // Start timer
+        this.conditioningState.timerInterval = setInterval(() => {
+            this.conditioningState.elapsedSeconds++;
+            this.updateConditioningTimer();
+        }, 1000);
+    },
+
+    updateConditioningSessionUI() {
+        const typeBadge = document.getElementById('session-type-badge');
+        const exerciseDisplay = document.getElementById('current-exercise-display');
+
+        if (this.conditioningState.type === 'hiit') {
+            typeBadge.innerHTML = `🔥 HIIT - ${this.getProtocolName(this.conditioningState.protocol)}`;
+
+            // Show selected exercises (HIIT_EXERCISES is an object, not array)
+            if (this.conditioningState.exercises.length > 0 && typeof HIIT_EXERCISES !== 'undefined') {
+                const firstExerciseId = this.conditioningState.exercises[0];
+                const firstExercise = HIIT_EXERCISES[firstExerciseId];
+
+                if (firstExercise) {
+                    exerciseDisplay.innerHTML = `
+                        <h4>Esercizi selezionati</h4>
+                        <div class="selected-exercises-list">
+                            ${this.conditioningState.exercises.map(id => {
+                                const ex = HIIT_EXERCISES[id];
+                                return ex ? `<span class="selected-exercise-tag">${ex.name}</span>` : '';
+                            }).join('')}
+                        </div>
+                        ${firstExercise.gifUrl ? `<img class="exercise-gif" src="${firstExercise.gifUrl}" alt="${firstExercise.name}" onerror="this.style.display='none'">` : ''}
+                        <p class="exercise-description">${firstExercise.description}</p>
+                    `;
+                }
+            }
+        } else {
+            // LISS_ACTIVITIES is also an object
+            const activity = typeof LISS_ACTIVITIES !== 'undefined' ? LISS_ACTIVITIES[this.conditioningState.lissActivity] : null;
+            typeBadge.innerHTML = `🚶 LISS - ${activity?.name || 'Cardio'}`;
+            exerciseDisplay.innerHTML = `
+                <h4>Attività</h4>
+                <div class="liss-activity-display">
+                    <span class="activity-icon-large">${this.getLissIcon(this.conditioningState.lissActivity)}</span>
+                    <span class="activity-name-large">${activity?.name || 'Cardio leggero'}</span>
+                </div>
+                <p class="exercise-description">${activity?.description || 'Mantieni un ritmo costante e moderato'}</p>
+            `;
+        }
+    },
+
+    getLissIcon(activityId) {
+        const icons = {
+            'walking-incline': '🚶',
+            'cycling-steady': '🚴',
+            'elliptical': '🏃',
+            'rowing-steady': '🚣',
+            'swimming': '🏊',
+            'outdoor-walk': '🌳',
+            'stair-climber': '📶'
+        };
+        return icons[activityId] || '🏃';
+    },
+
+    getProtocolName(protocolId) {
+        const names = {
+            tabata: 'Tabata',
+            circuit30: 'Circuit 30/30',
+            circuit4020: 'Circuit 40/20',
+            beginner: 'Beginner'
+        };
+        return names[protocolId] || protocolId;
+    },
+
+    updateConditioningTimer() {
+        const timerDisplay = document.getElementById('conditioning-timer');
+        if (!timerDisplay) return;
+
+        const minutes = Math.floor(this.conditioningState.elapsedSeconds / 60);
+        const seconds = this.conditioningState.elapsedSeconds % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    },
+
+    finishConditioningSession() {
+        // Stop timer
+        if (this.conditioningState.timerInterval) {
+            clearInterval(this.conditioningState.timerInterval);
+        }
+
+        // Calculate duration
+        const durationMinutes = Math.round(this.conditioningState.elapsedSeconds / 60);
+
+        // Update summary
+        document.getElementById('summary-duration').textContent = `${durationMinutes} min`;
+        document.getElementById('summary-type').textContent = this.conditioningState.type === 'hiit' ? 'HIIT' : 'LISS';
+
+        // Show estimate calories button and input
+        this.estimateConditioningCalories();
+
+        // Show step 4 (summary)
+        this.showConditioningStep(4);
+    },
+
+    cancelConditioningSession() {
+        // Stop timer
+        if (this.conditioningState.timerInterval) {
+            clearInterval(this.conditioningState.timerInterval);
+        }
+
+        this.closeConditioningModal();
+    },
+
+    estimateConditioningCalories() {
+        const profile = Storage.getProfile();
+        const weight = profile.weight || 70;
+        const durationMinutes = Math.round(this.conditioningState.elapsedSeconds / 60) || 1;
+
+        let met = 6; // Default MET
+        if (this.conditioningState.type === 'hiit') {
+            // Calculate average MET from selected exercises
+            if (this.conditioningState.exercises.length > 0 && typeof HIIT_EXERCISES !== 'undefined') {
+                const totalMet = this.conditioningState.exercises.reduce((sum, id) => {
+                    const ex = HIIT_EXERCISES[id];
+                    return sum + (ex?.metValue || 8);
+                }, 0);
+                met = totalMet / this.conditioningState.exercises.length;
+            } else {
+                met = 10; // Default HIIT MET
+            }
+        } else {
+            // LISS activity MET
+            const activity = typeof LISS_ACTIVITIES !== 'undefined' ? LISS_ACTIVITIES[this.conditioningState.lissActivity] : null;
+            met = activity?.metValue || 4;
+        }
+
+        // Formula: (MET × 3.5 × kg) / 200 × minutes
+        const calories = Math.round((met * 3.5 * weight) / 200 * durationMinutes);
+
+        const calorieInput = document.getElementById('conditioning-calories');
+        if (calorieInput) {
+            calorieInput.value = calories;
+        }
+
+        const hint = document.getElementById('estimated-calories-hint');
+        if (hint) {
+            hint.textContent = `Stima basata su ${weight}kg e MET ${met.toFixed(1)}`;
+        }
+    },
+
+    saveConditioningSession() {
+        const calories = parseInt(document.getElementById('conditioning-calories')?.value) || 0;
+        const notes = document.getElementById('conditioning-notes-input')?.value || '';
+
+        const session = {
+            type: this.conditioningState.type,
+            protocol: this.conditioningState.protocol,
+            activity: this.conditioningState.lissActivity,
+            exercises: this.conditioningState.exercises,
+            duration: Math.round(this.conditioningState.elapsedSeconds / 60),
+            calories: calories,
+            notes: notes,
+            date: new Date().toISOString()
+        };
+
+        Storage.saveConditioningSession(session);
+
+        this.showNotification('Sessione salvata!', 'success');
+        this.closeConditioningModal();
+        this.updateConditioningCard();
+        this.loadDashboard();
     }
 };
 

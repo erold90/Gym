@@ -14,7 +14,8 @@ const Storage = {
         MEASUREMENTS: 'gymtracker_measurements',
         PERSONAL_RECORDS: 'gymtracker_prs',
         STREAK: 'gymtracker_streak',
-        CYCLE_HISTORY: 'gymtracker_cycle_history'
+        CYCLE_HISTORY: 'gymtracker_cycle_history',
+        CONDITIONING: 'gymtracker_conditioning'
     },
 
     // ========================================
@@ -988,6 +989,7 @@ const Storage = {
         localStorage.removeItem(this.KEYS.PERSONAL_RECORDS);
         localStorage.removeItem(this.KEYS.STREAK);
         localStorage.removeItem(this.KEYS.CYCLE_HISTORY);
+        localStorage.removeItem(this.KEYS.CONDITIONING);
 
         // Reset cycle in active program but keep the program
         const program = this.getActiveProgram();
@@ -997,5 +999,113 @@ const Storage = {
             program.metadata.cycle.isDeloadActive = false;
             this.setActiveProgram(program);
         }
+    },
+
+    // ========================================
+    // CONDITIONING SESSIONS
+    // ========================================
+
+    /**
+     * Get all conditioning sessions
+     */
+    getConditioningSessions() {
+        const data = localStorage.getItem(this.KEYS.CONDITIONING);
+        return data ? JSON.parse(data) : [];
+    },
+
+    /**
+     * Save a conditioning session
+     */
+    saveConditioningSession(session) {
+        const sessions = this.getConditioningSessions();
+        session.id = Date.now();
+        session.date = new Date().toISOString();
+        sessions.unshift(session);
+        localStorage.setItem(this.KEYS.CONDITIONING, JSON.stringify(sessions));
+        return session;
+    },
+
+    /**
+     * Get conditioning sessions from this week
+     */
+    getConditioningThisWeek() {
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const sessions = this.getConditioningSessions();
+        return sessions.filter(s => new Date(s.date) >= startOfWeek);
+    },
+
+    /**
+     * Get conditioning sessions in current cycle
+     */
+    getConditioningInCycle() {
+        const cycleInfo = this.getCycleInfo();
+        if (!cycleInfo) return [];
+
+        const cycleStart = new Date(cycleInfo.startDate);
+        const sessions = this.getConditioningSessions();
+        return sessions.filter(s => new Date(s.date) >= cycleStart);
+    },
+
+    /**
+     * Get conditioning statistics
+     */
+    getConditioningStatistics() {
+        const sessions = this.getConditioningSessions();
+        const thisWeek = this.getConditioningThisWeek();
+
+        if (sessions.length === 0) {
+            return {
+                totalSessions: 0,
+                totalDuration: 0,
+                totalCalories: 0,
+                hiitCount: 0,
+                lissCount: 0,
+                weekSessions: 0,
+                weekDuration: 0,
+                weekCalories: 0,
+                avgDurationPerSession: 0
+            };
+        }
+
+        const totalDuration = sessions.reduce((sum, s) => sum + (s.actualDuration || s.plannedDuration || 0), 0);
+        const totalCalories = sessions.reduce((sum, s) => sum + (s.manualCalories || s.estimatedCalories || 0), 0);
+        const hiitCount = sessions.filter(s => s.type === 'HIIT').length;
+        const lissCount = sessions.filter(s => s.type === 'LISS').length;
+
+        const weekDuration = thisWeek.reduce((sum, s) => sum + (s.actualDuration || s.plannedDuration || 0), 0);
+        const weekCalories = thisWeek.reduce((sum, s) => sum + (s.manualCalories || s.estimatedCalories || 0), 0);
+
+        return {
+            totalSessions: sessions.length,
+            totalDuration: Math.round(totalDuration / 60), // in minuti
+            totalCalories,
+            hiitCount,
+            lissCount,
+            weekSessions: thisWeek.length,
+            weekDuration: Math.round(weekDuration / 60),
+            weekCalories,
+            avgDurationPerSession: Math.round(totalDuration / sessions.length / 60)
+        };
+    },
+
+    /**
+     * Delete a conditioning session
+     */
+    deleteConditioningSession(id) {
+        let sessions = this.getConditioningSessions();
+        sessions = sessions.filter(s => s.id !== id);
+        localStorage.setItem(this.KEYS.CONDITIONING, JSON.stringify(sessions));
+    },
+
+    /**
+     * Get recent conditioning sessions
+     */
+    getRecentConditioningSessions(limit = 5) {
+        const sessions = this.getConditioningSessions();
+        return sessions.slice(0, limit);
     }
 };

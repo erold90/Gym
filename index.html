@@ -76,6 +76,22 @@
                     </div>
                 </div>
 
+                <!-- Conditioning Card -->
+                <div class="conditioning-card" id="conditioning-card" style="display: none;">
+                    <div class="conditioning-card-content">
+                        <div class="conditioning-card-info">
+                            <span class="conditioning-icon">🏃</span>
+                            <div>
+                                <h4 id="conditioning-title">Conditioning</h4>
+                                <p id="conditioning-subtitle">0/0 questa settimana</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-small" id="conditioning-btn">
+                            Inizia
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Stats Grid Compact -->
                 <div class="stats-grid-compact">
                     <div class="stat-mini">
@@ -774,6 +790,126 @@
         </div>
     </div>
 
+    <!-- Conditioning Modal -->
+    <div class="modal" id="conditioning-modal">
+        <div class="modal-content conditioning-modal-content">
+            <button class="modal-close" id="close-conditioning-modal">&times;</button>
+
+            <!-- Step 1: Choose Type -->
+            <div class="conditioning-step" id="conditioning-step-1">
+                <h3>Conditioning</h3>
+                <p class="conditioning-week-status" id="conditioning-week-status"></p>
+
+                <div class="conditioning-type-grid">
+                    <div class="conditioning-type-card" id="choose-hiit">
+                        <span class="type-icon">⚡</span>
+                        <h4>HIIT</h4>
+                        <p>15-20 min</p>
+                        <p class="type-desc">Alta intensità</p>
+                    </div>
+                    <div class="conditioning-type-card" id="choose-liss">
+                        <span class="type-icon">🚶</span>
+                        <h4>LISS</h4>
+                        <p>20-30 min</p>
+                        <p class="type-desc">Bassa intensità</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: HIIT Details -->
+            <div class="conditioning-step" id="conditioning-step-hiit" style="display: none;">
+                <div class="conditioning-header">
+                    <button class="btn-back" id="conditioning-back-hiit">&larr;</button>
+                    <h3 id="hiit-protocol-name">HIIT - Circuito</h3>
+                </div>
+                <p class="conditioning-meta" id="hiit-meta">~15 min | 🔥 ~150 cal stimate</p>
+
+                <div class="conditioning-exercises-list" id="hiit-exercises-list">
+                    <!-- Exercises will be inserted here -->
+                </div>
+
+                <div class="conditioning-protocol-info">
+                    <p id="hiit-protocol-desc"></p>
+                </div>
+
+                <button class="btn btn-primary btn-large" id="start-hiit-btn">
+                    ▶️ Inizia Sessione
+                </button>
+            </div>
+
+            <!-- Step 2b: LISS Details -->
+            <div class="conditioning-step" id="conditioning-step-liss" style="display: none;">
+                <div class="conditioning-header">
+                    <button class="btn-back" id="conditioning-back-liss">&larr;</button>
+                    <h3>LISS - Cardio Leggero</h3>
+                </div>
+                <p class="conditioning-meta" id="liss-meta">~25 min | 🔥 ~120 cal stimate</p>
+
+                <div class="liss-activities-list" id="liss-activities-list">
+                    <!-- Activities will be inserted here -->
+                </div>
+
+                <button class="btn btn-primary btn-large" id="start-liss-btn">
+                    ▶️ Inizia Sessione
+                </button>
+            </div>
+
+            <!-- Step 3: Active Session -->
+            <div class="conditioning-step" id="conditioning-step-active" style="display: none;">
+                <div class="conditioning-header">
+                    <h3 id="active-session-title">Sessione in corso</h3>
+                </div>
+
+                <div class="conditioning-timer-display">
+                    <span class="timer-value" id="conditioning-timer">00:00</span>
+                </div>
+
+                <div class="conditioning-active-info" id="conditioning-active-info">
+                    <!-- Current exercise info will be shown here -->
+                </div>
+
+                <button class="btn btn-danger btn-large" id="end-conditioning-btn">
+                    ⏹️ Termina Sessione
+                </button>
+            </div>
+
+            <!-- Step 4: Session Complete -->
+            <div class="conditioning-step" id="conditioning-step-complete" style="display: none;">
+                <h3>Sessione Completata! 🎉</h3>
+
+                <div class="conditioning-summary">
+                    <div class="summary-item">
+                        <span class="summary-icon">⏱️</span>
+                        <span class="summary-label">Durata</span>
+                        <span class="summary-value" id="summary-duration">00:00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-icon">🔥</span>
+                        <span class="summary-label">Calorie stimate</span>
+                        <span class="summary-value" id="summary-calories">0</span>
+                    </div>
+                </div>
+
+                <div class="conditioning-manual-input">
+                    <label for="manual-calories">Calorie da Apple Watch (opzionale):</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="manual-calories" placeholder="Es: 150">
+                        <span>kcal</span>
+                    </div>
+                </div>
+
+                <div class="conditioning-notes">
+                    <label for="conditioning-notes">Note (opzionale):</label>
+                    <textarea id="conditioning-notes" rows="2" placeholder="Come ti sei sentito?"></textarea>
+                </div>
+
+                <button class="btn btn-primary btn-large" id="save-conditioning-btn">
+                    💾 Salva Sessione
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Update Banner -->
     <div id="update-banner" class="update-banner" style="display: none;">
         <span>Nuova versione disponibile!</span>
@@ -789,6 +925,7 @@
     <script src="js/modules/algorithm.js"></script>
     <script src="js/modules/timer.js"></script>
     <script src="js/modules/exerciseMedia.js"></script>
+    <script src="js/modules/conditioningExercises.js"></script>
     <script src="js/app.js"></script>
 
     <!-- Service Worker Registration -->
