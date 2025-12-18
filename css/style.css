@@ -366,6 +366,15 @@ body {
     opacity: 0.9;
 }
 
+.btn-warning {
+    background: var(--warning);
+    color: #1a1a2e;
+}
+
+.btn-warning:hover {
+    opacity: 0.9;
+}
+
 .btn-success {
     background: var(--success);
     color: white;

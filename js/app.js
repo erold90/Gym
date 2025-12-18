@@ -207,6 +207,35 @@ const App = {
             }
         });
 
+        // Clear cache button
+        document.getElementById('clear-cache-btn')?.addEventListener('click', async () => {
+            if (confirm('Vuoi svuotare la cache e ricaricare l\'app per vedere gli ultimi aggiornamenti?')) {
+                try {
+                    // Unregister service worker
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+
+                    // Clear all caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        for (const cacheName of cacheNames) {
+                            await caches.delete(cacheName);
+                        }
+                    }
+
+                    alert('Cache svuotata! La pagina si ricaricherà.');
+                    location.reload(true);
+                } catch (error) {
+                    console.error('Errore durante la pulizia della cache:', error);
+                    alert('Errore durante la pulizia della cache. Riprova.');
+                }
+            }
+        });
+
         // Exercise modal
         document.getElementById('close-exercise-modal')?.addEventListener('click', () => {
             document.getElementById('exercise-modal').classList.remove('active');
