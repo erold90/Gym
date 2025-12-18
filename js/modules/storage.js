@@ -13,7 +13,8 @@ const Storage = {
         ACTIVE_PROGRAM: 'gymtracker_active_program',
         MEASUREMENTS: 'gymtracker_measurements',
         PERSONAL_RECORDS: 'gymtracker_prs',
-        STREAK: 'gymtracker_streak'
+        STREAK: 'gymtracker_streak',
+        CYCLE_HISTORY: 'gymtracker_cycle_history'
     },
 
     // ========================================
@@ -617,6 +618,187 @@ const Storage = {
 
         this.setActiveProgram(program);
         return this.getCycleInfo();
+    },
+
+    // ========================================
+    // CYCLE HISTORY & STATISTICS
+    // ========================================
+
+    /**
+     * Get cycle history
+     */
+    getCycleHistory() {
+        const data = localStorage.getItem(this.KEYS.CYCLE_HISTORY);
+        return data ? JSON.parse(data) : [];
+    },
+
+    /**
+     * Save a completed cycle to history
+     */
+    saveCycleToHistory(cycleData) {
+        const history = this.getCycleHistory();
+        cycleData.id = Date.now();
+        cycleData.completedAt = new Date().toISOString();
+        history.unshift(cycleData);
+        // Keep last 20 cycles
+        if (history.length > 20) history.pop();
+        localStorage.setItem(this.KEYS.CYCLE_HISTORY, JSON.stringify(history));
+        return cycleData;
+    },
+
+    /**
+     * Complete current cycle and save to history with stats
+     */
+    completeCycle() {
+        const cycleInfo = this.getCycleInfo();
+        if (!cycleInfo) return null;
+
+        const stats = this.getCycleStatistics();
+        const program = this.getActiveProgram();
+
+        // Create cycle record for history
+        const cycleRecord = {
+            duration: cycleInfo.duration,
+            goal: program?.metadata?.goal || 'hypertrophy',
+            level: program?.metadata?.level || 'intermediate',
+            split: program?.metadata?.split || 'upper-lower',
+            startDate: cycleInfo.startDate,
+            phases: cycleInfo.phases.map(p => p.phaseName),
+            statistics: stats
+        };
+
+        // Save to history
+        this.saveCycleToHistory(cycleRecord);
+
+        // Reset cycle for new one
+        return this.resetCycle();
+    },
+
+    /**
+     * Get statistics for current cycle
+     */
+    getCycleStatistics() {
+        const cycleInfo = this.getCycleInfo();
+        if (!cycleInfo) return null;
+
+        const cycleStart = new Date(cycleInfo.startDate);
+        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
+
+        if (workouts.length === 0) {
+            return {
+                totalWorkouts: 0,
+                totalVolume: 0,
+                totalSets: 0,
+                avgVolumePerWorkout: 0,
+                exercisesWorked: 0,
+                prsAchieved: 0,
+                avgRir: null,
+                weeklyBreakdown: []
+            };
+        }
+
+        // Calculate totals
+        let totalVolume = 0;
+        let totalSets = 0;
+        let rirSum = 0;
+        let rirCount = 0;
+        const exercisesSet = new Set();
+        let prsCount = 0;
+
+        workouts.forEach(w => {
+            totalVolume += w.totalVolume || 0;
+            totalSets += w.totalSets || 0;
+
+            w.exercises?.forEach(ex => {
+                exercisesSet.add(ex.exerciseId || ex.name);
+                ex.sets?.forEach(set => {
+                    if (set.rir !== undefined) {
+                        rirSum += set.rir;
+                        rirCount++;
+                    }
+                    if (set.isNewPR) prsCount++;
+                });
+            });
+        });
+
+        // Weekly breakdown
+        const weeklyBreakdown = [];
+        for (let week = 1; week <= cycleInfo.currentWeek; week++) {
+            const weekStart = new Date(cycleStart);
+            weekStart.setDate(weekStart.getDate() + (week - 1) * 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+
+            const weekWorkouts = workouts.filter(w => {
+                const d = new Date(w.date);
+                return d >= weekStart && d < weekEnd;
+            });
+
+            const phase = cycleInfo.phases.find(p => p.week === week);
+
+            weeklyBreakdown.push({
+                week: week,
+                phase: phase?.phaseName || 'Sconosciuto',
+                workouts: weekWorkouts.length,
+                volume: weekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0)
+            });
+        }
+
+        return {
+            totalWorkouts: workouts.length,
+            totalVolume: Math.round(totalVolume),
+            totalSets: totalSets,
+            avgVolumePerWorkout: Math.round(totalVolume / workouts.length),
+            exercisesWorked: exercisesSet.size,
+            prsAchieved: prsCount,
+            avgRir: rirCount > 0 ? (rirSum / rirCount).toFixed(1) : null,
+            weeklyBreakdown: weeklyBreakdown,
+            daysActive: Math.ceil((Date.now() - cycleStart.getTime()) / (1000 * 60 * 60 * 24))
+        };
+    },
+
+    /**
+     * Get progress metrics for the current cycle
+     * Compares first week to last week performance
+     */
+    getCycleProgressMetrics() {
+        const cycleInfo = this.getCycleInfo();
+        if (!cycleInfo || cycleInfo.currentWeek < 2) return null;
+
+        const cycleStart = new Date(cycleInfo.startDate);
+        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
+
+        if (workouts.length < 2) return null;
+
+        // Get first week workouts
+        const firstWeekEnd = new Date(cycleStart);
+        firstWeekEnd.setDate(firstWeekEnd.getDate() + 7);
+        const firstWeekWorkouts = workouts.filter(w => {
+            const d = new Date(w.date);
+            return d >= cycleStart && d < firstWeekEnd;
+        });
+
+        // Get current week workouts
+        const currentWeekStart = new Date(cycleStart);
+        currentWeekStart.setDate(currentWeekStart.getDate() + (cycleInfo.currentWeek - 1) * 7);
+        const currentWeekWorkouts = workouts.filter(w => new Date(w.date) >= currentWeekStart);
+
+        if (firstWeekWorkouts.length === 0) return null;
+
+        const firstWeekVolume = firstWeekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
+        const currentWeekVolume = currentWeekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
+
+        const volumeChange = firstWeekVolume > 0
+            ? Math.round(((currentWeekVolume - firstWeekVolume) / firstWeekVolume) * 100)
+            : 0;
+
+        return {
+            firstWeekVolume: Math.round(firstWeekVolume),
+            currentWeekVolume: Math.round(currentWeekVolume),
+            volumeChangePercent: volumeChange,
+            workoutCountFirst: firstWeekWorkouts.length,
+            workoutCountCurrent: currentWeekWorkouts.length
+        };
     },
 
     // ========================================

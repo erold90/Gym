@@ -456,6 +456,7 @@ const App = {
 
         const isDeload = Storage.isDeloadActive();
         const phase = cycleInfo.currentPhase;
+        const stats = Storage.getCycleStatistics();
 
         // Add/remove deload class on card
         if (isDeload) {
@@ -499,6 +500,24 @@ const App = {
                         </div>
                     ` : ''}
                 </div>
+                ${stats && stats.totalWorkouts > 0 ? `
+                    <div class="cycle-stats-mini">
+                        <div class="cycle-stat-mini">
+                            <span class="stat-value">${stats.totalWorkouts}</span>
+                            <span class="stat-label">workout</span>
+                        </div>
+                        <div class="cycle-stat-mini">
+                            <span class="stat-value">${this.formatNumber(stats.totalVolume)}</span>
+                            <span class="stat-label">kg vol.</span>
+                        </div>
+                        ${stats.prsAchieved > 0 ? `
+                            <div class="cycle-stat-mini pr">
+                                <span class="stat-value">${stats.prsAchieved}</span>
+                                <span class="stat-label">PR</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
             </div>
             <div class="cycle-actions">
                 <button class="btn btn-sm ${isDeload ? 'btn-warning' : 'btn-secondary'}" onclick="App.toggleDeloadMode()">
@@ -511,7 +530,7 @@ const App = {
             ${cycleInfo.isLastWeek ? `
                 <div class="cycle-complete-notice">
                     🎉 Ultima settimana del ciclo!
-                    <button class="btn btn-sm btn-primary" onclick="App.startNewCycle()">Nuovo Ciclo</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.completeCycleWithSummary()">Completa Ciclo</button>
                 </div>
             ` : ''}
         `;
@@ -541,6 +560,111 @@ const App = {
             this.showNotification('🎯 Nuovo ciclo iniziato!', 'success');
             this.updateCycleCard();
         }
+    },
+
+    completeCycleWithSummary() {
+        const cycleInfo = Storage.getCycleInfo();
+        const stats = Storage.getCycleStatistics();
+        const progress = Storage.getCycleProgressMetrics();
+        const program = Storage.getActiveProgram();
+
+        if (!cycleInfo || !stats) {
+            this.startNewCycle();
+            return;
+        }
+
+        // Goal label
+        const goalLabels = {
+            strength: 'Forza',
+            hypertrophy: 'Ipertrofia',
+            recomp: 'Ricomposizione',
+            endurance: 'Resistenza'
+        };
+        const goalLabel = goalLabels[program?.metadata?.goal] || 'Allenamento';
+
+        // Create summary modal
+        const html = `
+            <div class="cycle-summary-modal" id="cycle-summary-modal">
+                <div class="cycle-summary-content">
+                    <div class="cycle-summary-header">
+                        <h2>🏆 Ciclo Completato!</h2>
+                        <p>${cycleInfo.duration} settimane - ${goalLabel}</p>
+                    </div>
+
+                    <div class="cycle-summary-stats">
+                        <div class="summary-stat-card">
+                            <div class="stat-icon">🏋️</div>
+                            <div class="stat-value">${stats.totalWorkouts}</div>
+                            <div class="stat-label">Allenamenti</div>
+                        </div>
+                        <div class="summary-stat-card">
+                            <div class="stat-icon">⚡</div>
+                            <div class="stat-value">${this.formatNumber(stats.totalVolume)}</div>
+                            <div class="stat-label">kg Volume</div>
+                        </div>
+                        <div class="summary-stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-value">${stats.totalSets}</div>
+                            <div class="stat-label">Serie Totali</div>
+                        </div>
+                        ${stats.prsAchieved > 0 ? `
+                            <div class="summary-stat-card highlight">
+                                <div class="stat-icon">🏆</div>
+                                <div class="stat-value">${stats.prsAchieved}</div>
+                                <div class="stat-label">Nuovi PR</div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${progress ? `
+                        <div class="cycle-progress-comparison">
+                            <h4>📈 Progresso Volume</h4>
+                            <div class="progress-comparison-row">
+                                <span class="label">Prima settimana:</span>
+                                <span class="value">${this.formatNumber(progress.firstWeekVolume)} kg</span>
+                            </div>
+                            <div class="progress-comparison-row">
+                                <span class="label">Ultima settimana:</span>
+                                <span class="value">${this.formatNumber(progress.currentWeekVolume)} kg</span>
+                            </div>
+                            <div class="progress-comparison-result ${progress.volumeChangePercent >= 0 ? 'positive' : 'negative'}">
+                                ${progress.volumeChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(progress.volumeChangePercent)}%
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${stats.avgRir !== null ? `
+                        <div class="cycle-rir-summary">
+                            <span class="label">RIR Medio:</span>
+                            <span class="value">${stats.avgRir}</span>
+                        </div>
+                    ` : ''}
+
+                    <div class="cycle-summary-actions">
+                        <button class="btn btn-primary btn-large" onclick="App.confirmCompleteCycle()">
+                            🚀 Inizia Nuovo Ciclo
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.closeCycleSummary()">
+                            Chiudi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    confirmCompleteCycle() {
+        document.getElementById('cycle-summary-modal')?.remove();
+        Storage.completeCycle();
+        this.showNotification('🎯 Nuovo ciclo iniziato!', 'success');
+        this.updateCycleCard();
+        this.loadDashboard();
+    },
+
+    closeCycleSummary() {
+        document.getElementById('cycle-summary-modal')?.remove();
     },
 
     // ========================================
