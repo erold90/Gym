@@ -3866,8 +3866,15 @@ input[type="number"] {
 
 /* Conditioning Card (Dashboard) */
 .conditioning-card {
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(255, 159, 67, 0.05));
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 159, 67, 0.08));
     border: 1px solid rgba(255, 107, 53, 0.3);
+    border-radius: var(--radius);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
 }
 
 .conditioning-card .card-icon {
@@ -3879,8 +3886,33 @@ input[type="number"] {
 
 .conditioning-card-content {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
     gap: 15px;
+}
+
+.conditioning-card-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.conditioning-card-info .conditioning-icon {
+    font-size: 1.8rem;
+}
+
+.conditioning-card-info h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.conditioning-card-info p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
 }
 
 .conditioning-suggestion {

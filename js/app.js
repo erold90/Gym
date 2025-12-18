@@ -313,6 +313,10 @@ const App = {
             this.openConditioningModal();
         });
 
+        document.getElementById('conditioning-btn')?.addEventListener('click', () => {
+            this.openConditioningModal();
+        });
+
         document.getElementById('conditioning-close-btn')?.addEventListener('click', () => {
             this.closeConditioningModal();
         });
@@ -2794,71 +2798,57 @@ const App = {
     // ========================================
 
     updateConditioningCard() {
-        const container = document.getElementById('conditioning-card-content');
-        if (!container) return;
+        const card = document.getElementById('conditioning-card');
+        const titleEl = document.getElementById('conditioning-title');
+        const subtitleEl = document.getElementById('conditioning-subtitle');
+        if (!card) return;
 
         const profile = Storage.getProfile();
         const program = Storage.getActiveProgram();
 
-        // Get conditioning suggestion if we have a program
-        let suggestion = null;
-        if (program && profile.goal) {
-            const programDays = program.schedule?.map(d => d.dayOfWeek) || [];
-            suggestion = TrainingAlgorithm.generateConditioningSuggestions(
-                profile.goal,
-                profile.level || 'intermediate',
-                profile.daysPerWeek || 4,
-                programDays
-            );
+        // Hide if no program or goal is strength (no cardio needed)
+        if (!program || profile.goal === 'strength') {
+            card.style.display = 'none';
+            return;
         }
+
+        // Show card
+        card.style.display = 'flex';
+
+        // Get conditioning suggestion
+        const programDays = program.schedule?.map(d => d.dayOfWeek) || [];
+        const suggestion = TrainingAlgorithm.generateConditioningSuggestions(
+            profile.goal,
+            profile.level || 'intermediate',
+            profile.daysPerWeek || 4,
+            programDays
+        );
 
         // Get weekly stats
         const weekStats = Storage.getConditioningThisWeek();
-        const totalCalories = weekStats.reduce((sum, s) => sum + (s.calories || 0), 0);
+        const config = this.getConditioningConfig(profile.goal);
+        const target = config?.frequency || 1;
 
-        // Build card content
-        let html = '';
-
-        // Suggestion section
+        // Update title based on suggestion
         if (suggestion && suggestion.recommended) {
-            const suggestionType = suggestion.type === 'hiit' ? 'HIIT' : 'LISS';
-            const suggestionIcon = suggestion.type === 'hiit' ? '🔥' : '🚶';
-            html += `
-                <div class="conditioning-suggestion">
-                    <span class="suggestion-icon">${suggestionIcon}</span>
-                    <div class="suggestion-text">
-                        <span class="type">${suggestionType} consigliato oggi</span>
-                        <span class="details">${suggestion.message}</span>
-                    </div>
-                </div>
-            `;
-        } else if (suggestion && !suggestion.recommended) {
-            html += `
-                <div class="conditioning-suggestion" style="border-left-color: var(--success);">
-                    <span class="suggestion-icon">✅</span>
-                    <div class="suggestion-text">
-                        <span class="type">Riposo cardio</span>
-                        <span class="details">${suggestion.message || 'Oggi concentrati sul recupero'}</span>
-                    </div>
-                </div>
-            `;
+            const typeIcon = suggestion.type === 'hiit' ? '🔥' : '🚶';
+            titleEl.textContent = `${typeIcon} ${suggestion.type === 'hiit' ? 'HIIT' : 'LISS'} consigliato`;
+        } else {
+            titleEl.textContent = '✅ Cardio completato';
         }
 
-        // Week stats
-        html += `
-            <div class="conditioning-week-stats">
-                <div class="conditioning-stat">
-                    <span class="stat-value">${weekStats.length}</span>
-                    <span class="stat-label">Sessioni</span>
-                </div>
-                <div class="conditioning-stat">
-                    <span class="stat-value">${totalCalories}</span>
-                    <span class="stat-label">Calorie</span>
-                </div>
-            </div>
-        `;
+        // Update subtitle with weekly count
+        subtitleEl.textContent = `${weekStats.length}/${target} questa settimana`;
+    },
 
-        container.innerHTML = html;
+    getConditioningConfig(goal) {
+        const configs = {
+            strength: { frequency: 0 },
+            hypertrophy: { frequency: 1 },
+            recomp: { frequency: 2 },
+            endurance: { frequency: 3 }
+        };
+        return configs[goal] || { frequency: 1 };
     },
 
     openConditioningModal() {
