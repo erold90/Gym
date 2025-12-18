@@ -977,5 +977,25 @@ const Storage = {
         Object.values(this.KEYS).forEach(key => {
             localStorage.removeItem(key);
         });
+    },
+
+    /**
+     * Clear only progress data (workouts, PRs, streak, cycle history)
+     * Keeps profile, settings, programs, active program, measurements
+     */
+    clearProgressData() {
+        localStorage.removeItem(this.KEYS.WORKOUTS);
+        localStorage.removeItem(this.KEYS.PERSONAL_RECORDS);
+        localStorage.removeItem(this.KEYS.STREAK);
+        localStorage.removeItem(this.KEYS.CYCLE_HISTORY);
+
+        // Reset cycle in active program but keep the program
+        const program = this.getActiveProgram();
+        if (program?.metadata?.cycle) {
+            program.metadata.cycle.currentWeek = 1;
+            program.metadata.cycle.startDate = new Date().toISOString();
+            program.metadata.cycle.isDeloadActive = false;
+            this.setActiveProgram(program);
+        }
     }
 };

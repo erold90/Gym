@@ -218,6 +218,16 @@ const App = {
             }
         });
 
+        // Clear only progress data button
+        document.getElementById('clear-progress-btn')?.addEventListener('click', () => {
+            if (confirm('Vuoi cancellare solo i progressi (allenamenti, PR, streak, cicli)?\n\nIl profilo, le impostazioni e le schede verranno mantenuti.')) {
+                Storage.clearProgressData();
+                this.showToast('Progressi cancellati!', 'success');
+                this.updateDashboard();
+                this.updateCycleCard();
+            }
+        });
+
         // Clear cache button
         document.getElementById('clear-cache-btn')?.addEventListener('click', async () => {
             if (confirm('Vuoi svuotare la cache e ricaricare l\'app per vedere gli ultimi aggiornamenti?')) {
