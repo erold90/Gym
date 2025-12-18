@@ -3,6 +3,23 @@
 ## Panoramica
 GymTracker Pro è una Progressive Web App (PWA) per il tracciamento degli allenamenti in palestra. È costruita in vanilla JavaScript senza framework.
 
+---
+
+## ⚠️ ISTRUZIONE IMPORTANTE PER CLAUDE
+
+**LAVORA SEMPRE SULLA BRANCH PRINCIPALE `claude/main-IDVRj`**
+
+NON creare nuove branch! Lavora direttamente su `claude/main-IDVRj` e fai push con:
+
+```bash
+git checkout claude/main-IDVRj
+# ... fai le modifiche ...
+git add -A && git commit -m "tipo: descrizione"
+git push -u origin claude/main-IDVRj:claude/main-<TUO_SESSION_ID>
+```
+
+---
+
 ## Struttura del Progetto
 
 ```

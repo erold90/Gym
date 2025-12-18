@@ -1248,7 +1248,7 @@ const EXERCISE_DETAILS = {
 // Detailed info for warmup exercises
 const WARMUP_DETAILS = {
     "Arm Circles": {
-        gifUrl: "https://media1.tenor.com/m/V6SWTCpJ5q8AAAAC/arm-circles.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Arm-Circles_Shoulders.gif",
         svgAnimation: "arm-circles",
         execution: {
             steps: [
@@ -1265,7 +1265,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Shoulder Rolls": {
-        gifUrl: "https://media1.tenor.com/m/uMNZPBaaTPYAAAAd/dumbbell-shrug.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Dumbbell-Shrug.gif",
         svgAnimation: "shoulder-rolls",
         execution: {
             steps: [
@@ -1281,7 +1281,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Band Pull-Apart": {
-        gifUrl: "https://media1.tenor.com/m/IrYw1RzccdoAAAAC/resistance-bands-workout.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Band-pull-apart.gif",
         execution: {
             steps: [
                 "Tieni l'elastico con entrambe le mani davanti a te",
@@ -1315,7 +1315,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Cat-Cow": {
-        gifUrl: "https://media1.tenor.com/m/LPwFzdwK9AEAAAAC/cat-cow-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
         execution: {
             steps: [
                 "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
@@ -1331,7 +1331,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Leg Swings Frontali": {
-        gifUrl: "https://media1.tenor.com/m/ckKRMgAMCW8AAAAC/health-is-wealth-curl-up-leg-swing.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Swings.gif",
         svgAnimation: "leg-swings",
         execution: {
             steps: [
@@ -1364,7 +1364,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Hip Circles": {
-        gifUrl: "https://media1.tenor.com/m/F8L1BnoVg7oAAAAC/hip-stretching.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Circles.gif",
         svgAnimation: "hip-circles",
         execution: {
             steps: [
@@ -1580,7 +1580,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Cat-Cow Stretch": {
-        gifUrl: "https://media1.tenor.com/m/LPwFzdwK9AEAAAAC/cat-cow-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
         execution: {
             steps: [
                 "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
@@ -1695,7 +1695,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Cross-Body Shoulder Stretch": {
-        gifUrl: "https://media1.tenor.com/m/QFebYer_8IQAAAAC/shoulder-rotation-rotation.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
         svgAnimation: "cross-body-stretch",
         execution: {
             steps: [
@@ -1742,7 +1742,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Standing Quad Stretch": {
-        gifUrl: "https://media1.tenor.com/m/1Nlgk61HMloAAAAC/quad-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
         svgAnimation: "quad-stretch",
         execution: {
             steps: [
@@ -1758,7 +1758,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Standing Hamstring Stretch": {
-        gifUrl: "https://media1.tenor.com/m/E-bkcdDBoDkAAAAC/hamstring-band.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
         svgAnimation: "hamstring-stretch",
         execution: {
             steps: [
@@ -1774,7 +1774,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Hip Flexor Stretch (Lunge)": {
-        gifUrl: "https://media1.tenor.com/m/ahYtJQbVUP0AAAAC/reverse-lunges-home-workouts.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
         svgAnimation: "hip-flexor-stretch",
         execution: {
             steps: [
@@ -1790,7 +1790,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Pigeon Pose": {
-        gifUrl: "https://media1.tenor.com/m/wHjEkWZTTa4AAAAC/ashtanga-yoga.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Piriformis-Stretch.gif",
         svgAnimation: "pigeon-pose",
         execution: {
             steps: [
@@ -1806,7 +1806,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Butterfly Stretch": {
-        gifUrl: "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYndmaGFjczRpcWEyeTcyeGRwc3lvemd3azRhMG51ZnZpZDdkZ3d5aiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/e8WdOL5fbirYcQW1rC/giphy.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butterfly-Stretch.gif",
         svgAnimation: "butterfly-stretch",
         execution: {
             steps: [
@@ -1854,7 +1854,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Calf Stretch": {
-        gifUrl: "https://media1.tenor.com/m/xQK8QDWa4oAAAAAC/calf-stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Standing-Wall-Calf-Stretch.gif",
         svgAnimation: "calf-stretch",
         execution: {
             steps: [
@@ -1901,7 +1901,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Deep Breathing": {
-        gifUrl: "https://media1.tenor.com/m/izWb42XAEX4AAAAC/breathing-exercise.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Diaphragmatic-Breathing.gif",
         svgAnimation: "breathing",
         execution: {
             steps: [
