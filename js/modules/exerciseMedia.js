@@ -182,7 +182,7 @@ const EXERCISE_GIF_MAP = {
     "hip-flexor-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
     "triceps-stretch": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
     "lat-stretch": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-Lat-Stretch.gif",
-    "cat-cow": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
+    "cat-cow": "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
     "childs-pose": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Childs-Pose.gif",
     "cobra-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
     "piriformis-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Piriformis-Stretch.gif",
@@ -1315,7 +1315,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Cat-Cow": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
+        gifUrl: "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
         execution: {
             steps: [
                 "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
@@ -1580,7 +1580,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Cat-Cow Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cat-Cow-Stretch.gif",
+        gifUrl: "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
         execution: {
             steps: [
                 "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
