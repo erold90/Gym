@@ -231,7 +231,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 2',
                 type: 'Lower A',
                 focus: 'Quadricipiti & Glutei',
-                warmup: 'lower',
+                warmup: 'legs-quad',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'quad', sessionDuration)
             });
 
@@ -247,7 +247,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 4',
                 type: 'Lower B',
                 focus: 'Femorali & Glutei',
-                warmup: 'lower',
+                warmup: 'legs-hamstring',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'hamstring', sessionDuration)
             });
 
@@ -265,7 +265,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 2',
                 type: 'Lower A',
                 focus: 'Quadricipiti',
-                warmup: 'lower',
+                warmup: 'legs-quad',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'quad', sessionDuration)
             });
 
@@ -281,7 +281,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 4',
                 type: 'Lower B',
                 focus: 'Femorali & Glutei',
-                warmup: 'lower',
+                warmup: 'legs-hamstring',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'hamstring', sessionDuration)
             });
 
@@ -307,7 +307,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 2',
                 type: 'Lower A',
                 focus: 'Quadricipiti',
-                warmup: 'lower',
+                warmup: 'legs-quad',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'quad', sessionDuration)
             });
 
@@ -323,7 +323,7 @@ const TrainingAlgorithm = {
                 name: 'Giorno 4',
                 type: 'Lower B',
                 focus: 'Femorali & Glutei',
-                warmup: 'lower',
+                warmup: 'legs-hamstring',
                 exercises: this.buildLowerWorkout(profile, setsPerMuscle, repRanges, restTimes, 'hamstring', sessionDuration)
             });
 
@@ -476,7 +476,7 @@ const TrainingAlgorithm = {
             name: 'Giorno 1',
             type: 'Push',
             focus: 'Petto, Spalle, Tricipiti',
-            warmup: 'upper',
+            warmup: 'push',
             exercises: [
                 ...this.selectExercises('petto', 'compound', 2, setsPerMuscle, equipment, repRanges, restTimes),
                 ...this.selectExercises('spalle', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes),
@@ -491,7 +491,7 @@ const TrainingAlgorithm = {
             name: 'Giorno 2',
             type: 'Pull',
             focus: 'Schiena, Bicipiti',
-            warmup: 'schiena',
+            warmup: 'pull',
             exercises: [
                 ...this.selectExercises('schiena', 'compound', 3, setsPerMuscle, equipment, repRanges, restTimes),
                 ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),

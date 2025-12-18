@@ -619,6 +619,238 @@ const WARMUPS_DB = {
                 sets: 1
             }
         ]
+    },
+
+    // ========================================
+    // PUSH WARMUP (Chest, Shoulders, Triceps)
+    // ========================================
+    "push": {
+        name: "Riscaldamento Push (Petto, Spalle, Tricipiti)",
+        duration: "8-10 minuti",
+        exercises: [
+            {
+                name: "Arm Circles",
+                duration: "30 sec per direzione",
+                description: "Cerchi con le braccia, attiva spalle e cuffia dei rotatori",
+                sets: 1
+            },
+            {
+                name: "Shoulder Rolls",
+                duration: "30 sec",
+                description: "Rotazioni delle spalle avanti e indietro",
+                sets: 1
+            },
+            {
+                name: "Dynamic Chest Stretch",
+                duration: "30 sec",
+                description: "Braccia indietro, apri il petto dinamicamente",
+                sets: 1
+            },
+            {
+                name: "Band Pull-Apart",
+                duration: "15 reps",
+                description: "Attiva i muscoli stabilizzatori delle spalle",
+                sets: 2
+            },
+            {
+                name: "Scapular Push-Ups",
+                duration: "10 reps",
+                description: "In plank, muovi solo le scapole su e giù",
+                sets: 1
+            },
+            {
+                name: "Incline Push-Up",
+                duration: "10 reps",
+                description: "Push-up facilitati per attivare petto e tricipiti",
+                sets: 2
+            },
+            {
+                name: "Arm Swings Orizzontali",
+                duration: "20 reps",
+                description: "Oscilla le braccia incrociandole davanti al petto",
+                sets: 1
+            },
+            {
+                name: "Tricep Stretch Dinamico",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa, spingi il gomito dolcemente",
+                sets: 1
+            }
+        ]
+    },
+
+    // ========================================
+    // PULL WARMUP (Back, Biceps, Rear Delts)
+    // ========================================
+    "pull": {
+        name: "Riscaldamento Pull (Schiena, Bicipiti)",
+        duration: "8-10 minuti",
+        exercises: [
+            {
+                name: "Cat-Cow Stretch",
+                duration: "10 reps",
+                description: "Mobilità della colonna vertebrale",
+                sets: 1
+            },
+            {
+                name: "Arm Circles",
+                duration: "30 sec per direzione",
+                description: "Attiva spalle e cuffia dei rotatori",
+                sets: 1
+            },
+            {
+                name: "Band Pull-Apart",
+                duration: "15 reps",
+                description: "Attiva romboidi e deltoidi posteriori",
+                sets: 2
+            },
+            {
+                name: "Band Face Pull",
+                duration: "15 reps",
+                description: "Con elastico, tira verso il viso attivando trapezio",
+                sets: 2
+            },
+            {
+                name: "Scapular Pull-Ups",
+                duration: "10 reps",
+                description: "Appeso alla sbarra, solleva solo le scapole",
+                sets: 2
+            },
+            {
+                name: "Lat Stretch Dinamico",
+                duration: "30 sec per lato",
+                description: "Braccio in alto, inclina lateralmente",
+                sets: 1
+            },
+            {
+                name: "Light Band Curls",
+                duration: "15 reps",
+                description: "Curl leggeri con elastico per attivare bicipiti",
+                sets: 2
+            },
+            {
+                name: "Thoracic Rotations",
+                duration: "8 reps per lato",
+                description: "A quattro zampe, ruota il busto aprendo il braccio",
+                sets: 1
+            }
+        ]
+    },
+
+    // ========================================
+    // LEGS QUAD-FOCUSED WARMUP
+    // ========================================
+    "legs-quad": {
+        name: "Riscaldamento Gambe (Focus Quadricipiti)",
+        duration: "10-12 minuti",
+        exercises: [
+            {
+                name: "Camminata sul Posto",
+                duration: "60 sec",
+                description: "Solleva le ginocchia alternando per alzare la temperatura",
+                sets: 1
+            },
+            {
+                name: "High Knees",
+                duration: "30 sec",
+                description: "Corsa sul posto con ginocchia alte",
+                sets: 1
+            },
+            {
+                name: "Leg Swings Frontali",
+                duration: "10 per gamba",
+                description: "Oscilla la gamba avanti e indietro",
+                sets: 1
+            },
+            {
+                name: "Hip Circles",
+                duration: "10 per direzione per gamba",
+                description: "Cerchi con l'anca, ginocchio sollevato",
+                sets: 1
+            },
+            {
+                name: "Bodyweight Squats",
+                duration: "15 reps",
+                description: "Squat profondi a corpo libero, enfasi sui quadricipiti",
+                sets: 2
+            },
+            {
+                name: "Walking Lunges",
+                duration: "10 per gamba",
+                description: "Affondi camminando per attivare i quadricipiti",
+                sets: 1
+            },
+            {
+                name: "Goblet Squat Paused",
+                duration: "8 reps",
+                description: "Squat con pausa in basso senza peso, stretch attivo",
+                sets: 1
+            },
+            {
+                name: "Glute Bridges",
+                duration: "12 reps",
+                description: "Attivazione glutei per supporto",
+                sets: 1
+            }
+        ]
+    },
+
+    // ========================================
+    // LEGS HAMSTRING-FOCUSED WARMUP
+    // ========================================
+    "legs-hamstring": {
+        name: "Riscaldamento Gambe (Focus Femorali e Glutei)",
+        duration: "10-12 minuti",
+        exercises: [
+            {
+                name: "Camminata Leggera",
+                duration: "90 sec",
+                description: "Riscaldamento generale del sistema",
+                sets: 1
+            },
+            {
+                name: "Leg Swings Frontali",
+                duration: "12 per gamba",
+                description: "Enfasi sullo stretch del femorale nel movimento indietro",
+                sets: 1
+            },
+            {
+                name: "Leg Swings Laterali",
+                duration: "10 per gamba",
+                description: "Mobilità adduttori e abduttori",
+                sets: 1
+            },
+            {
+                name: "Inchworms",
+                duration: "8 reps",
+                description: "Stretch dinamico dei femorali",
+                sets: 1
+            },
+            {
+                name: "Good Mornings a Corpo Libero",
+                duration: "12 reps",
+                description: "Attivazione della catena posteriore",
+                sets: 2
+            },
+            {
+                name: "Glute Bridges",
+                duration: "15 reps",
+                description: "Attivazione primaria glutei e femorali",
+                sets: 2
+            },
+            {
+                name: "Single Leg RDL Senza Peso",
+                duration: "8 per gamba",
+                description: "Attivazione unilaterale della catena posteriore",
+                sets: 1
+            },
+            {
+                name: "World's Greatest Stretch",
+                duration: "5 per lato",
+                description: "Mobilità completa con enfasi sui flessori dell'anca",
+                sets: 1
+            }
+        ]
     }
 };
 
@@ -626,18 +858,44 @@ const WARMUPS_DB = {
 function getWarmupForWorkout(workoutType) {
     // Map workout types to warmup types
     const warmupMap = {
+        // Upper/Lower Split
         "upper-a": "upper",
         "upper-b": "upper",
-        "lower-a": "lower",
-        "lower-b": "lower",
-        "push": "upper",
-        "pull": "schiena",
+        "upper-c": "upper",
+        "Upper A": "upper",
+        "Upper B": "upper",
+        "Upper C": "upper",
+        "lower-a": "legs-quad",      // Lower A = quad focus
+        "lower-b": "legs-hamstring", // Lower B = hamstring focus
+        "lower-c": "lower",
+        "Lower A": "legs-quad",
+        "Lower B": "legs-hamstring",
+        "Lower C": "lower",
+        // Push/Pull/Legs
+        "push": "push",
+        "Push": "push",
+        "pull": "pull",
+        "Pull": "pull",
         "legs": "lower",
+        "Legs": "lower",
+        // Single muscle focus
         "chest": "petto",
+        "Chest": "petto",
         "back": "schiena",
+        "Back": "schiena",
         "shoulders": "spalle",
+        "Shoulders": "spalle",
         "arms": "bicipiti",
-        "full-body": "full-body"
+        "Arms": "bicipiti",
+        "Arms & Shoulders": "upper",
+        // Full body
+        "full-body": "full-body",
+        "Full Body": "full-body",
+        "Full Body A": "full-body",
+        "Full Body B": "full-body",
+        "Full Body C": "full-body",
+        // Upper extras
+        "Upper": "upper"
     };
 
     return WARMUPS_DB[warmupMap[workoutType]] || WARMUPS_DB["full-body"];
@@ -646,12 +904,27 @@ function getWarmupForWorkout(workoutType) {
 // Function to get warmup for specific muscle groups
 function getWarmupForMuscles(primaryMuscles) {
     // If multiple muscles, check which warmup covers the most
+    // Push muscles (chest, shoulders, triceps)
+    if (primaryMuscles.includes("petto") && primaryMuscles.includes("spalle")) {
+        return WARMUPS_DB["push"];
+    }
     if (primaryMuscles.includes("petto") || primaryMuscles.includes("spalle") ||
         primaryMuscles.includes("tricipiti")) {
         return WARMUPS_DB["upper"];
     }
+    // Pull muscles (back, biceps)
+    if (primaryMuscles.includes("schiena") && primaryMuscles.includes("bicipiti")) {
+        return WARMUPS_DB["pull"];
+    }
     if (primaryMuscles.includes("schiena") || primaryMuscles.includes("bicipiti")) {
         return WARMUPS_DB["schiena"];
+    }
+    // Lower body - check focus
+    if (primaryMuscles.includes("quadricipiti") && !primaryMuscles.includes("femorali")) {
+        return WARMUPS_DB["legs-quad"];
+    }
+    if (primaryMuscles.includes("femorali") && !primaryMuscles.includes("quadricipiti")) {
+        return WARMUPS_DB["legs-hamstring"];
     }
     if (primaryMuscles.includes("quadricipiti") || primaryMuscles.includes("femorali") ||
         primaryMuscles.includes("glutei")) {
@@ -1080,26 +1353,223 @@ const COOLDOWN_DB = {
                 description: "Respiri profondi per rilassare il sistema nervoso"
             }
         ]
+    },
+
+    // ========================================
+    // PUSH COOLDOWN (Chest, Shoulders, Triceps)
+    // ========================================
+    "push": {
+        name: "Stretching Push (Petto, Spalle, Tricipiti)",
+        duration: "6-8 minuti",
+        exercises: [
+            {
+                name: "Chest Doorway Stretch",
+                duration: "30 sec per lato",
+                description: "Avambraccio contro lo stipite, fai un passo avanti per allungare il petto"
+            },
+            {
+                name: "Floor Chest Stretch",
+                duration: "30 sec per lato",
+                description: "A pancia in giù, braccio a 90°, ruota il corpo"
+            },
+            {
+                name: "Cross-Body Shoulder Stretch",
+                duration: "30 sec per braccio",
+                description: "Tira il braccio attraverso il petto"
+            },
+            {
+                name: "Overhead Tricep Stretch",
+                duration: "30 sec per braccio",
+                description: "Braccio dietro la testa, spingi il gomito"
+            },
+            {
+                name: "Eagle Arms",
+                duration: "30 sec per lato",
+                description: "Braccia incrociate davanti, gomiti uniti, stretch spalle"
+            },
+            {
+                name: "Child's Pose",
+                duration: "45 sec",
+                description: "Rilassamento completo spalle e petto"
+            },
+            {
+                name: "Deep Breathing",
+                duration: "30 sec",
+                description: "Respiri profondi per rilassare"
+            }
+        ]
+    },
+
+    // ========================================
+    // PULL COOLDOWN (Back, Biceps)
+    // ========================================
+    "pull": {
+        name: "Stretching Pull (Schiena, Bicipiti)",
+        duration: "6-8 minuti",
+        exercises: [
+            {
+                name: "Cat-Cow Stretch",
+                duration: "10 ripetizioni lente",
+                description: "Mobilità della colonna vertebrale"
+            },
+            {
+                name: "Child's Pose",
+                duration: "45 sec",
+                description: "Stretch dorsali e parte bassa schiena"
+            },
+            {
+                name: "Lat Stretch",
+                duration: "30 sec per lato",
+                description: "In ginocchio, braccio disteso, inclina il busto lateralmente"
+            },
+            {
+                name: "Seated Spinal Twist",
+                duration: "30 sec per lato",
+                description: "Seduto, ruota il busto per allungare la schiena"
+            },
+            {
+                name: "Wall Bicep Stretch",
+                duration: "30 sec per braccio",
+                description: "Palmo sul muro dietro di te, ruota il corpo"
+            },
+            {
+                name: "Seated Bicep Stretch",
+                duration: "30 sec",
+                description: "Mani a terra dietro di te, siediti indietro"
+            },
+            {
+                name: "Upper Back Stretch",
+                duration: "30 sec",
+                description: "Mani intrecciate davanti, arrotonda la schiena"
+            },
+            {
+                name: "Deep Breathing",
+                duration: "30 sec",
+                description: "Respiri profondi per rilassare"
+            }
+        ]
+    },
+
+    // ========================================
+    // LEGS QUAD-FOCUSED COOLDOWN
+    // ========================================
+    "legs-quad": {
+        name: "Stretching Gambe (Focus Quadricipiti)",
+        duration: "8-10 minuti",
+        exercises: [
+            {
+                name: "Standing Quad Stretch",
+                duration: "30 sec per gamba",
+                description: "In piedi, tira il tallone verso il gluteo"
+            },
+            {
+                name: "Kneeling Quad Stretch",
+                duration: "45 sec per gamba",
+                description: "In ginocchio su una gamba, tira il piede posteriore verso il gluteo"
+            },
+            {
+                name: "Couch Stretch",
+                duration: "45 sec per gamba",
+                description: "Ginocchio a terra, piede contro il muro dietro di te"
+            },
+            {
+                name: "Hip Flexor Stretch",
+                duration: "30 sec per lato",
+                description: "In affondo, spingi il bacino in avanti"
+            },
+            {
+                name: "Butterfly Stretch",
+                duration: "45 sec",
+                description: "Seduto, piante dei piedi unite, spingi le ginocchia verso il basso"
+            },
+            {
+                name: "Lying Spinal Twist",
+                duration: "30 sec per lato",
+                description: "Sdraiato, ginocchia da un lato, spalle a terra"
+            },
+            {
+                name: "Deep Breathing",
+                duration: "30 sec",
+                description: "Respiri profondi per rilassare"
+            }
+        ]
+    },
+
+    // ========================================
+    // LEGS HAMSTRING-FOCUSED COOLDOWN
+    // ========================================
+    "legs-hamstring": {
+        name: "Stretching Gambe (Focus Femorali e Glutei)",
+        duration: "8-10 minuti",
+        exercises: [
+            {
+                name: "Standing Toe Touch",
+                duration: "30 sec",
+                description: "In piedi, piegati verso le punte dei piedi"
+            },
+            {
+                name: "Seated Forward Fold",
+                duration: "45 sec",
+                description: "Gambe distese, piegati verso le punte"
+            },
+            {
+                name: "Single Leg Forward Fold",
+                duration: "30 sec per gamba",
+                description: "Una gamba distesa, l'altra piegata, piegati verso la punta"
+            },
+            {
+                name: "Figure-4 Stretch",
+                duration: "45 sec per lato",
+                description: "Sdraiato, caviglia sulla coscia opposta, tira verso di te"
+            },
+            {
+                name: "Pigeon Pose",
+                duration: "45 sec per lato",
+                description: "Stretch profondo per glutei e flessori dell'anca"
+            },
+            {
+                name: "Lying Hamstring Stretch",
+                duration: "30 sec per gamba",
+                description: "Sdraiato, tira la gamba verso di te con le mani"
+            },
+            {
+                name: "Hip Flexor Stretch",
+                duration: "30 sec per lato",
+                description: "In affondo, spingi il bacino in avanti"
+            },
+            {
+                name: "Deep Breathing",
+                duration: "30 sec",
+                description: "Respiri profondi per rilassare"
+            }
+        ]
     }
 };
 
 // Get cooldown for workout type
 function getCooldownForWorkout(workoutType) {
     const cooldownMap = {
+        // Upper/Lower Split
         "upper-a": "upper",
         "upper-b": "upper",
+        "upper-c": "upper",
         "Upper A": "upper",
         "Upper B": "upper",
-        "lower-a": "lower",
-        "lower-b": "lower",
-        "Lower A": "lower",
-        "Lower B": "lower",
-        "push": "upper",
-        "Push": "upper",
-        "pull": "schiena",
-        "Pull": "schiena",
+        "Upper C": "upper",
+        "lower-a": "legs-quad",      // Lower A typically focuses on quads
+        "lower-b": "legs-hamstring", // Lower B typically focuses on hamstrings
+        "lower-c": "lower",
+        "Lower A": "legs-quad",
+        "Lower B": "legs-hamstring",
+        "Lower C": "lower",
+        // Push/Pull/Legs
+        "push": "push",
+        "Push": "push",
+        "pull": "pull",
+        "Pull": "pull",
         "legs": "lower",
         "Legs": "lower",
+        // Single muscle focus
         "chest": "petto",
         "Chest": "petto",
         "back": "schiena",
@@ -1108,8 +1578,15 @@ function getCooldownForWorkout(workoutType) {
         "Shoulders": "spalle",
         "arms": "bicipiti",
         "Arms": "bicipiti",
+        "Arms & Shoulders": "upper",
+        // Full body
         "full-body": "full-body",
-        "Full Body": "full-body"
+        "Full Body": "full-body",
+        "Full Body A": "full-body",
+        "Full Body B": "full-body",
+        "Full Body C": "full-body",
+        // Upper extras
+        "Upper": "upper"
     };
 
     return COOLDOWN_DB[cooldownMap[workoutType]] || COOLDOWN_DB["full-body"];
