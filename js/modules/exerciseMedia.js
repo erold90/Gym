@@ -183,12 +183,12 @@ const EXERCISE_GIF_MAP = {
     "triceps-stretch": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
     "lat-stretch": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-Lat-Stretch.gif",
     "cat-cow": "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
-    "childs-pose": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Childs-Pose.gif",
+    "childs-pose": "https://gymvisual.com/img/p/2/6/0/1/3/26013.gif",
     "cobra-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
     "piriformis-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Piriformis-Stretch.gif",
     "butterfly-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butterfly-Stretch.gif",
-    "downward-dog": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Downward-Dog.gif",
-    "world-greatest-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/World-Greatest-Stretch.gif",
+    "downward-dog": "https://gymvisual.com/img/p/5/6/6/4/5664.gif",
+    "world-greatest-stretch": "https://gymvisual.com/img/p/7/0/7/1/7071.gif",
     "foam-roller-back": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Roll-Upper-Back.gif",
     "foam-roller-quads": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-Quads.gif",
     "foam-roller-it-band": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-IT-iliotibial-Band-Stretch.gif",
@@ -1440,7 +1440,7 @@ const WARMUP_DETAILS = {
         }
     },
     "World's Greatest Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Worlds-Greatest-Stretch.gif",
+        gifUrl: "https://gymvisual.com/img/p/7/0/7/1/7071.gif",
         svgAnimation: "worlds-greatest-stretch",
         execution: {
             steps: [
@@ -1677,7 +1677,7 @@ const WARMUP_DETAILS = {
 // Detailed info for cooldown/stretching exercises
 const COOLDOWN_DETAILS = {
     "Chest Doorway Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Doorway-Stretch.gif",
+        gifUrl: "https://gymvisual.com/img/p/3/2/8/3/8/32838.gif",
         svgAnimation: "doorway-stretch",
         execution: {
             steps: [
@@ -1727,7 +1727,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Child's Pose": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Childs-Pose.gif",
+        gifUrl: "https://gymvisual.com/img/p/2/6/0/1/3/26013.gif",
         execution: {
             steps: [
                 "In ginocchio, seduto sui talloni",
@@ -1838,7 +1838,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Figure-4 Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Figure-4-Stretch.gif",
+        gifUrl: "https://gymvisual.com/img/p/9/0/6/3/9063.gif",
         svgAnimation: "figure-4-stretch",
         execution: {
             steps: [

@@ -1280,6 +1280,14 @@ const App = {
         // Update UI
         this.displayCurrentExercise();
 
+        // Auto-hide warmup section when user starts exercising
+        if (set.completed) {
+            const warmupSection = document.getElementById('warmup-section');
+            if (warmupSection && warmupSection.style.display !== 'none') {
+                warmupSection.style.display = 'none';
+            }
+        }
+
         // Start rest timer if completed
         if (set.completed) {
             const restTime = exercise.rest || 60;
