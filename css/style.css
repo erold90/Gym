@@ -298,6 +298,232 @@ body {
     border: 2px solid var(--accent-primary);
 }
 
+/* Quick Action Card */
+.quick-action-card {
+    background: var(--accent-gradient);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.quick-action-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.quick-action-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.quick-action-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.9;
+    color: rgba(255,255,255,0.9);
+}
+
+.quick-action-card .btn {
+    white-space: nowrap;
+    background: white;
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+.quick-action-card .btn:hover {
+    background: rgba(255,255,255,0.9);
+}
+
+/* Stats Grid Compact */
+.stats-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-mini {
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.stat-mini-icon {
+    font-size: 1.2rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.stat-mini-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: block;
+    color: var(--text-primary);
+}
+
+.stat-mini-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Weekly Compact */
+.weekly-compact {
+    margin-bottom: 15px;
+    padding: 15px;
+}
+
+.weekly-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.weekly-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.weekly-count {
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+    font-weight: 600;
+}
+
+/* Dashboard Grid Compact */
+.dashboard-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.body-stats-compact,
+.cycle-compact {
+    padding: 15px;
+}
+
+.body-stats-compact h4,
+.cycle-compact h4 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+}
+
+.body-stats-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.body-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.body-stat-row span {
+    color: var(--text-secondary);
+}
+
+.body-stat-row strong {
+    color: var(--text-primary);
+}
+
+/* Activity Compact */
+.activity-compact {
+    padding: 15px;
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.activity-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.see-all-link {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    text-decoration: none;
+}
+
+.activity-list-compact {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.activity-list-compact li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.activity-list-compact li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Empty State Mini */
+.empty-state-mini {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    text-align: center;
+    padding: 10px 0;
+}
+
+/* Cycle Compact */
+.cycle-compact-info {
+    text-align: center;
+}
+
+.cycle-week-compact {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.cycle-phase-compact {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    margin-bottom: 8px;
+}
+
+.cycle-phase-compact.deload {
+    color: var(--warning);
+}
+
+.cycle-bar-mini {
+    height: 4px;
+    background: var(--bg-hover);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.cycle-bar-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 2px;
+}
+
+.cycle-rir-compact {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 /* Activity List */
 .activity-list {
     list-style: none;

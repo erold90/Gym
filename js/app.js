@@ -113,6 +113,14 @@ const App = {
             this.startScheduledWorkout();
         });
 
+        // See all links navigation
+        document.querySelectorAll('.see-all-link[data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.navigateTo(link.dataset.page);
+            });
+        });
+
         // End workout button
         document.getElementById('end-workout-btn')?.addEventListener('click', () => {
             this.endWorkout();
@@ -290,10 +298,11 @@ const App = {
         this.updateGreeting();
         this.updateStats();
         this.updateWeekDays();
-        this.updateNextWorkout();
+        this.updateQuickAction();
         this.updateRecentActivity();
         this.updateBodyStats();
         this.updateCycleCard();
+        this.updateWeeklyCount();
     },
 
     updateGreeting() {
@@ -350,106 +359,99 @@ const App = {
         });
     },
 
-    updateNextWorkout() {
+    updateQuickAction() {
         const program = Storage.getActiveProgram();
-        const container = document.getElementById('next-workout-content');
-        const startBtn = document.getElementById('start-workout-btn');
+        const titleEl = document.getElementById('quick-action-title');
+        const subtitleEl = document.getElementById('quick-action-subtitle');
+        const btnEl = document.getElementById('quick-start-btn');
 
         if (!program) {
-            container.innerHTML = '<p class="empty-state">Nessuna scheda attiva. Vai su "Schede" per generarne una!</p>';
-            startBtn.style.display = 'none';
+            titleEl.textContent = 'Crea la tua scheda';
+            subtitleEl.textContent = 'Genera un programma personalizzato';
+            btnEl.textContent = '📋 Schede';
+            btnEl.onclick = () => this.navigateTo('programs');
             return;
         }
 
         const nextWorkout = TrainingAlgorithm.getTodaysWorkout(program);
         if (!nextWorkout) {
-            container.innerHTML = '<p class="empty-state">Riposo oggi! Recupera per il prossimo allenamento.</p>';
-            startBtn.style.display = 'none';
+            titleEl.textContent = 'Giorno di riposo 😴';
+            subtitleEl.textContent = 'Recupera per il prossimo allenamento';
+            btnEl.textContent = '💪 Libero';
+            btnEl.onclick = () => this.navigateTo('workout');
             return;
         }
 
         const duration = TrainingAlgorithm.estimateWorkoutDuration(nextWorkout);
+        titleEl.textContent = nextWorkout.type;
+        subtitleEl.textContent = `${nextWorkout.exercises.length} esercizi • ~${duration} min`;
+        btnEl.textContent = '▶️ Inizia';
+        btnEl.onclick = () => {
+            this.navigateTo('workout');
+            setTimeout(() => this.startWorkout(nextWorkout), 100);
+        };
+    },
 
-        container.innerHTML = `
-            <div class="next-workout-info">
-                <h4>${nextWorkout.type}</h4>
-                <p class="focus">${nextWorkout.focus}</p>
-                <p class="meta">${nextWorkout.exercises.length} esercizi • ~${duration} minuti</p>
-                <div class="exercise-preview">
-                    ${nextWorkout.exercises.slice(0, 4).map(ex =>
-            `<span class="exercise-tag">${ex.name}</span>`
-        ).join('')}
-                    ${nextWorkout.exercises.length > 4 ? `<span class="exercise-tag">+${nextWorkout.exercises.length - 4} altri</span>` : ''}
-                </div>
-            </div>
-        `;
-
-        startBtn.style.display = 'block';
+    updateWeeklyCount() {
+        const weeklyWorkouts = Storage.getWorkoutsThisWeek();
+        const profile = Storage.getProfile();
+        const target = profile.daysPerWeek || 4;
+        const countEl = document.getElementById('weekly-workout-count');
+        if (countEl) {
+            countEl.textContent = `${weeklyWorkouts.length}/${target} sessioni`;
+        }
     },
 
     updateRecentActivity() {
-        const recentWorkouts = Storage.getRecentWorkouts(5);
+        const recentWorkouts = Storage.getRecentWorkouts(3);
         const container = document.getElementById('activity-list');
 
         if (recentWorkouts.length === 0) {
-            container.innerHTML = '<li class="empty-state">Nessuna attività recente</li>';
+            container.innerHTML = '<li class="empty-state-mini">Completa il tuo primo allenamento!</li>';
             return;
         }
 
         container.innerHTML = recentWorkouts.map(workout => {
             const date = new Date(workout.date);
-            const dateStr = this.formatDate(date);
+            const dateStr = this.formatDateShort(date);
             const duration = Math.round(workout.duration / 60);
 
             return `
                 <li>
-                    <span class="activity-info">
-                        <strong>${workout.name || 'Allenamento'}</strong>
-                        <small>${dateStr}</small>
-                    </span>
-                    <span class="activity-duration">${duration} min</span>
+                    <strong>${workout.name || 'Allenamento'}</strong>
+                    <span style="color: var(--text-muted); margin-left: auto;">${dateStr} • ${duration}min</span>
                 </li>
             `;
         }).join('');
     },
 
+    formatDateShort(date) {
+        const now = new Date();
+        const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (diff === 0) return 'Oggi';
+        if (diff === 1) return 'Ieri';
+        if (diff < 7) return `${diff}g fa`;
+        return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    },
+
     updateBodyStats() {
         const profile = Storage.getProfile();
-        const container = document.getElementById('body-stats-content');
+        const weightEl = document.getElementById('body-weight');
+        const fatEl = document.getElementById('body-fat');
+        const leanEl = document.getElementById('body-lean');
 
         if (!profile.weight) {
-            container.innerHTML = '<p class="empty-state">Configura il tuo profilo per vedere le statistiche</p>';
+            if (weightEl) weightEl.textContent = '--';
+            if (fatEl) fatEl.textContent = '--';
+            if (leanEl) leanEl.textContent = '--';
             return;
         }
 
-        const bmi = (profile.weight / Math.pow(profile.height / 100, 2)).toFixed(1);
         const leanMass = profile.bodyFat ? Math.round(profile.weight * (1 - profile.bodyFat / 100)) : null;
-        const fatMass = profile.bodyFat ? Math.round(profile.weight * profile.bodyFat / 100) : null;
 
-        container.innerHTML = `
-            <div class="body-stat">
-                <span class="label">Peso</span>
-                <span class="value">${profile.weight} kg</span>
-            </div>
-            <div class="body-stat">
-                <span class="label">BMI</span>
-                <span class="value">${bmi}</span>
-            </div>
-            ${profile.bodyFat ? `
-                <div class="body-stat">
-                    <span class="label">% Grasso</span>
-                    <span class="value">${profile.bodyFat}%</span>
-                </div>
-                <div class="body-stat">
-                    <span class="label">Massa Magra</span>
-                    <span class="value">${leanMass} kg</span>
-                </div>
-                <div class="body-stat">
-                    <span class="label">Massa Grassa</span>
-                    <span class="value">${fatMass} kg</span>
-                </div>
-            ` : ''}
-        `;
+        if (weightEl) weightEl.textContent = `${profile.weight} kg`;
+        if (fatEl) fatEl.textContent = profile.bodyFat ? `${profile.bodyFat}%` : '--';
+        if (leanEl) leanEl.textContent = leanMass ? `${leanMass} kg` : '--';
     },
 
     updateCycleCard() {
@@ -460,14 +462,13 @@ const App = {
         const cycleInfo = Storage.getCycleInfo();
 
         if (!cycleInfo) {
-            container.innerHTML = '<p class="empty-state">Genera una scheda per vedere il tuo ciclo</p>';
+            container.innerHTML = '<p class="empty-state-mini">Genera una scheda</p>';
             card?.classList.remove('deload-active');
             return;
         }
 
         const isDeload = Storage.isDeloadActive();
         const phase = cycleInfo.currentPhase;
-        const stats = Storage.getCycleStatistics();
 
         // Add/remove deload class on card
         if (isDeload) {
@@ -476,74 +477,22 @@ const App = {
             card?.classList.remove('deload-active');
         }
 
-        // Find next deload week
-        const nextDeload = cycleInfo.phases.find(p => p.week > cycleInfo.currentWeek && p.phase === 'deload');
-        const weeksToDeload = nextDeload ? nextDeload.week - cycleInfo.currentWeek : null;
-
-        // Phase color class
-        const phaseClass = isDeload ? 'phase-deload' : `phase-${phase.phase}`;
-
+        // Compact cycle info
         container.innerHTML = `
-            <div class="cycle-progress-info">
-                <div class="cycle-week">
-                    <span class="week-number">Settimana ${cycleInfo.currentWeek}</span>
-                    <span class="week-total">/ ${cycleInfo.duration}</span>
+            <div class="cycle-compact-info">
+                <div class="cycle-week-compact">
+                    <strong>Sett. ${cycleInfo.currentWeek}/${cycleInfo.duration}</strong>
                 </div>
-                <div class="cycle-phase ${phaseClass}">
-                    ${isDeload ? '🔄 DELOAD ATTIVO' : phase.phaseName}
+                <div class="cycle-phase-compact ${isDeload ? 'deload' : ''}">
+                    ${isDeload ? '🔄 Deload' : phase.phaseName}
                 </div>
-                <div class="cycle-progress-bar">
-                    <div class="progress-fill" style="width: ${cycleInfo.progress}%"></div>
+                <div class="cycle-bar-mini">
+                    <div class="cycle-bar-fill" style="width: ${cycleInfo.progress}%"></div>
                 </div>
-                <div class="cycle-details">
-                    <div class="cycle-detail">
-                        <span class="label">RIR Target</span>
-                        <span class="value">${isDeload ? '4+' : `${phase.rirTarget.min}-${phase.rirTarget.max}`}</span>
-                    </div>
-                    <div class="cycle-detail">
-                        <span class="label">Volume</span>
-                        <span class="value">${Math.round((isDeload ? 0.5 : phase.volumeMultiplier) * 100)}%</span>
-                    </div>
-                    ${weeksToDeload && !isDeload ? `
-                        <div class="cycle-detail">
-                            <span class="label">Prossimo Deload</span>
-                            <span class="value">${weeksToDeload} sett.</span>
-                        </div>
-                    ` : ''}
+                <div class="cycle-rir-compact">
+                    RIR: ${isDeload ? '4+' : `${phase.rirTarget.min}-${phase.rirTarget.max}`}
                 </div>
-                ${stats && stats.totalWorkouts > 0 ? `
-                    <div class="cycle-stats-mini">
-                        <div class="cycle-stat-mini">
-                            <span class="stat-value">${stats.totalWorkouts}</span>
-                            <span class="stat-label">workout</span>
-                        </div>
-                        <div class="cycle-stat-mini">
-                            <span class="stat-value">${this.formatNumber(stats.totalVolume)}</span>
-                            <span class="stat-label">kg vol.</span>
-                        </div>
-                        ${stats.prsAchieved > 0 ? `
-                            <div class="cycle-stat-mini pr">
-                                <span class="stat-value">${stats.prsAchieved}</span>
-                                <span class="stat-label">PR</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : ''}
             </div>
-            <div class="cycle-actions">
-                <button class="btn btn-sm ${isDeload ? 'btn-warning' : 'btn-secondary'}" onclick="App.toggleDeloadMode()">
-                    ${isDeload ? '✅ Termina Deload' : '🔄 Attiva Deload'}
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="App.advanceCycleWeek()">
-                    ⏭️ Avanza Settimana
-                </button>
-            </div>
-            ${cycleInfo.isLastWeek ? `
-                <div class="cycle-complete-notice">
-                    🎉 Ultima settimana del ciclo!
-                    <button class="btn btn-sm btn-primary" onclick="App.completeCycleWithSummary()">Completa Ciclo</button>
-                </div>
-            ` : ''}
         `;
     },
 

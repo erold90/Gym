@@ -63,81 +63,97 @@
                     <p class="greeting" id="greeting">Buongiorno!</p>
                 </div>
 
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🔥</div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-streak">0</span>
-                            <span class="stat-label">Giorni consecutivi</span>
+                <!-- Quick Action -->
+                <div class="quick-action-card" id="quick-action">
+                    <div class="quick-action-content">
+                        <div class="quick-action-info">
+                            <h3 id="quick-action-title">Pronto per allenarti?</h3>
+                            <p id="quick-action-subtitle">Nessuna scheda attiva</p>
+                        </div>
+                        <button class="btn btn-primary btn-large" id="quick-start-btn">
+                            ▶️ Inizia
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Grid Compact -->
+                <div class="stats-grid-compact">
+                    <div class="stat-mini">
+                        <span class="stat-mini-icon">🔥</span>
+                        <span class="stat-mini-value" id="stat-streak">0</span>
+                        <span class="stat-mini-label">Streak</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-icon">🏋️</span>
+                        <span class="stat-mini-value" id="stat-workouts">0</span>
+                        <span class="stat-mini-label">Workout</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-icon">⚡</span>
+                        <span class="stat-mini-value" id="stat-volume">0</span>
+                        <span class="stat-mini-label">Volume</span>
+                    </div>
+                    <div class="stat-mini">
+                        <span class="stat-mini-icon">🎯</span>
+                        <span class="stat-mini-value" id="stat-prs">0</span>
+                        <span class="stat-mini-label">PRs</span>
+                    </div>
+                </div>
+
+                <!-- Weekly Overview Inline -->
+                <div class="card weekly-compact">
+                    <div class="weekly-header">
+                        <h4>Questa Settimana</h4>
+                        <span class="weekly-count" id="weekly-workout-count">0/4 sessioni</span>
+                    </div>
+                    <div class="week-days" id="week-days">
+                        <div class="day" data-day="1"><span>L</span></div>
+                        <div class="day" data-day="2"><span>M</span></div>
+                        <div class="day" data-day="3"><span>M</span></div>
+                        <div class="day" data-day="4"><span>G</span></div>
+                        <div class="day" data-day="5"><span>V</span></div>
+                        <div class="day" data-day="6"><span>S</span></div>
+                        <div class="day" data-day="0"><span>D</span></div>
+                    </div>
+                </div>
+
+                <!-- Two Column Grid -->
+                <div class="dashboard-grid-compact">
+                    <div class="card body-stats-compact">
+                        <h4>📊 Corpo</h4>
+                        <div class="body-stats-mini" id="body-stats-content">
+                            <div class="body-stat-row">
+                                <span>Peso</span>
+                                <strong id="body-weight">--</strong>
+                            </div>
+                            <div class="body-stat-row">
+                                <span>% Grasso</span>
+                                <strong id="body-fat">--</strong>
+                            </div>
+                            <div class="body-stat-row">
+                                <span>Massa Magra</span>
+                                <strong id="body-lean">--</strong>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🏋️</div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-workouts">0</span>
-                            <span class="stat-label">Allenamenti totali</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⚡</div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-volume">0</span>
-                            <span class="stat-label">Volume totale (kg)</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="stat-prs">0</span>
-                            <span class="stat-label">Record personali</span>
+
+                    <div class="card cycle-compact" id="cycle-card">
+                        <h4>🔄 Ciclo</h4>
+                        <div id="cycle-info-content">
+                            <p class="empty-state-mini">Genera una scheda</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="dashboard-grid">
-                    <div class="card next-workout">
-                        <h3>Prossimo Allenamento</h3>
-                        <div id="next-workout-content">
-                            <p class="empty-state">Nessuna scheda attiva. Vai su "Schede" per generarne una!</p>
-                        </div>
-                        <button class="btn btn-primary" id="start-workout-btn" style="display: none;">
-                            Inizia Allenamento
-                        </button>
+                <!-- Recent Activity -->
+                <div class="card activity-compact">
+                    <div class="activity-header">
+                        <h4>📋 Attività Recente</h4>
+                        <a href="#" class="see-all-link" data-page="progress">Vedi tutto →</a>
                     </div>
-
-                    <div class="card weekly-overview">
-                        <h3>Panoramica Settimanale</h3>
-                        <div class="week-days" id="week-days">
-                            <div class="day" data-day="1"><span>L</span></div>
-                            <div class="day" data-day="2"><span>M</span></div>
-                            <div class="day" data-day="3"><span>M</span></div>
-                            <div class="day" data-day="4"><span>G</span></div>
-                            <div class="day" data-day="5"><span>V</span></div>
-                            <div class="day" data-day="6"><span>S</span></div>
-                            <div class="day" data-day="0"><span>D</span></div>
-                        </div>
-                    </div>
-
-                    <div class="card recent-activity">
-                        <h3>Attività Recente</h3>
-                        <ul class="activity-list" id="activity-list">
-                            <li class="empty-state">Nessuna attività recente</li>
-                        </ul>
-                    </div>
-
-                    <div class="card body-stats">
-                        <h3>Statistiche Corporee</h3>
-                        <div class="body-stats-content" id="body-stats-content">
-                            <p class="empty-state">Configura il tuo profilo per vedere le statistiche</p>
-                        </div>
-                    </div>
-
-                    <div class="card cycle-info-card" id="cycle-card">
-                        <h3>Ciclo di Allenamento</h3>
-                        <div id="cycle-info-content">
-                            <p class="empty-state">Genera una scheda per vedere il tuo ciclo</p>
-                        </div>
-                    </div>
+                    <ul class="activity-list-compact" id="activity-list">
+                        <li class="empty-state-mini">Completa il tuo primo allenamento!</li>
+                    </ul>
                 </div>
             </section>
 
@@ -692,7 +708,7 @@
 
                     <div class="card">
                         <h3>ℹ️ Informazioni</h3>
-                        <p><strong>GymTracker Pro</strong> v1.7.2</p>
+                        <p><strong>GymTracker Pro</strong> v1.8.0</p>
                         <p>Il tuo personal trainer digitale basato sulla scienza.</p>
                         <p class="text-muted">I dati sono salvati localmente nel browser.</p>
                     </div>
