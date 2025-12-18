@@ -70,6 +70,36 @@ const TrainingAlgorithm = {
         }
     },
 
+    // Mesocycle configuration by goal and level
+    // Sources: RP Strength, Weightlifting House, PMC Periodization Research
+    CYCLE_CONFIG: {
+        // Duration in weeks based on goal and level
+        duration: {
+            strength: { beginner: 4, intermediate: 6, advanced: 8, expert: 8 },
+            hypertrophy: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
+            recomp: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
+            endurance: { beginner: 3, intermediate: 4, advanced: 5, expert: 5 }
+        },
+        // Phase distribution (% of cycle)
+        phases: {
+            accumulation: 0.5,    // 50% - Volume building, RIR 3-4
+            intensification: 0.35, // 35% - Intensity increase, RIR 1-2
+            deload: 0.15          // 15% - Recovery, RIR 4+
+        },
+        // RIR targets per phase
+        rirTargets: {
+            accumulation: { min: 3, max: 4 },
+            intensification: { min: 1, max: 2 },
+            deload: { min: 4, max: 5 }
+        },
+        // Volume multiplier per phase
+        volumeMultiplier: {
+            accumulation: 1.0,
+            intensification: 0.9,
+            deload: 0.5
+        }
+    },
+
     // Muscle groups by category
     PUSH_MUSCLES: ['petto', 'spalle', 'tricipiti'],
     PULL_MUSCLES: ['schiena', 'bicipiti', 'avambracci', 'trapezio'],
@@ -162,6 +192,9 @@ const TrainingAlgorithm = {
         // Get tempo for goal
         const tempo = this.TEMPO[goal] || this.TEMPO.hypertrophy;
 
+        // Calculate mesocycle structure
+        const cycle = this.generateCycleStructure(goal, profile.level);
+
         program.metadata = {
             goal,
             split,
@@ -170,10 +203,69 @@ const TrainingAlgorithm = {
             level: profile.level,
             createdFor: profile.name,
             weeklyVolume: this.calculateWeeklyVolume(program),
-            tempo: tempo
+            tempo: tempo,
+            cycle: cycle
         };
 
         return program;
+    },
+
+    /**
+     * Generate mesocycle structure based on goal and level
+     */
+    generateCycleStructure(goal, level) {
+        const config = this.CYCLE_CONFIG;
+        const duration = config.duration[goal]?.[level] || config.duration.hypertrophy.intermediate;
+
+        // Calculate weeks for each phase
+        const accumulationWeeks = Math.round(duration * config.phases.accumulation);
+        const intensificationWeeks = Math.round(duration * config.phases.intensification);
+        const deloadWeeks = Math.max(1, duration - accumulationWeeks - intensificationWeeks);
+
+        // Build phase schedule
+        const phases = [];
+        let weekNum = 1;
+
+        // Accumulation phase
+        for (let i = 0; i < accumulationWeeks; i++) {
+            phases.push({
+                week: weekNum++,
+                phase: 'accumulation',
+                phaseName: 'Accumulo',
+                rirTarget: config.rirTargets.accumulation,
+                volumeMultiplier: config.volumeMultiplier.accumulation
+            });
+        }
+
+        // Intensification phase
+        for (let i = 0; i < intensificationWeeks; i++) {
+            phases.push({
+                week: weekNum++,
+                phase: 'intensification',
+                phaseName: 'Intensificazione',
+                rirTarget: config.rirTargets.intensification,
+                volumeMultiplier: config.volumeMultiplier.intensification
+            });
+        }
+
+        // Deload phase
+        for (let i = 0; i < deloadWeeks; i++) {
+            phases.push({
+                week: weekNum++,
+                phase: 'deload',
+                phaseName: 'Deload',
+                rirTarget: config.rirTargets.deload,
+                volumeMultiplier: config.volumeMultiplier.deload
+            });
+        }
+
+        return {
+            duration: duration,
+            currentWeek: 1,
+            startDate: new Date().toISOString(),
+            phases: phases,
+            isDeloadActive: false
+        };
     },
 
     // ========================================

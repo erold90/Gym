@@ -501,6 +501,125 @@ const Storage = {
     },
 
     // ========================================
+    // CYCLE MANAGEMENT
+    // ========================================
+
+    /**
+     * Get current cycle info from active program
+     */
+    getCycleInfo() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return null;
+
+        const cycle = program.metadata.cycle;
+        const currentPhase = cycle.phases.find(p => p.week === cycle.currentWeek);
+
+        return {
+            ...cycle,
+            currentPhase: currentPhase || cycle.phases[0],
+            progress: Math.round((cycle.currentWeek / cycle.duration) * 100),
+            weeksRemaining: cycle.duration - cycle.currentWeek,
+            isLastWeek: cycle.currentWeek === cycle.duration
+        };
+    },
+
+    /**
+     * Advance cycle to next week (called after completing weekly workouts)
+     */
+    advanceCycleWeek() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return null;
+
+        const cycle = program.metadata.cycle;
+
+        if (cycle.currentWeek < cycle.duration) {
+            cycle.currentWeek++;
+            this.setActiveProgram(program);
+        }
+
+        return this.getCycleInfo();
+    },
+
+    /**
+     * Check if it's time to suggest advancing the week
+     * Based on completing the expected number of workouts
+     */
+    shouldAdvanceWeek() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return false;
+
+        const cycle = program.metadata.cycle;
+        const daysPerWeek = program.metadata.daysPerWeek || 4;
+
+        // Get workouts since cycle started
+        const cycleStart = new Date(cycle.startDate);
+        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
+
+        // Calculate expected workouts for current week
+        const expectedWorkouts = cycle.currentWeek * daysPerWeek;
+
+        return workouts.length >= expectedWorkouts;
+    },
+
+    /**
+     * Toggle deload mode manually
+     */
+    toggleDeload() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return false;
+
+        program.metadata.cycle.isDeloadActive = !program.metadata.cycle.isDeloadActive;
+        this.setActiveProgram(program);
+
+        return program.metadata.cycle.isDeloadActive;
+    },
+
+    /**
+     * Check if deload is currently active
+     */
+    isDeloadActive() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return false;
+
+        const cycle = program.metadata.cycle;
+        const currentPhase = cycle.phases.find(p => p.week === cycle.currentWeek);
+
+        // Deload is active if manually toggled OR if current phase is deload
+        return cycle.isDeloadActive || currentPhase?.phase === 'deload';
+    },
+
+    /**
+     * Get volume multiplier for current phase
+     */
+    getCurrentVolumeMultiplier() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return 1;
+
+        if (program.metadata.cycle.isDeloadActive) return 0.5;
+
+        const currentPhase = program.metadata.cycle.phases.find(
+            p => p.week === program.metadata.cycle.currentWeek
+        );
+
+        return currentPhase?.volumeMultiplier || 1;
+    },
+
+    /**
+     * Reset cycle (start new mesocycle)
+     */
+    resetCycle() {
+        const program = this.getActiveProgram();
+        if (!program?.metadata?.cycle) return null;
+
+        program.metadata.cycle.currentWeek = 1;
+        program.metadata.cycle.startDate = new Date().toISOString();
+        program.metadata.cycle.isDeloadActive = false;
+
+        this.setActiveProgram(program);
+        return this.getCycleInfo();
+    },
+
+    // ========================================
     // STREAK
     // ========================================
 

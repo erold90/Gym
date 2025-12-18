@@ -282,6 +282,7 @@ const App = {
         this.updateNextWorkout();
         this.updateRecentActivity();
         this.updateBodyStats();
+        this.updateCycleCard();
     },
 
     updateGreeting() {
@@ -438,6 +439,108 @@ const App = {
                 </div>
             ` : ''}
         `;
+    },
+
+    updateCycleCard() {
+        const container = document.getElementById('cycle-info-content');
+        const card = document.getElementById('cycle-card');
+        if (!container) return;
+
+        const cycleInfo = Storage.getCycleInfo();
+
+        if (!cycleInfo) {
+            container.innerHTML = '<p class="empty-state">Genera una scheda per vedere il tuo ciclo</p>';
+            card?.classList.remove('deload-active');
+            return;
+        }
+
+        const isDeload = Storage.isDeloadActive();
+        const phase = cycleInfo.currentPhase;
+
+        // Add/remove deload class on card
+        if (isDeload) {
+            card?.classList.add('deload-active');
+        } else {
+            card?.classList.remove('deload-active');
+        }
+
+        // Find next deload week
+        const nextDeload = cycleInfo.phases.find(p => p.week > cycleInfo.currentWeek && p.phase === 'deload');
+        const weeksToDeload = nextDeload ? nextDeload.week - cycleInfo.currentWeek : null;
+
+        // Phase color class
+        const phaseClass = isDeload ? 'phase-deload' : `phase-${phase.phase}`;
+
+        container.innerHTML = `
+            <div class="cycle-progress-info">
+                <div class="cycle-week">
+                    <span class="week-number">Settimana ${cycleInfo.currentWeek}</span>
+                    <span class="week-total">/ ${cycleInfo.duration}</span>
+                </div>
+                <div class="cycle-phase ${phaseClass}">
+                    ${isDeload ? '🔄 DELOAD ATTIVO' : phase.phaseName}
+                </div>
+                <div class="cycle-progress-bar">
+                    <div class="progress-fill" style="width: ${cycleInfo.progress}%"></div>
+                </div>
+                <div class="cycle-details">
+                    <div class="cycle-detail">
+                        <span class="label">RIR Target</span>
+                        <span class="value">${isDeload ? '4+' : `${phase.rirTarget.min}-${phase.rirTarget.max}`}</span>
+                    </div>
+                    <div class="cycle-detail">
+                        <span class="label">Volume</span>
+                        <span class="value">${Math.round((isDeload ? 0.5 : phase.volumeMultiplier) * 100)}%</span>
+                    </div>
+                    ${weeksToDeload && !isDeload ? `
+                        <div class="cycle-detail">
+                            <span class="label">Prossimo Deload</span>
+                            <span class="value">${weeksToDeload} sett.</span>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+            <div class="cycle-actions">
+                <button class="btn btn-sm ${isDeload ? 'btn-warning' : 'btn-secondary'}" onclick="App.toggleDeloadMode()">
+                    ${isDeload ? '✅ Termina Deload' : '🔄 Attiva Deload'}
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="App.advanceCycleWeek()">
+                    ⏭️ Avanza Settimana
+                </button>
+            </div>
+            ${cycleInfo.isLastWeek ? `
+                <div class="cycle-complete-notice">
+                    🎉 Ultima settimana del ciclo!
+                    <button class="btn btn-sm btn-primary" onclick="App.startNewCycle()">Nuovo Ciclo</button>
+                </div>
+            ` : ''}
+        `;
+    },
+
+    toggleDeloadMode() {
+        const newState = Storage.toggleDeload();
+        if (newState) {
+            this.showNotification('🔄 Deload attivato! Volume ridotto al 50%', 'info');
+        } else {
+            this.showNotification('✅ Deload terminato! Volume normale', 'success');
+        }
+        this.updateCycleCard();
+    },
+
+    advanceCycleWeek() {
+        const cycleInfo = Storage.advanceCycleWeek();
+        if (cycleInfo) {
+            this.showNotification(`⏭️ Settimana ${cycleInfo.currentWeek} - ${cycleInfo.currentPhase.phaseName}`, 'success');
+            this.updateCycleCard();
+        }
+    },
+
+    startNewCycle() {
+        if (confirm('Vuoi iniziare un nuovo ciclo di allenamento?')) {
+            Storage.resetCycle();
+            this.showNotification('🎯 Nuovo ciclo iniziato!', 'success');
+            this.updateCycleCard();
+        }
     },
 
     // ========================================
@@ -1575,7 +1678,82 @@ const App = {
             this.showProgressionSummary();
         }
 
+        // Check for deload suggestion
+        this.checkDeloadSuggestion();
+
         this.showPage('dashboard');
+    },
+
+    checkDeloadSuggestion() {
+        const cycleInfo = Storage.getCycleInfo();
+        if (!cycleInfo) return;
+
+        const isDeload = Storage.isDeloadActive();
+        if (isDeload) return; // Already in deload
+
+        const currentPhase = cycleInfo.currentPhase;
+        const nextDeload = cycleInfo.phases.find(p => p.week > cycleInfo.currentWeek && p.phase === 'deload');
+        const weeksToDeload = nextDeload ? nextDeload.week - cycleInfo.currentWeek : null;
+
+        // Suggest deload if:
+        // 1. In intensification phase and 1 week from deload
+        // 2. At the end of a long accumulation phase (week 3+)
+        if (weeksToDeload === 1) {
+            setTimeout(() => {
+                this.showDeloadSuggestion('prossima', 'La prossima settimana è deload programmato. Sentiti libero di attivarlo prima se ti senti affaticato.');
+            }, 2000);
+        } else if (currentPhase.phase === 'intensification' && cycleInfo.currentWeek >= 4) {
+            // Check if user might need early deload (high RIR consumption)
+            const recentWorkouts = Storage.getRecentWorkouts(3);
+            const lowRirCount = recentWorkouts.filter(w => {
+                const avgRir = w.exercises?.reduce((sum, ex) => {
+                    const rirs = ex.sets?.filter(s => s.rir !== undefined).map(s => s.rir) || [];
+                    return sum + (rirs.length ? rirs.reduce((a, b) => a + b, 0) / rirs.length : 3);
+                }, 0) / (w.exercises?.length || 1);
+                return avgRir <= 1;
+            }).length;
+
+            if (lowRirCount >= 2) {
+                setTimeout(() => {
+                    this.showDeloadSuggestion('anticipato', 'Hai registrato RIR molto bassi nelle ultime sessioni. Considera un deload anticipato.');
+                }, 2000);
+            }
+        }
+    },
+
+    showDeloadSuggestion(type, message) {
+        const existingSuggestion = document.getElementById('deload-suggestion-modal');
+        if (existingSuggestion) existingSuggestion.remove();
+
+        const html = `
+            <div class="deload-suggestion-modal" id="deload-suggestion-modal">
+                <div class="deload-suggestion-content">
+                    <h3>🔄 Suggerimento Deload</h3>
+                    <p>${message}</p>
+                    <div class="deload-suggestion-actions">
+                        <button class="btn btn-warning" onclick="App.acceptDeloadSuggestion()">
+                            Attiva Deload
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.dismissDeloadSuggestion()">
+                            Non ora
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    acceptDeloadSuggestion() {
+        document.getElementById('deload-suggestion-modal')?.remove();
+        Storage.toggleDeload();
+        this.showNotification('🔄 Deload attivato! Volume ridotto al 50%', 'info');
+        this.updateCycleCard();
+    },
+
+    dismissDeloadSuggestion() {
+        document.getElementById('deload-suggestion-modal')?.remove();
     },
 
     showProgressionSummary() {
