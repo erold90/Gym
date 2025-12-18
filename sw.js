@@ -1,6 +1,6 @@
 // GymTracker Pro - Service Worker
 // Cambia questa versione ad ogni deploy per forzare l'aggiornamento
-const CACHE_VERSION = 'v1.5.0';
+const CACHE_VERSION = 'v1.6.0';
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 
 // File da cachare

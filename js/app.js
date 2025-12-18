@@ -1036,19 +1036,35 @@ const App = {
     },
 
     startWorkout(workout) {
+        // Get cycle info for volume adjustment
+        const cycleInfo = Storage.getCycleInfo();
+        const volumeMultiplier = Storage.getCurrentVolumeMultiplier();
+        const isDeload = Storage.isDeloadActive();
+
         this.activeWorkout = {
             ...workout,
             startTime: Date.now(),
-            exercises: workout.exercises.map(ex => ({
-                ...ex,
-                targetSets: ex.sets,  // Save original set count
-                targetReps: ex.reps,  // Save original rep range
-                setsData: Array(ex.sets).fill(null).map(() => ({
-                    weight: '',
-                    reps: '',
-                    completed: false
-                }))
-            }))
+            cycleInfo: cycleInfo,
+            isDeload: isDeload,
+            volumeMultiplier: volumeMultiplier,
+            exercises: workout.exercises.map(ex => {
+                // Apply volume multiplier to sets (reduce during deload)
+                const originalSets = ex.sets;
+                const adjustedSets = isDeload ? Math.max(2, Math.round(originalSets * volumeMultiplier)) : originalSets;
+
+                return {
+                    ...ex,
+                    originalSets: originalSets,  // Keep original for reference
+                    targetSets: adjustedSets,    // Actual sets to do
+                    sets: adjustedSets,          // Update sets count
+                    targetReps: ex.reps,         // Save original rep range
+                    setsData: Array(adjustedSets).fill(null).map(() => ({
+                        weight: '',
+                        reps: '',
+                        completed: false
+                    }))
+                };
+            })
         };
         this.currentExerciseIndex = 0;
         this.currentSetIndex = 0;
@@ -1062,6 +1078,9 @@ const App = {
             document.getElementById('workout-timer').textContent = time;
         });
 
+        // Display phase banner if cycle active
+        this.displayPhaseBanner();
+
         // Display warmup
         this.displayWarmup(workout.warmup);
 
@@ -1070,6 +1089,41 @@ const App = {
 
         // Navigate to workout page
         this.showPage('workout');
+    },
+
+    displayPhaseBanner() {
+        // Remove existing banner
+        document.getElementById('phase-banner')?.remove();
+
+        const cycleInfo = this.activeWorkout?.cycleInfo;
+        if (!cycleInfo) return;
+
+        const isDeload = this.activeWorkout.isDeload;
+        const phase = cycleInfo.currentPhase;
+        const rirTarget = isDeload ? '4+' : `${phase.rirTarget.min}-${phase.rirTarget.max}`;
+
+        const bannerClass = isDeload ? 'deload' : phase.phase;
+        const phaseLabel = isDeload ? 'DELOAD' : phase.phaseName.toUpperCase();
+        const volumeText = isDeload ? '50%' : `${Math.round(phase.volumeMultiplier * 100)}%`;
+
+        const bannerHTML = `
+            <div id="phase-banner" class="phase-banner phase-${bannerClass}">
+                <div class="phase-banner-content">
+                    <span class="phase-label">${phaseLabel}</span>
+                    <span class="phase-separator">•</span>
+                    <span class="phase-week">Sett. ${cycleInfo.currentWeek}/${cycleInfo.duration}</span>
+                    <span class="phase-separator">•</span>
+                    <span class="phase-rir">RIR ${rirTarget}</span>
+                    ${isDeload ? '<span class="phase-separator">•</span><span class="phase-volume">Vol. ' + volumeText + '</span>' : ''}
+                </div>
+            </div>
+        `;
+
+        // Insert after workout header
+        const workoutHeader = document.querySelector('#workout-active .workout-header');
+        if (workoutHeader) {
+            workoutHeader.insertAdjacentHTML('afterend', bannerHTML);
+        }
     },
 
     displayWarmup(warmupType) {
@@ -1280,7 +1334,7 @@ const App = {
             <div class="exercise-target-mobile">
                 <div class="target-item">
                     <span class="target-label">Serie</span>
-                    <span class="target-value">${exercise.targetSets}</span>
+                    <span class="target-value">${exercise.targetSets}${this.activeWorkout.isDeload && exercise.originalSets !== exercise.targetSets ? ` <small style="opacity:0.6">(${exercise.originalSets})</small>` : ''}</span>
                 </div>
                 <div class="target-item">
                     <span class="target-label">Reps</span>
@@ -1296,7 +1350,18 @@ const App = {
                     <span class="target-value tempo-value">${tempo.notation}</span>
                 </div>
                 ` : ''}
+                ${this.activeWorkout.cycleInfo ? `
+                <div class="target-item rir-target-item ${this.activeWorkout.isDeload ? 'deload' : ''}">
+                    <span class="target-label">RIR Target</span>
+                    <span class="target-value">${this.activeWorkout.isDeload ? '4+' : `${this.activeWorkout.cycleInfo.currentPhase.rirTarget.min}-${this.activeWorkout.cycleInfo.currentPhase.rirTarget.max}`}</span>
+                </div>
+                ` : ''}
             </div>
+            ${this.activeWorkout.isDeload && exercise.originalSets !== exercise.targetSets ? `
+                <div class="deload-sets-notice">
+                    Serie ridotte: ${exercise.originalSets} → ${exercise.targetSets} (deload -50%)
+                </div>
+            ` : ''}
             <div class="sets-progress-bar">
                 <div class="sets-progress-fill" style="width: ${(completedSets / exercise.targetSets) * 100}%"></div>
                 <span class="sets-progress-text">${completedSets}/${exercise.targetSets} completate</span>
@@ -1681,7 +1746,76 @@ const App = {
         // Check for deload suggestion
         this.checkDeloadSuggestion();
 
+        // Check if should advance to next week
+        this.checkWeekAdvancement();
+
         this.showPage('dashboard');
+    },
+
+    checkWeekAdvancement() {
+        if (!Storage.shouldAdvanceWeek()) return;
+
+        const cycleInfo = Storage.getCycleInfo();
+        if (!cycleInfo) return;
+
+        // Don't prompt if already at last week
+        if (cycleInfo.isLastWeek) return;
+
+        // Check next week's phase
+        const nextWeekNum = cycleInfo.currentWeek + 1;
+        const nextPhase = cycleInfo.phases.find(p => p.week === nextWeekNum);
+
+        // Show week advancement suggestion
+        setTimeout(() => {
+            this.showWeekAdvancementSuggestion(cycleInfo, nextPhase);
+        }, 3500);
+    },
+
+    showWeekAdvancementSuggestion(cycleInfo, nextPhase) {
+        const existingModal = document.getElementById('week-advance-modal');
+        if (existingModal) existingModal.remove();
+
+        const nextPhaseLabel = nextPhase?.phaseName || 'Prossima fase';
+        const isNextDeload = nextPhase?.phase === 'deload';
+
+        const html = `
+            <div class="week-advance-modal" id="week-advance-modal">
+                <div class="week-advance-content">
+                    <h3>📅 Avanzamento Settimana</h3>
+                    <p>Hai completato gli allenamenti della settimana ${cycleInfo.currentWeek}!</p>
+                    <div class="week-advance-info">
+                        <span class="current-week">Settimana ${cycleInfo.currentWeek}</span>
+                        <span class="arrow">→</span>
+                        <span class="next-week ${isNextDeload ? 'deload' : ''}">
+                            Settimana ${cycleInfo.currentWeek + 1} - ${nextPhaseLabel}
+                        </span>
+                    </div>
+                    <div class="week-advance-actions">
+                        <button class="btn btn-primary" onclick="App.confirmWeekAdvancement()">
+                            Avanza Settimana
+                        </button>
+                        <button class="btn btn-secondary" onclick="App.dismissWeekAdvancement()">
+                            Rimani nella settimana
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    confirmWeekAdvancement() {
+        document.getElementById('week-advance-modal')?.remove();
+        const cycleInfo = Storage.advanceCycleWeek();
+        if (cycleInfo) {
+            this.showNotification(`⏭️ Settimana ${cycleInfo.currentWeek} - ${cycleInfo.currentPhase.phaseName}`, 'success');
+            this.updateCycleCard();
+        }
+    },
+
+    dismissWeekAdvancement() {
+        document.getElementById('week-advance-modal')?.remove();
     },
 
     checkDeloadSuggestion() {
