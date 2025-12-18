@@ -5,6 +5,10 @@ on:
     branches:
       - 'claude/main-*'
 
+# Permessi necessari per merge e delete branch
+permissions:
+  contents: write
+
 jobs:
   merge-to-deploy:
     runs-on: ubuntu-latest
@@ -38,7 +42,16 @@ jobs:
           # Push al branch di deploy
           git push origin claude/main-IDVRj
 
+      - name: Delete source branch
+        if: success()
+        run: |
+          # Elimina il branch sorgente dopo merge riuscito
+          BRANCH_NAME="${{ github.ref_name }}"
+          echo "Deleting branch: $BRANCH_NAME"
+          git push origin --delete "$BRANCH_NAME" || echo "Branch already deleted or protected"
+
       - name: Summary
         run: |
           echo "✅ Merged ${{ github.ref_name }} into claude/main-IDVRj"
+          echo "🗑️ Deleted source branch ${{ github.ref_name }}"
           echo "🚀 GitHub Pages will auto-deploy from claude/main-IDVRj"
