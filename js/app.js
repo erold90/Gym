@@ -1619,11 +1619,15 @@ const App = {
             });
         });
 
-        // Show modal
+        // Show modal and block body scroll
         document.getElementById('cooldown-modal').style.display = 'flex';
+        document.body.classList.add('modal-open');
     },
 
     finishWorkout() {
+        // Hide modal and restore body scroll
+        document.getElementById('cooldown-modal').style.display = 'none';
+        document.body.classList.remove('modal-open');
         // Stop workout timer
         const duration = Timer.stopWorkoutTimer();
 
