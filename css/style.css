@@ -2473,3 +2473,119 @@ input[type="number"] {
     opacity: 1;
     background: transparent;
 }
+
+/* ========================================
+   Mobile-Friendly Exercise Database
+   ======================================== */
+
+/* Filter tabs - horizontal scroll on mobile */
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+/* Muscle filter dropdown */
+.muscle-filter {
+    margin-bottom: 20px;
+}
+
+.muscle-filter select {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Exercise grid - better mobile layout */
+@media (max-width: 600px) {
+    .exercises-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .exercise-grid-card {
+        padding: 15px;
+    }
+
+    .exercise-grid-card .exercise-gif-container {
+        height: 180px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+    }
+
+    .exercise-grid-card .exercise-gif {
+        object-fit: contain;
+    }
+
+    .exercise-grid-card h4 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+
+    .exercise-grid-card .muscle-tags {
+        margin-bottom: 8px;
+    }
+
+    .muscle-tag {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+    }
+
+    .exercise-grid-card .equipment {
+        font-size: 0.8rem;
+    }
+
+    .exercise-grid-card .exercise-info-btn {
+        top: 10px;
+        right: 10px;
+        width: 32px;
+        height: 32px;
+    }
+
+    /* Search bar full width */
+    .search-bar {
+        width: 100%;
+    }
+
+    .search-bar input {
+        width: 100%;
+    }
+
+    /* Page header stacked on mobile */
+    #page-exercises .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    #page-exercises .page-header h2 {
+        text-align: center;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 601px) and (max-width: 900px) {
+    .exercises-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .exercise-grid-card .exercise-gif-container {
+        height: 140px;
+    }
+}
