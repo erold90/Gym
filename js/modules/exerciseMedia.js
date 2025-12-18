@@ -1248,7 +1248,7 @@ const EXERCISE_DETAILS = {
 // Detailed info for warmup exercises
 const WARMUP_DETAILS = {
     "Arm Circles": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Arm-Circles.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Arm-Circles_Shoulders.gif",
         svgAnimation: "arm-circles",
         execution: {
             steps: [
@@ -1265,7 +1265,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Shoulder Rolls": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Shoulder-Circle-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Shoulder-Shrug.gif",
         svgAnimation: "shoulder-rolls",
         execution: {
             steps: [
@@ -1281,7 +1281,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Band Pull-Apart": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Resistance-Band-Pull-Apart.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Band-Pull-Apart.gif",
         execution: {
             steps: [
                 "Tieni l'elastico con entrambe le mani davanti a te",
@@ -1298,7 +1298,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Wall Slides": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Wall-Slide.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/wall-slide.gif",
         svgAnimation: "wall-slides",
         execution: {
             steps: [
