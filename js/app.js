@@ -225,6 +225,7 @@ const App = {
                 this.showToast('Progressi cancellati!', 'success');
                 this.updateDashboard();
                 this.updateCycleCard();
+                this.updateStorageUsage();
             }
         });
 
@@ -2580,6 +2581,44 @@ const App = {
             'setting-vibration', 'setting-weight-unit'].forEach(id => {
                 document.getElementById(id)?.addEventListener('change', () => this.saveSettings());
             });
+
+        // Calculate storage usage
+        this.updateStorageUsage();
+    },
+
+    updateStorageUsage() {
+        let totalSize = 0;
+
+        // Calculate size of all localStorage items
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                totalSize += localStorage[key].length * 2; // UTF-16 = 2 bytes per char
+            }
+        }
+
+        // Convert to KB/MB
+        const sizeKB = totalSize / 1024;
+        const sizeMB = sizeKB / 1024;
+
+        // localStorage limit is typically 5-10MB, use 5MB as reference
+        const maxMB = 5;
+        const percentUsed = Math.min((sizeMB / maxMB) * 100, 100);
+
+        // Update UI
+        const storageBar = document.getElementById('storage-used-bar');
+        const storageText = document.getElementById('storage-text');
+
+        if (storageBar) {
+            storageBar.style.width = `${Math.max(percentUsed, 2)}%`;
+        }
+
+        if (storageText) {
+            if (sizeMB >= 1) {
+                storageText.textContent = `${sizeMB.toFixed(2)} MB utilizzati (${percentUsed.toFixed(1)}% di ~5MB)`;
+            } else {
+                storageText.textContent = `${sizeKB.toFixed(1)} KB utilizzati (${percentUsed.toFixed(1)}% di ~5MB)`;
+            }
+        }
     },
 
     saveSettings() {
