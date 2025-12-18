@@ -662,6 +662,13 @@ body {
     color: var(--text-secondary);
 }
 
+/* Tempo execution info */
+.tempo-detail {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
 /* Progress Tabs */
 .progress-tabs {
     display: flex;

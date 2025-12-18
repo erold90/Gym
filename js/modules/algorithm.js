@@ -44,6 +44,32 @@ const TrainingAlgorithm = {
         endurance: { compound: 60, isolation: 45 }        // 1min / 45s
     },
 
+    // Execution tempo by goal (scientifically optimized)
+    // Format: eccentric-pause-concentric (in seconds, X = explosive)
+    // Sources: PMC 2021, Evidence Based Athlete
+    TEMPO: {
+        strength: {
+            notation: '2-0-X-0',
+            description: '2s giù → esplosivo su',
+            detail: 'Fase negativa controllata, spingi con forza massima'
+        },
+        hypertrophy: {
+            notation: '3-1-2-0',
+            description: '3s giù → 1s pausa → 2s su',
+            detail: 'Movimento controllato, massimizza tempo sotto tensione'
+        },
+        recomp: {
+            notation: '2-1-2-0',
+            description: '2s giù → 1s pausa → 2s su',
+            detail: 'Bilanciato tra controllo e intensità'
+        },
+        endurance: {
+            notation: '2-0-1-0',
+            description: '2s giù → 1s su',
+            detail: 'Movimento fluido e continuo'
+        }
+    },
+
     // Muscle groups by category
     PUSH_MUSCLES: ['petto', 'spalle', 'tricipiti'],
     PULL_MUSCLES: ['schiena', 'bicipiti', 'avambracci', 'trapezio'],
@@ -133,6 +159,9 @@ const TrainingAlgorithm = {
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
         }
 
+        // Get tempo for goal
+        const tempo = this.TEMPO[goal] || this.TEMPO.hypertrophy;
+
         program.metadata = {
             goal,
             split,
@@ -140,7 +169,8 @@ const TrainingAlgorithm = {
             sessionDuration,
             level: profile.level,
             createdFor: profile.name,
-            weeklyVolume: this.calculateWeeklyVolume(program)
+            weeklyVolume: this.calculateWeeklyVolume(program),
+            tempo: tempo
         };
 
         return program;

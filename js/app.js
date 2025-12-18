@@ -777,11 +777,17 @@ const App = {
 
         card.style.display = 'block';
 
+        // Build tempo info if available
+        const tempoInfo = program.metadata?.tempo
+            ? `<p><strong>Esecuzione:</strong> ${program.metadata.tempo.description} <span class="tempo-detail">(${program.metadata.tempo.detail})</span></p>`
+            : '';
+
         let html = `
             <div class="program-info">
                 <p><strong>Tipo:</strong> ${program.name}</p>
                 <p><strong>Obiettivo:</strong> ${program.metadata?.goal || 'Non specificato'}</p>
                 <p><strong>Giorni:</strong> ${program.days.length} giorni/settimana</p>
+                ${tempoInfo}
             </div>
             <div class="program-days">
         `;
