@@ -815,6 +815,55 @@ body {
     color: var(--text-secondary);
 }
 
+/* Collapsible Warmup Header */
+.warmup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 0;
+    user-select: none;
+}
+
+.warmup-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.warmup-toggle {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+    color: var(--text-secondary);
+}
+
+.warmup-section.collapsed .warmup-toggle {
+    transform: rotate(-90deg);
+}
+
+.warmup-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+
+.warmup-section.collapsed .warmup-content {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.warmup-section.collapsed {
+    padding: 12px 15px;
+}
+
+.warmup-section.collapsed .warmup-header h3 {
+    font-size: 1rem;
+}
+
 /* Current Exercise */
 .current-exercise {
     background: var(--bg-card);

@@ -163,11 +163,16 @@
                         <button class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
                     </div>
 
-                    <!-- Warm-up Section -->
+                    <!-- Warm-up Section (Collapsible) -->
                     <div class="card warmup-section" id="warmup-section">
-                        <h3>🔥 Riscaldamento Dinamico</h3>
-                        <div class="warmup-exercises" id="warmup-exercises"></div>
-                        <button class="btn btn-primary" id="skip-warmup">Salta al Workout</button>
+                        <div class="warmup-header" id="warmup-header">
+                            <h3><span class="warmup-icon">🔥</span> <span id="warmup-title">Riscaldamento Dinamico</span></h3>
+                            <span class="warmup-toggle" id="warmup-toggle">▼</span>
+                        </div>
+                        <div class="warmup-content" id="warmup-content">
+                            <div class="warmup-exercises" id="warmup-exercises"></div>
+                            <button class="btn btn-primary" id="skip-warmup">Salta al Workout</button>
+                        </div>
                     </div>
 
                     <!-- Exercise List -->

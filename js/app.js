@@ -118,9 +118,20 @@ const App = {
             this.endWorkout();
         });
 
-        // Skip warmup
+        // Skip warmup - collapses the warmup section
         document.getElementById('skip-warmup')?.addEventListener('click', () => {
-            document.getElementById('warmup-section').style.display = 'none';
+            const warmupSection = document.getElementById('warmup-section');
+            if (warmupSection) {
+                warmupSection.classList.add('collapsed');
+            }
+        });
+
+        // Warmup header click - toggle collapse/expand
+        document.getElementById('warmup-header')?.addEventListener('click', () => {
+            const warmupSection = document.getElementById('warmup-section');
+            if (warmupSection) {
+                warmupSection.classList.toggle('collapsed');
+            }
         });
 
         // Rest timer controls
@@ -985,7 +996,15 @@ const App = {
             });
         });
 
-        document.getElementById('warmup-section').style.display = 'block';
+        const warmupSection = document.getElementById('warmup-section');
+        warmupSection.style.display = 'block';
+        warmupSection.classList.remove('collapsed'); // Start expanded
+
+        // Update title with warmup name
+        const titleElement = document.getElementById('warmup-title');
+        if (titleElement) {
+            titleElement.textContent = warmup.name;
+        }
     },
 
     displayCurrentExercise() {
@@ -1280,11 +1299,11 @@ const App = {
         // Update UI
         this.displayCurrentExercise();
 
-        // Auto-hide warmup section when user starts exercising
+        // Auto-collapse warmup section when user starts exercising
         if (set.completed) {
             const warmupSection = document.getElementById('warmup-section');
-            if (warmupSection && warmupSection.style.display !== 'none') {
-                warmupSection.style.display = 'none';
+            if (warmupSection && !warmupSection.classList.contains('collapsed')) {
+                warmupSection.classList.add('collapsed');
             }
         }
 
