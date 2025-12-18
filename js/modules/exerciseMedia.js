@@ -22,10 +22,10 @@ const EXERCISE_GIF_MAP = {
     "cable-crossover": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Crossover.gif",
     "cable-fly-low": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Low-Cable-Crossover.gif",
     "cable-fly-mid": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Crossover.gif",
-    "push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-up.gif",
+    "push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
     "diamond-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Diamond-Push-up.gif",
     "wide-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Wide-Push-up.gif",
-    "decline-push-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Decline-Push-up.gif",
+    "decline-push-up": "https://fitnessprogramer.com/wp-content/uploads/2015/07/Decline-Push-Up.gif",
     "dips": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Chest-Dips.gif",
 
     // SCHIENA
@@ -97,7 +97,7 @@ const EXERCISE_GIF_MAP = {
     "tricep-dip-machine": "https://fitnessprogramer.com/wp-content/uploads/2021/09/Triceps-Dip-Machine.gif",
 
     // QUADRICIPITI
-    "squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Squat.gif",
+    "squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-SQUAT.gif",
     "front-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/06/front-squat.gif",
     "bulgarian-split-squat-bb": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Barbell-Bulgarian-Split-Squat.gif",
     "goblet-squat": "https://fitnessprogramer.com/wp-content/uploads/2023/01/Dumbbell-Goblet-Squat.gif",
@@ -107,8 +107,8 @@ const EXERCISE_GIF_MAP = {
     "leg-press": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Press.gif",
     "hack-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Sled-Hack-Squat.gif",
     "leg-extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif",
-    "smith-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Smith-Machine-Squat.gif",
-    "bodyweight-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bodyweight-Squat.gif",
+    "smith-squat": "https://fitnessprogramer.com/wp-content/uploads/2024/10/smith-machine-squat.gif",
+    "bodyweight-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/05/bodyweight-squat-full-version.gif",
     "jump-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Squat.gif",
     "walking-lunge": "https://fitnessprogramer.com/wp-content/uploads/2023/09/dumbbell-lunges.gif",
     "pistol-squat": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pistol-Squat.gif",
@@ -126,14 +126,14 @@ const EXERCISE_GIF_MAP = {
 
     // GLUTEI
     "hip-thrust": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif",
-    "sumo-deadlift": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Sumo-Deadlift.gif",
+    "sumo-deadlift": "https://fitnessprogramer.com/wp-content/uploads/2021/04/Barbell-Sumo-Deadlift.gif",
     "dumbbell-hip-thrust": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif",
-    "glute-kickback-machine": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Kickback.gif",
-    "hip-abduction": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Abduction-Machine.gif",
+    "glute-kickback-machine": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Glute-Kickback-Machine.gif",
+    "hip-abduction": "https://fitnessprogramer.com/wp-content/uploads/2021/02/HiP-ABDUCTION-MACHINE.gif",
     "cable-kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Glute-Kickback.gif",
     "glute-bridge": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge-.gif",
     "single-leg-glute-bridge": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Single-Leg-Glute-Bridge.gif",
-    "donkey-kick": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Donkey-Kick.gif",
+    "donkey-kick": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Donkey-Kicks.gif",
     "fire-hydrant": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Fire-Hydrant.gif",
 
     // POLPACCI
@@ -173,8 +173,8 @@ const EXERCISE_GIF_MAP = {
     "chest-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Dynamic-Chest-Stretch.gif",
     "hip-circles": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Circles.gif",
     "leg-swings": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Swings.gif",
-    "jumping-jacks": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jumping-Jacks.gif",
-    "high-knees": "https://fitnessprogramer.com/wp-content/uploads/2021/02/High-Knees.gif",
+    "jumping-jacks": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Jumping-jack.gif",
+    "high-knees": "https://fitnessprogramer.com/wp-content/uploads/2021/08/High-Knee-Run.gif",
     "butt-kicks": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butt-Kicks.gif",
     "quad-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
     "hamstring-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
@@ -1380,7 +1380,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Bodyweight Squats": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bodyweight-Squat.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/bodyweight-squat-full-version.gif",
         execution: {
             steps: [
                 "In piedi, piedi alla larghezza delle spalle",
@@ -1395,7 +1395,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Walking Lunges": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Walking-Lunge.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/09/dumbbell-lunges.gif",
         execution: {
             steps: [
                 "In piedi, fai un passo avanti lungo",
@@ -1410,7 +1410,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Glute Bridges": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge-.gif",
         execution: {
             steps: [
                 "Sdraiato supino, ginocchia piegate, piedi a terra",
@@ -1456,7 +1456,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Dead Bug": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Dead-Bug.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Dead-Bug.gif",
         execution: {
             steps: [
                 "Sdraiato supino, braccia verso il soffitto, ginocchia a 90°",
@@ -1486,7 +1486,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Plank Hold": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Front-Plank.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/plank.gif",
         execution: {
             steps: [
                 "Sugli avambracci, corpo in linea retta",
@@ -1501,7 +1501,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Jumping Jacks": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jumping-Jacks.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Jumping-jack.gif",
         execution: {
             steps: [
                 "In piedi con le braccia ai lati",
@@ -1613,7 +1613,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Dynamic Chest Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Dynamic-Chest-Stretch.gif",
         execution: {
             steps: [
                 "In piedi, braccia distese ai lati",
@@ -1628,7 +1628,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Incline Push-Up": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Incline-Push-Up.gif",
         execution: {
             steps: [
                 "Mani su una superficie rialzata (panca, muro)",
@@ -1711,7 +1711,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Tricep Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Triceps-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
         svgAnimation: "tricep-stretch",
         execution: {
             steps: [
@@ -1886,7 +1886,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Cobra Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cobra-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
         execution: {
             steps: [
                 "Sdraiato a pancia in giù, mani sotto le spalle",
