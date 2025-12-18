@@ -1445,18 +1445,6 @@ const App = {
                     <span class="target-label">Pausa</span>
                     <span class="target-value">${exercise.rest}s</span>
                 </div>
-                ${tempo ? `
-                <div class="target-item tempo-item" title="${tempo.detail}">
-                    <span class="target-label">Tempo</span>
-                    <span class="target-value tempo-value">${tempo.notation}</span>
-                </div>
-                ` : ''}
-                ${this.activeWorkout.cycleInfo ? `
-                <div class="target-item rir-target-item ${this.activeWorkout.isDeload ? 'deload' : ''}">
-                    <span class="target-label">RIR Target</span>
-                    <span class="target-value">${this.activeWorkout.isDeload ? '4+' : `${this.activeWorkout.cycleInfo.currentPhase.rirTarget.min}-${this.activeWorkout.cycleInfo.currentPhase.rirTarget.max}`}</span>
-                </div>
-                ` : ''}
             </div>
             ${this.activeWorkout.isDeload && exercise.originalSets !== exercise.targetSets ? `
                 <div class="deload-sets-notice">
