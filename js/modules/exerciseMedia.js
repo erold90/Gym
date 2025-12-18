@@ -1544,6 +1544,133 @@ const WARMUP_DETAILS = {
                 "Ottimo per attivazione cardiovascolare"
             ]
         }
+    },
+    "Push-Up Plus": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Push-Up-Plus.gif",
+        execution: {
+            steps: [
+                "Posizionati in plank alto, mani sotto le spalle",
+                "Esegui un push-up standard",
+                "In alto, spingi ulteriormente separando le scapole",
+                "La parte alta della schiena si arrotonda leggermente",
+                "Torna alla posizione iniziale e ripeti"
+            ],
+            tips: [
+                "Enfatizza la protrazione scapolare in alto",
+                "Mantieni il core attivo durante tutto il movimento",
+                "Ottimo per attivare il dentato anteriore"
+            ]
+        }
+    },
+    "Scapular Push-Ups": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Push-Up-Plus.gif",
+        execution: {
+            steps: [
+                "In posizione di plank alto, braccia tese",
+                "Senza piegare i gomiti, abbassa il petto",
+                "Lascia che le scapole si avvicinino",
+                "Spingi attivamente separando le scapole",
+                "Movimento solo delle scapole, braccia sempre tese"
+            ],
+            tips: [
+                "Movimento piccolo ma controllato",
+                "Concentrati sul movimento delle scapole",
+                "Ottimo per la stabilità delle spalle"
+            ]
+        }
+    },
+    "Cat-Cow Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Cat-Cow-Stretch.gif",
+        execution: {
+            steps: [
+                "A quattro zampe, mani sotto le spalle, ginocchia sotto le anche",
+                "Inspira: lascia cadere la pancia, solleva la testa e il bacino (Cow)",
+                "Espira: arrotonda la schiena, porta il mento al petto (Cat)",
+                "Alterna fluidamente tra le due posizioni"
+            ],
+            tips: [
+                "Movimento lento e controllato",
+                "Ottimo per la mobilità della colonna vertebrale",
+                "Coordina il movimento con il respiro"
+            ]
+        }
+    },
+    "Thoracic Rotations": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/08/Kneeling-T-spine-Rotation.gif",
+        execution: {
+            steps: [
+                "A quattro zampe, una mano dietro la testa",
+                "Ruota il busto portando il gomito verso l'alto",
+                "Apri il petto verso il soffitto",
+                "Torna controllando e ripeti",
+                "Cambia lato dopo le ripetizioni indicate"
+            ],
+            tips: [
+                "Movimento lento e controllato",
+                "Mantieni i fianchi stabili",
+                "Ottimo per la mobilità toracica"
+            ]
+        }
+    },
+    "Dynamic Chest Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Chest-Stretch.gif",
+        execution: {
+            steps: [
+                "In piedi, braccia distese ai lati",
+                "Porta le braccia indietro aprendo il petto",
+                "Movimento dinamico, non statico",
+                "Alterna apertura e chiusura delle braccia"
+            ],
+            tips: [
+                "Non forzare l'ampiezza",
+                "Movimento fluido e controllato"
+            ]
+        }
+    },
+    "Incline Push-Up": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Push-Up.gif",
+        execution: {
+            steps: [
+                "Mani su una superficie rialzata (panca, muro)",
+                "Corpo in linea retta dalla testa ai piedi",
+                "Abbassati piegando i gomiti",
+                "Spingi tornando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo per riscaldare petto e tricipiti",
+                "Più facile del push-up standard"
+            ]
+        }
+    },
+    "Scapular Retraction": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Scapular-Retraction.gif",
+        execution: {
+            steps: [
+                "In piedi con buona postura",
+                "Stringi le scapole insieme",
+                "Mantieni per 2-3 secondi",
+                "Rilascia e ripeti"
+            ],
+            tips: [
+                "Non alzare le spalle",
+                "Concentrati sul movimento delle scapole"
+            ]
+        }
+    },
+    "Arm Swings Orizzontali": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Arm-Crossover.gif",
+        execution: {
+            steps: [
+                "In piedi, braccia distese ai lati",
+                "Oscilla le braccia incrociandole davanti al petto",
+                "Alterna quale braccio passa sopra",
+                "Movimento dinamico e continuo"
+            ],
+            tips: [
+                "Mantieni le braccia all'altezza delle spalle",
+                "Ottimo per riscaldare petto e spalle"
+            ]
+        }
     }
 };
 
