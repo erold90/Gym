@@ -181,56 +181,84 @@ strength: { compound: 180, isolation: 120 }
 hypertrophy: { compound: 90, isolation: 60 }
 ```
 
-### 2. Sistema Cicli e Periodizzazione
+### 2. Sistema Double Progression
+**File**: `js/modules/storage.js`
+
+Metodo scientifico per aumentare i carichi:
+- Aumenta reps finché raggiungi il top del range
+- Quando tutte le serie sono al top → aumenta peso
+- Incrementi: +5kg gambe, +2.5kg upper compound, +1.25kg isolation
+
+Funzioni:
+- `parseRepRange()` - analizza range reps (es: "8-12")
+- `getProgressionSuggestion()` - suggerisce prossima azione
+- `getExerciseType()` - determina tipo esercizio (compound/isolation)
+
+### 3. Sistema Cicli e Periodizzazione
 **File**: `js/modules/algorithm.js` + `js/modules/storage.js`
 
 Durata cicli automatica in base a obiettivo e livello:
-- Forza: 6-10 settimane
-- Ipertrofia: 8-12 settimane
-- Ricomposizione: 8-10 settimane
-- Resistenza: 6-8 settimane
-
-Struttura mesocicli con settimane di deload automatiche:
 ```javascript
-// Esempio ipertrofia
-mesocycles: [
-    { name: 'Volume', weeks: 3, volumeMultiplier: 1.0 },
-    { name: 'Deload', weeks: 1, volumeMultiplier: 0.5 },
-    { name: 'Intensificazione', weeks: 3, volumeMultiplier: 0.9 },
-    { name: 'Deload', weeks: 1, volumeMultiplier: 0.5 },
-    ...
-]
+CYCLE_CONFIG.duration = {
+    strength: { beginner: 4, intermediate: 6, advanced: 8, expert: 8 },
+    hypertrophy: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
+    recomp: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
+    endurance: { beginner: 3, intermediate: 4, advanced: 5, expert: 5 }
+}
 ```
 
-### 3. Tracking Progresso Ciclo
-**File**: `js/modules/storage.js`
+Struttura fasi mesociclo:
+- **Accumulo** (50%): RIR 3-4, volume 100%
+- **Intensificazione** (35%): RIR 1-2, volume 90%
+- **Deload** (15%): RIR 4+, volume 50%
 
-Funzioni per gestire il ciclo:
-- `getCycleProgress()` - settimana corrente, percentuale, stato deload
-- `getCurrentMesocycle()` - mesociclo attivo
-- `getWorkoutsInCycle()` - allenamenti nel ciclo
-- `resetCycleStartDate()` - riavvia ciclo
-- `completeCycle()` - completa ciclo
+Funzioni storage:
+- `getCycleInfo()` - info ciclo con fase corrente e progresso
+- `advanceCycleWeek()` - avanza alla settimana successiva
+- `toggleDeload()` - attiva/disattiva deload manuale
+- `isDeloadActive()` - verifica stato deload
+- `getCurrentVolumeMultiplier()` - moltiplicatore volume fase
+- `resetCycle()` - riavvia ciclo
+- `completeCycle()` - completa ciclo e salva statistiche
 
-### 4. Dashboard con Progresso Ciclo
+### 4. Dashboard Card Ciclo
 **File**: `index.html` + `js/app.js`
 
 Card nella dashboard che mostra:
-- Settimana corrente / totale
-- Barra progresso percentuale
-- Mesociclo attivo
-- Prossima settimana deload
-- Giorni rimanenti
+- Settimana corrente / totale con barra progresso
+- Fase attiva (Accumulo/Intensificazione/Deload)
+- RIR target e volume % per fase
+- Settimane al prossimo deload
+- Mini statistiche: workout, volume, PR del ciclo
+- Pulsanti: "Attiva Deload", "Avanza Settimana"
+- Notifica fine ciclo con riepilogo completo
 
-### 5. Settimane Deload Automatiche
+### 5. Integrazione Ciclo Durante Workout
 **File**: `js/app.js`
 
-Durante le settimane deload:
-- Banner visivo "SETTIMANA DELOAD"
-- Riduzione automatica 50% delle serie
-- Notifica all'utente
+Durante l'allenamento:
+- Banner fase corrente con RIR target
+- Volume multiplier applicato (riduzione serie in deload)
+- Nota "Serie ridotte" quando in deload
+- RIR target mostrato per ogni esercizio
+- Suggerimento deload se RIR troppo bassi
+- Auto-suggerimento avanzamento settimana
 
-### 6. Validazione Split/Giorni
+### 6. Statistiche e Storico Cicli
+**File**: `js/modules/storage.js`
+
+Funzioni statistiche:
+- `getCycleStatistics()` - totali workout, volume, serie, PR, RIR medio
+- `getCycleProgressMetrics()` - confronto volume prima/ultima settimana
+- `getCycleHistory()` - storico ultimi 20 cicli completati
+- `saveCycleToHistory()` - salva ciclo con statistiche
+
+Modal riepilogo fine ciclo con:
+- Statistiche complete (allenamenti, volume, serie, PR)
+- Confronto volume prima/ultima settimana con %
+- RIR medio del ciclo
+
+### 7. Validazione Split/Giorni
 **File**: `js/app.js`
 
 Suggerimenti intelligenti per combinazioni ottimali:
