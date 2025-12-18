@@ -33,8 +33,11 @@ const EXERCISE_GIF_MAP = {
     "barbell-row": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bent-Over-Row.gif",
     "pendlay-row": "https://fitnessprogramer.com/wp-content/uploads/2022/07/Barbell-Pendlay-Row.gif",
     "t-bar-row": "https://fitnessprogramer.com/wp-content/uploads/2021/04/t-bar-rows.gif",
+    "rack-pull": "https://fitnessprogramer.com/wp-content/uploads/2023/08/barbell-rack-pull.gif",
+    "barbell-shrug": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Shrug.gif",
     "dumbbell-row": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Row.gif",
     "dumbbell-row-two-arm": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bent-Over-Dumbbell-Row.gif",
+    "chest-supported-row": "https://fitnessprogramer.com/wp-content/uploads/2021/02/45-Degree-Incline-Row.gif",
     "dumbbell-shrug": "https://fitnessprogramer.com/wp-content/uploads/2021/04/Dumbbell-Shrug.gif",
     "lat-pulldown": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
     "lat-pulldown-close": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Close-Grip-Lat-Pulldown.gif",
@@ -43,6 +46,7 @@ const EXERCISE_GIF_MAP = {
     "assisted-pull-up": "https://fitnessprogramer.com/wp-content/uploads/2021/04/Assisted-Pull-up.gif",
     "hyperextension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/hyperextension.gif",
     "straight-arm-pulldown": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Cable-Straight-Arm-Pulldown.gif",
+    "cable-row-single": "https://fitnessprogramer.com/wp-content/uploads/2021/02/One-arm-Cable-Row.gif",
     "face-pull": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Face-Pull.gif",
     "pull-up": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif",
     "chin-up": "https://fitnessprogramer.com/wp-content/uploads/2021/03/Chin-Up.gif",
@@ -165,6 +169,15 @@ const EXERCISE_GIF_MAP = {
     "reverse-wrist-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Reverse-Wrist-Curl.gif",
     "farmer-walk": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Farmers-walk_Cardio.gif",
     "dead-hang": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif",
+
+    // RESISTENZA/CONDIZIONAMENTO
+    "kettlebell-swing": "https://fitnessprogramer.com/wp-content/uploads/2021/09/Kettlebell-Swings.gif",
+    "battle-ropes": "https://fitnessprogramer.com/wp-content/uploads/2015/07/Battle-Rope.gif",
+    "box-jump": "https://fitnessprogramer.com/wp-content/uploads/2015/07/The-Box-Jump.gif",
+    "burpee": "https://fitnessprogramer.com/wp-content/uploads/2025/08/Burpee-with-Push-Up.gif",
+    "thruster": "https://fitnessprogramer.com/wp-content/uploads/2022/10/thruster.gif",
+    "meadows-row": "https://fitnessprogramer.com/wp-content/uploads/2021/10/One-Arm-Landmine-Row.gif",
+    "incline-cable-fly": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Cable-Fly.gif",
 
     // WARMUP & STRETCHING
     "neck-rotation": "https://fitnessprogramer.com/wp-content/uploads/2021/07/Rotating-Neck-Stretch.gif",

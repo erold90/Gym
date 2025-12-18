@@ -173,6 +173,146 @@ const Storage = {
     },
 
     // ========================================
+    // CYCLE TRACKING
+    // ========================================
+
+    // Get cycle progress information
+    getCycleProgress() {
+        const program = this.getActiveProgram();
+        if (!program?.cycle?.startDate) {
+            return null;
+        }
+
+        const cycle = program.cycle;
+        const startDate = new Date(cycle.startDate);
+        const now = new Date();
+
+        // Calculate days since start
+        const diffTime = now - startDate;
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // Calculate current week (1-indexed)
+        const currentWeek = Math.min(
+            Math.floor(diffDays / 7) + 1,
+            cycle.totalWeeks
+        );
+
+        // Calculate percentage complete
+        const percentComplete = Math.min(
+            Math.round((currentWeek / cycle.totalWeeks) * 100),
+            100
+        );
+
+        // Check if cycle is completed
+        const isCompleted = currentWeek > cycle.totalWeeks || diffDays >= cycle.totalWeeks * 7;
+
+        // Days remaining
+        const totalDays = cycle.totalWeeks * 7;
+        const daysRemaining = Math.max(0, totalDays - diffDays);
+
+        // Get current mesocycle
+        const currentMesocycle = this.getCurrentMesocycle(cycle, currentWeek);
+
+        // Check if deload week
+        const isDeloadWeek = cycle.deloadWeeks?.includes(currentWeek) || false;
+
+        // Next deload week
+        const nextDeload = cycle.deloadWeeks?.find(w => w > currentWeek) || null;
+        const weeksUntilDeload = nextDeload ? nextDeload - currentWeek : null;
+
+        return {
+            currentWeek,
+            totalWeeks: cycle.totalWeeks,
+            percentComplete,
+            isCompleted,
+            daysRemaining,
+            startDate: cycle.startDate,
+            currentMesocycle,
+            isDeloadWeek,
+            nextDeloadWeek: nextDeload,
+            weeksUntilDeload,
+            mesocycles: cycle.mesocycles
+        };
+    },
+
+    // Get current mesocycle for a week
+    getCurrentMesocycle(cycle, weekNumber) {
+        if (!cycle?.mesocycles) return null;
+
+        for (const meso of cycle.mesocycles) {
+            if (meso.weeks.includes(weekNumber)) {
+                return {
+                    name: meso.name,
+                    volumeMultiplier: meso.volumeMultiplier,
+                    intensityFocus: meso.intensityFocus,
+                    isDeload: meso.isDeload,
+                    weeksInMeso: meso.weeks,
+                    weekOfMeso: meso.weeks.indexOf(weekNumber) + 1,
+                    totalWeeksInMeso: meso.weeks.length
+                };
+            }
+        }
+        return null;
+    },
+
+    // Get workouts done in current cycle
+    getWorkoutsInCycle() {
+        const program = this.getActiveProgram();
+        if (!program?.cycle?.startDate) {
+            return [];
+        }
+
+        const startDate = new Date(program.cycle.startDate);
+        const workouts = this.getWorkouts();
+
+        return workouts.filter(w => {
+            const workoutDate = new Date(w.date);
+            return workoutDate >= startDate;
+        });
+    },
+
+    // Get workouts for a specific week in the cycle
+    getWorkoutsForCycleWeek(weekNumber) {
+        const program = this.getActiveProgram();
+        if (!program?.cycle?.startDate) {
+            return [];
+        }
+
+        const startDate = new Date(program.cycle.startDate);
+        const weekStart = new Date(startDate);
+        weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+
+        return this.getWorkoutsInDateRange(weekStart, weekEnd);
+    },
+
+    // Update cycle start date (useful if user wants to restart)
+    resetCycleStartDate() {
+        const program = this.getActiveProgram();
+        if (program?.cycle) {
+            program.cycle.startDate = new Date().toISOString();
+            program.cycle.status = 'active';
+            this.setActiveProgram(program);
+            return true;
+        }
+        return false;
+    },
+
+    // Mark cycle as completed
+    completeCycle() {
+        const program = this.getActiveProgram();
+        if (program?.cycle) {
+            program.cycle.status = 'completed';
+            program.cycle.completedDate = new Date().toISOString();
+            this.setActiveProgram(program);
+            return true;
+        }
+        return false;
+    },
+
+    // ========================================
     // MEASUREMENTS
     // ========================================
 

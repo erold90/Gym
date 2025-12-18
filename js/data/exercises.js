@@ -323,6 +323,30 @@ const EXERCISES_DB = {
         instructions: "Con il bilanciere fissato da un lato, tira verso il petto con presa stretta.",
         tips: ["Ottimo per lo spessore della schiena"]
     },
+    "rack-pull": {
+        id: "rack-pull",
+        name: "Rack Pull",
+        category: "bilanciere",
+        primaryMuscles: ["schiena", "trapezio"],
+        secondaryMuscles: ["glutei", "femorali", "avambracci"],
+        type: "compound",
+        difficulty: "intermediate",
+        equipment: ["bilanciere"],
+        instructions: "Imposta il bilanciere sui rack all'altezza delle ginocchia. Esegui la parte finale dello stacco da terra, concentrandoti sulla contrazione della schiena e del trapezio.",
+        tips: ["Ottimo per overload del trapezio", "Permette carichi maggiori dello stacco completo", "Mantieni la schiena neutra"]
+    },
+    "barbell-shrug": {
+        id: "barbell-shrug",
+        name: "Scrollate Bilanciere",
+        category: "bilanciere",
+        primaryMuscles: ["trapezio"],
+        secondaryMuscles: ["avambracci"],
+        type: "isolation",
+        difficulty: "beginner",
+        equipment: ["bilanciere"],
+        instructions: "In piedi con il bilanciere davanti alle cosce, solleva le spalle verso le orecchie senza piegare i gomiti.",
+        tips: ["Non ruotare le spalle", "Tieni la contrazione in alto per 1-2 secondi", "Permette carichi pesanti"]
+    },
 
     // Manubri
     "dumbbell-row": {
@@ -348,6 +372,18 @@ const EXERCISES_DB = {
         equipment: ["manubri"],
         instructions: "Piegato in avanti, tira entrambi i manubri verso i fianchi.",
         tips: ["Mantieni la schiena dritta"]
+    },
+    "chest-supported-row": {
+        id: "chest-supported-row",
+        name: "Rematore su Panca Inclinata",
+        category: "manubri",
+        primaryMuscles: ["schiena"],
+        secondaryMuscles: ["bicipiti", "trapezio"],
+        type: "compound",
+        difficulty: "beginner",
+        equipment: ["manubri", "panca"],
+        instructions: "Sdraiati a pancia in giù su una panca inclinata a 30-45 gradi. Con un manubrio per mano, tira verso i fianchi stringendo le scapole.",
+        tips: ["Elimina il cheating della schiena", "Ottimo per isolare i dorsali", "Mantieni il petto appoggiato alla panca"]
     },
     "dumbbell-shrug": {
         id: "dumbbell-shrug",
@@ -448,6 +484,18 @@ const EXERCISES_DB = {
         equipment: ["cavi"],
         instructions: "In piedi di fronte al cavo alto, spingi la barra verso il basso mantenendo le braccia tese.",
         tips: ["Isola i dorsali", "Non piegare i gomiti"]
+    },
+    "cable-row-single": {
+        id: "cable-row-single",
+        name: "Rematore Cavo Singolo",
+        category: "cavi",
+        primaryMuscles: ["schiena"],
+        secondaryMuscles: ["bicipiti"],
+        type: "isolation",
+        difficulty: "beginner",
+        equipment: ["cavi"],
+        instructions: "Al cavo basso con maniglia singola, tira verso il fianco ruotando leggermente il busto. Alterna le braccia.",
+        tips: ["Ottimo per correggere squilibri", "Focus sulla contrazione unilaterale", "Controlla la fase negativa"]
     },
     "face-pull": {
         id: "face-pull",
@@ -1797,6 +1845,95 @@ const EXERCISES_DB = {
         equipment: ["sbarra"],
         instructions: "Rimani appeso alla sbarra il più a lungo possibile.",
         tips: ["Ottimo per il grip e la decompressione spinale"]
+    },
+
+    // ========================================
+    // ESERCIZI RESISTENZA/CONDIZIONAMENTO
+    // ========================================
+
+    "kettlebell-swing": {
+        id: "kettlebell-swing",
+        name: "Kettlebell Swing",
+        category: "kettlebell",
+        primaryMuscles: ["glutei", "femorali"],
+        secondaryMuscles: ["schiena", "addome", "spalle"],
+        type: "compound",
+        difficulty: "intermediate",
+        equipment: ["kettlebell"],
+        instructions: "In piedi con piedi larghi spalle, afferra il kettlebell con entrambe le mani. Oscilla tra le gambe poi spingi con i fianchi per portarlo all'altezza del petto.",
+        tips: ["Il movimento parte dai fianchi, non dalle braccia", "Mantieni la schiena neutra", "Contrai i glutei in cima"]
+    },
+    "battle-ropes": {
+        id: "battle-ropes",
+        name: "Battle Ropes",
+        category: "cardio",
+        primaryMuscles: ["spalle"],
+        secondaryMuscles: ["bicipiti", "addome", "schiena"],
+        type: "compound",
+        difficulty: "intermediate",
+        equipment: ["corde"],
+        instructions: "Afferra le estremità delle corde, piega leggermente le ginocchia e crea onde alternate con le braccia il più velocemente possibile.",
+        tips: ["Mantieni il core attivo", "Respira ritmicamente", "Ottimo per HIIT"]
+    },
+    "box-jump": {
+        id: "box-jump",
+        name: "Box Jump",
+        category: "pliometria",
+        primaryMuscles: ["quadricipiti", "glutei"],
+        secondaryMuscles: ["polpacci", "femorali"],
+        type: "compound",
+        difficulty: "intermediate",
+        equipment: ["box"],
+        instructions: "Parti in piedi davanti al box. Piega le ginocchia e salta esplosivamente atterrando dolcemente sul box con entrambi i piedi.",
+        tips: ["Atterra dolcemente con le ginocchia piegate", "Scendi camminando, non saltando", "Inizia con altezze basse"]
+    },
+    "burpee": {
+        id: "burpee",
+        name: "Burpee",
+        category: "corpo-libero",
+        primaryMuscles: ["petto", "quadricipiti"],
+        secondaryMuscles: ["tricipiti", "spalle", "addome", "glutei"],
+        type: "compound",
+        difficulty: "intermediate",
+        equipment: [],
+        instructions: "Parti in piedi, scendi in squat, metti le mani a terra, salta indietro in plank, fai un push-up, salta i piedi verso le mani e salta in alto con le braccia sopra la testa.",
+        tips: ["Movimento fluido e continuo", "Ottimo per il condizionamento", "Modifica rimuovendo il push-up se troppo intenso"]
+    },
+    "thruster": {
+        id: "thruster",
+        name: "Thruster",
+        category: "bilanciere",
+        primaryMuscles: ["quadricipiti", "spalle"],
+        secondaryMuscles: ["glutei", "tricipiti", "addome"],
+        type: "compound",
+        difficulty: "advanced",
+        equipment: ["bilanciere"],
+        instructions: "Parti con il bilanciere in posizione front squat. Esegui uno squat completo e risalendo usa lo slancio per premere il bilanciere sopra la testa.",
+        tips: ["Movimento fluido squat-press", "Usa lo slancio delle gambe", "Ottimo per condizionamento metabolico"]
+    },
+    "meadows-row": {
+        id: "meadows-row",
+        name: "Meadows Row",
+        category: "bilanciere",
+        primaryMuscles: ["schiena"],
+        secondaryMuscles: ["bicipiti", "trapezio"],
+        type: "compound",
+        difficulty: "advanced",
+        equipment: ["bilanciere"],
+        instructions: "Posiziona un'estremità del bilanciere in un angolo. Stai perpendicolare alla barra e tira con una mano verso il fianco, ruotando leggermente il busto.",
+        tips: ["Ottimo per lo spessore della schiena", "Permette un ROM maggiore", "Creato da John Meadows"]
+    },
+    "incline-cable-fly": {
+        id: "incline-cable-fly",
+        name: "Croci Cavi Inclinato",
+        category: "cavi",
+        primaryMuscles: ["petto"],
+        secondaryMuscles: ["spalle"],
+        type: "isolation",
+        difficulty: "beginner",
+        equipment: ["cavi", "panca"],
+        instructions: "Posiziona una panca inclinata tra due cavi bassi. Tira i cavi verso l'alto unendo le mani sopra il petto con le braccia leggermente piegate.",
+        tips: ["Enfatizza la parte alta del petto", "Mantieni tensione costante", "Movimento controllato"]
     }
 };
 

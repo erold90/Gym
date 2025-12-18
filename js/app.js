@@ -34,9 +34,56 @@ const App = {
         if (!profile.name) {
             this.showPage('profile');
             this.showNotification('Benvenuto! Configura il tuo profilo per iniziare.', 'info');
+        } else {
+            // Check for cycle notifications (only if profile exists)
+            this.checkCycleNotifications();
         }
 
         console.log('GymTracker Pro initialized!');
+    },
+
+    // Check and show cycle-related notifications
+    checkCycleNotifications() {
+        const cycleProgress = Storage.getCycleProgress();
+        if (!cycleProgress) return;
+
+        // Check for cycle completion
+        if (cycleProgress.isCompleted) {
+            setTimeout(() => {
+                this.showNotification('🎉 Ciclo completato! È ora di generare una nuova scheda per continuare a progredire.', 'success');
+            }, 1000);
+            return;
+        }
+
+        // Check for deload week
+        if (cycleProgress.isDeloadWeek) {
+            setTimeout(() => {
+                this.showNotification('🔄 Questa è una settimana di DELOAD! Riduci i carichi del 30-40% per recuperare.', 'info');
+            }, 1500);
+            return;
+        }
+
+        // Check for mid-cycle (50%)
+        if (cycleProgress.percentComplete >= 48 && cycleProgress.percentComplete <= 52) {
+            setTimeout(() => {
+                this.showNotification(`💪 Sei a metà ciclo! Settimana ${cycleProgress.currentWeek} di ${cycleProgress.totalWeeks}. Continua così!`, 'info');
+            }, 1500);
+            return;
+        }
+
+        // Check if deload is coming soon (1 week away)
+        if (cycleProgress.weeksUntilDeload === 1) {
+            setTimeout(() => {
+                this.showNotification('📅 La prossima settimana è di DELOAD! Dai il massimo questa settimana.', 'info');
+            }, 2000);
+        }
+
+        // Check if near end of cycle (last week before completion)
+        if (cycleProgress.currentWeek === cycleProgress.totalWeeks && !cycleProgress.isDeloadWeek) {
+            setTimeout(() => {
+                this.showNotification('🏁 Ultima settimana del ciclo! Prepara la prossima scheda.', 'info');
+            }, 1500);
+        }
     },
 
     // ========================================
@@ -93,6 +140,11 @@ const App = {
         // Generate program button
         document.getElementById('generate-program-btn')?.addEventListener('click', () => {
             this.generateProgram();
+        });
+
+        // Program days change - update split suggestion
+        document.getElementById('program-days')?.addEventListener('change', () => {
+            this.updateSplitSuggestion();
         });
 
         // Delete program button
@@ -271,6 +323,93 @@ const App = {
         this.updateNextWorkout();
         this.updateRecentActivity();
         this.updateBodyStats();
+        this.updateCycleProgress();
+    },
+
+    updateCycleProgress() {
+        const container = document.getElementById('cycle-progress-card');
+        if (!container) return;
+
+        const cycleProgress = Storage.getCycleProgress();
+        const program = Storage.getActiveProgram();
+
+        if (!cycleProgress || !program) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+
+        // Determine status color
+        let statusColor = '#4361ee'; // Default blue
+        let statusText = cycleProgress.currentMesocycle?.name || 'In corso';
+
+        if (cycleProgress.isDeloadWeek) {
+            statusColor = '#f59e0b'; // Orange for deload
+            statusText = '🔄 Settimana Deload';
+        } else if (cycleProgress.isCompleted) {
+            statusColor = '#10b981'; // Green for completed
+            statusText = '✅ Ciclo Completato';
+        }
+
+        // Build mesocycle timeline
+        const timelineHtml = cycleProgress.mesocycles?.map((meso, idx) => {
+            const isActive = meso.weeks.includes(cycleProgress.currentWeek);
+            const isPast = meso.weeks[meso.weeks.length - 1] < cycleProgress.currentWeek;
+            const isDeload = meso.isDeload;
+
+            let bgColor = 'rgba(255,255,255,0.1)';
+            if (isPast) bgColor = 'rgba(16, 185, 129, 0.3)';
+            if (isActive) bgColor = isDeload ? 'rgba(245, 158, 11, 0.5)' : 'rgba(67, 97, 238, 0.5)';
+
+            return `
+                <div style="flex: ${meso.weeks.length}; background: ${bgColor}; padding: 4px 8px; border-radius: 4px; text-align: center; font-size: 0.75rem;">
+                    ${isDeload ? '🔄' : ''} ${meso.name.replace(' ', '<br>')}
+                </div>
+            `;
+        }).join('') || '';
+
+        container.innerHTML = `
+            <div class="card cycle-card">
+                <h3>📊 Progresso Ciclo</h3>
+                <div class="cycle-info">
+                    <div class="cycle-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span><strong>${program.name}</strong></span>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem;">
+                            ${statusText}
+                        </span>
+                    </div>
+
+                    <div class="cycle-week" style="margin-bottom: 8px;">
+                        <span style="font-size: 1.5rem; font-weight: bold;">Settimana ${cycleProgress.currentWeek}</span>
+                        <span style="color: #a5b4fc;"> di ${cycleProgress.totalWeeks}</span>
+                    </div>
+
+                    <div class="progress-bar" style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 12px;">
+                        <div style="width: ${cycleProgress.percentComplete}%; height: 100%; background: linear-gradient(90deg, #4361ee, #7209b7); transition: width 0.3s;"></div>
+                    </div>
+
+                    <div class="cycle-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin-bottom: 12px;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+                            <div style="font-size: 1.2rem; font-weight: bold;">${cycleProgress.percentComplete}%</div>
+                            <div style="font-size: 0.75rem; color: #a5b4fc;">Completato</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+                            <div style="font-size: 1.2rem; font-weight: bold;">${cycleProgress.daysRemaining}</div>
+                            <div style="font-size: 0.75rem; color: #a5b4fc;">Giorni rimasti</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+                            <div style="font-size: 1.2rem; font-weight: bold;">${cycleProgress.weeksUntilDeload || '-'}</div>
+                            <div style="font-size: 0.75rem; color: #a5b4fc;">Sett. al deload</div>
+                        </div>
+                    </div>
+
+                    <div class="mesocycle-timeline" style="display: flex; gap: 4px; margin-top: 8px;">
+                        ${timelineHtml}
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     updateGreeting() {
@@ -744,6 +883,13 @@ const App = {
             sessionDuration: parseInt(document.getElementById('program-duration').value)
         };
 
+        // Check for suboptimal combinations
+        const warning = this.checkSplitDaysCombination(options.split, options.daysPerWeek);
+        if (warning) {
+            // Show warning but still allow generation
+            this.showNotification(warning, 'warning');
+        }
+
         const program = TrainingAlgorithm.generateProgram(profile, options);
 
         // Save as active program
@@ -752,7 +898,70 @@ const App = {
 
         this.loadPrograms();
         this.loadDashboard();
-        this.showNotification('Scheda generata con successo!', 'success');
+
+        // Show success with cycle info
+        const cycleWeeks = program.cycle?.totalWeeks || 8;
+        this.showNotification(`Scheda generata! Ciclo di ${cycleWeeks} settimane`, 'success');
+    },
+
+    // Check if split+days combination is optimal
+    checkSplitDaysCombination(split, days) {
+        const warnings = {
+            'push-pull-legs': {
+                3: 'PPL con 3 giorni allena ogni muscolo solo 1x/settimana. Considera Full Body per maggior frequenza.',
+                4: 'PPL con 4 giorni è sbilanciato. Considera Upper/Lower per 4 giorni.'
+            },
+            'bro-split': {
+                3: 'Bro Split con 3 giorni non è ottimale. Considera Full Body.',
+                4: 'Bro Split con 4 giorni allena ogni muscolo solo 1x/settimana. Considera Upper/Lower.'
+            },
+            'upper-lower': {
+                3: 'Upper/Lower con 3 giorni è accettabile ma non ottimale.',
+                6: 'Con 6 giorni considera PPL per maggior varietà.'
+            },
+            'full-body': {
+                5: 'Full Body 5 giorni può essere intenso. Assicurati di recuperare.',
+                6: 'Full Body 6 giorni è molto intenso. Considera PPL.'
+            }
+        };
+
+        return warnings[split]?.[days] || null;
+    },
+
+    // Get recommended split for given days
+    getRecommendedSplit(days) {
+        const recommendations = {
+            3: { split: 'full-body', reason: 'Ottimo per allenare tutto il corpo 3x/settimana' },
+            4: { split: 'upper-lower', reason: 'Frequenza 2x/settimana per ogni muscolo' },
+            5: { split: 'upper-lower', reason: 'PPLUL ibrido o Upper/Lower con giorno extra' },
+            6: { split: 'push-pull-legs', reason: 'PPL 2x = frequenza 2x/settimana ottimale' }
+        };
+        return recommendations[days] || recommendations[4];
+    },
+
+    // Update split suggestion when days change
+    updateSplitSuggestion() {
+        const days = parseInt(document.getElementById('program-days')?.value);
+        const suggestion = this.getRecommendedSplit(days);
+        const suggestionEl = document.getElementById('split-suggestion');
+
+        if (suggestionEl && suggestion) {
+            suggestionEl.innerHTML = `
+                <small style="color: #a5b4fc;">
+                    💡 Per ${days} giorni consigliato: <strong>${this.getSplitName(suggestion.split)}</strong>
+                </small>
+            `;
+        }
+    },
+
+    getSplitName(split) {
+        const names = {
+            'upper-lower': 'Upper/Lower',
+            'push-pull-legs': 'Push/Pull/Legs',
+            'full-body': 'Full Body',
+            'bro-split': 'Bro Split'
+        };
+        return names[split] || split;
     },
 
     loadPrograms() {
@@ -911,19 +1120,39 @@ const App = {
     },
 
     startWorkout(workout) {
+        // Check if it's a deload week
+        const cycleProgress = Storage.getCycleProgress();
+        const isDeloadWeek = cycleProgress?.isDeloadWeek || false;
+
         this.activeWorkout = {
             ...workout,
             startTime: Date.now(),
-            exercises: workout.exercises.map(ex => ({
-                ...ex,
-                targetSets: ex.sets,  // Save original set count
-                targetReps: ex.reps,  // Save original rep range
-                setsData: Array(ex.sets).fill(null).map(() => ({
-                    weight: '',
-                    reps: '',
-                    completed: false
-                }))
-            }))
+            isDeloadWeek,
+            exercises: workout.exercises.map(ex => {
+                // Apply deload modifications if needed
+                let adjustedSets = ex.sets;
+                let deloadNote = '';
+
+                if (isDeloadWeek) {
+                    // Reduce sets by ~50% (minimum 2)
+                    adjustedSets = Math.max(2, Math.ceil(ex.sets * 0.5));
+                    deloadNote = '⚡ DELOAD: Riduci il peso del 30-40%';
+                }
+
+                return {
+                    ...ex,
+                    originalSets: ex.sets,    // Store original
+                    sets: adjustedSets,        // Apply deload reduction
+                    targetSets: adjustedSets,
+                    targetReps: ex.reps,
+                    deloadNote,
+                    setsData: Array(adjustedSets).fill(null).map(() => ({
+                        weight: '',
+                        reps: '',
+                        completed: false
+                    }))
+                };
+            })
         };
         this.currentExerciseIndex = 0;
         this.currentSetIndex = 0;
@@ -931,6 +1160,11 @@ const App = {
         // Show workout UI
         document.getElementById('workout-not-started').style.display = 'none';
         document.getElementById('workout-active').style.display = 'block';
+
+        // Show deload banner if applicable
+        if (isDeloadWeek) {
+            this.showDeloadBanner();
+        }
 
         // Start workout timer
         Timer.startWorkoutTimer((time) => {
@@ -945,6 +1179,30 @@ const App = {
 
         // Navigate to workout page
         this.showPage('workout');
+    },
+
+    showDeloadBanner() {
+        // Remove existing banner if present
+        const existingBanner = document.getElementById('deload-banner');
+        if (existingBanner) existingBanner.remove();
+
+        // Create deload banner
+        const banner = document.createElement('div');
+        banner.id = 'deload-banner';
+        banner.innerHTML = `
+            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; text-align: center;">
+                <strong>🔄 SETTIMANA DI DELOAD</strong>
+                <p style="margin: 4px 0 0; font-size: 0.9rem; opacity: 0.9;">
+                    Set ridotti del 50% • Riduci i carichi del 30-40% • Focus sul recupero
+                </p>
+            </div>
+        `;
+
+        // Insert before warmup section
+        const warmupSection = document.getElementById('warmup-section');
+        if (warmupSection) {
+            warmupSection.parentNode.insertBefore(banner, warmupSection);
+        }
     },
 
     displayWarmup(warmupType) {

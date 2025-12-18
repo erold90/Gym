@@ -41,6 +41,54 @@ const TrainingAlgorithm = {
         endurance: { compound: 60, isolation: 45 }
     },
 
+    // Time configuration (in minutes)
+    TIME_CONFIG: {
+        warmupTime: 8,              // Minuti per riscaldamento
+        cooldownTime: 5,            // Minuti per defaticamento
+        secondsPerSet: 45,          // Secondi medi per completare un set
+        transitionTime: 30          // Secondi per cambio esercizio
+    },
+
+    // Cycle duration configuration (in weeks) based on goal and level
+    CYCLE_CONFIG: {
+        // Durata totale del ciclo per obiettivo
+        duration: {
+            strength: { beginner: 6, intermediate: 8, advanced: 8, expert: 10 },
+            hypertrophy: { beginner: 8, intermediate: 10, advanced: 12, expert: 12 },
+            recomp: { beginner: 8, intermediate: 8, advanced: 10, expert: 10 },
+            endurance: { beginner: 6, intermediate: 6, advanced: 8, expert: 8 }
+        },
+        // Struttura mesocicli (settimane)
+        mesocyclePatterns: {
+            strength: [
+                { name: 'Forza Base', weeks: 3, volumeMultiplier: 0.85, intensityFocus: 'heavy' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' },
+                { name: 'Forza Picco', weeks: 3, volumeMultiplier: 1.0, intensityFocus: 'max' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' }
+            ],
+            hypertrophy: [
+                { name: 'Volume', weeks: 3, volumeMultiplier: 1.0, intensityFocus: 'moderate' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' },
+                { name: 'Intensificazione', weeks: 3, volumeMultiplier: 0.9, intensityFocus: 'heavy' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' },
+                { name: 'Metabolico', weeks: 3, volumeMultiplier: 1.1, intensityFocus: 'moderate' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' }
+            ],
+            recomp: [
+                { name: 'Adattamento', weeks: 3, volumeMultiplier: 0.9, intensityFocus: 'moderate' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' },
+                { name: 'Progressione', weeks: 3, volumeMultiplier: 1.0, intensityFocus: 'moderate' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' }
+            ],
+            endurance: [
+                { name: 'Base Aerobica', weeks: 2, volumeMultiplier: 0.9, intensityFocus: 'light' },
+                { name: 'Build', weeks: 2, volumeMultiplier: 1.0, intensityFocus: 'moderate' },
+                { name: 'Peak', weeks: 1, volumeMultiplier: 1.1, intensityFocus: 'high' },
+                { name: 'Deload', weeks: 1, volumeMultiplier: 0.5, intensityFocus: 'light' }
+            ]
+        }
+    },
+
     // Muscle groups by category
     PUSH_MUSCLES: ['petto', 'spalle', 'tricipiti'],
     PULL_MUSCLES: ['schiena', 'bicipiti', 'avambracci', 'trapezio'],
@@ -131,6 +179,9 @@ const TrainingAlgorithm = {
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
         }
 
+        // Generate cycle structure
+        const cycle = this.generateCycleStructure(goal, profile.level);
+
         program.metadata = {
             goal,
             split,
@@ -141,7 +192,73 @@ const TrainingAlgorithm = {
             weeklyVolume: this.calculateWeeklyVolume(program)
         };
 
+        program.cycle = cycle;
+
         return program;
+    },
+
+    // Generate cycle/periodization structure
+    generateCycleStructure(goal, level) {
+        const totalWeeks = this.CYCLE_CONFIG.duration[goal]?.[level] ||
+                          this.CYCLE_CONFIG.duration.recomp.intermediate;
+
+        const mesocyclePattern = this.CYCLE_CONFIG.mesocyclePatterns[goal] ||
+                                this.CYCLE_CONFIG.mesocyclePatterns.recomp;
+
+        // Build mesocycles with week numbers
+        const mesocycles = [];
+        let currentWeek = 1;
+
+        for (const pattern of mesocyclePattern) {
+            // Check if we still have weeks to assign
+            if (currentWeek > totalWeeks) break;
+
+            const weeksForThisMeso = Math.min(pattern.weeks, totalWeeks - currentWeek + 1);
+            const weekNumbers = [];
+
+            for (let i = 0; i < weeksForThisMeso; i++) {
+                weekNumbers.push(currentWeek + i);
+            }
+
+            mesocycles.push({
+                name: pattern.name,
+                weeks: weekNumbers,
+                volumeMultiplier: pattern.volumeMultiplier,
+                intensityFocus: pattern.intensityFocus,
+                isDeload: pattern.name === 'Deload'
+            });
+
+            currentWeek += weeksForThisMeso;
+        }
+
+        // Identify deload weeks
+        const deloadWeeks = mesocycles
+            .filter(m => m.isDeload)
+            .flatMap(m => m.weeks);
+
+        return {
+            startDate: new Date().toISOString(),
+            totalWeeks,
+            mesocycles,
+            deloadWeeks,
+            currentWeek: 1,
+            status: 'active'
+        };
+    },
+
+    // Get current mesocycle info for a given week
+    getMesocycleForWeek(cycle, weekNumber) {
+        for (const meso of cycle.mesocycles) {
+            if (meso.weeks.includes(weekNumber)) {
+                return meso;
+            }
+        }
+        return null;
+    },
+
+    // Check if a week is a deload week
+    isDeloadWeek(cycle, weekNumber) {
+        return cycle.deloadWeeks.includes(weekNumber);
     },
 
     // ========================================
@@ -355,7 +472,8 @@ const TrainingAlgorithm = {
             notes: 'Per salute delle spalle e postura'
         });
 
-        return exercises;
+        // Trim exercises to fit session duration
+        return this.trimExercisesToFitTime(exercises, sessionDuration);
     },
 
     buildLowerWorkout(profile, baseSets, repRanges, restTimes, variant, sessionDuration) {
@@ -396,7 +514,8 @@ const TrainingAlgorithm = {
         // Core
         exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises));
 
-        return exercises;
+        // Trim exercises to fit session duration
+        return this.trimExercisesToFitTime(exercises, sessionDuration);
     },
 
     buildArmsWorkout(profile, baseSets, repRanges, restTimes, sessionDuration) {
@@ -423,7 +542,8 @@ const TrainingAlgorithm = {
             notes: 'Opzionale per avambracci'
         });
 
-        return exercises;
+        // Trim exercises to fit session duration
+        return this.trimExercisesToFitTime(exercises, sessionDuration);
     },
 
     // ========================================
@@ -521,23 +641,25 @@ const TrainingAlgorithm = {
             const dayNum = i + 1;
             const variant = i % 2 === 0 ? 'A' : 'B'; // Alternate
 
+            const exercises = [
+                // Compound movements for major muscles
+                ...this.selectExercises('quadricipiti', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                ...this.selectExercises('petto', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                ...this.selectExercises('schiena', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                ...this.selectExercises(variant === 'A' ? 'femorali' : 'glutei', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                ...this.selectExercises('spalle', variant === 'A' ? 'compound' : 'isolation', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                // Accessories
+                ...this.selectExercises('bicipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
+                ...this.selectExercises('tricipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
+                ...this.selectExercises('addome', 'isolation', 1, 3, equipment, repRanges, restTimes)
+            ];
+
             program.days.push({
                 name: `Giorno ${dayNum}`,
                 type: `Full Body ${variant}`,
                 focus: 'Tutto il Corpo',
                 warmup: 'full-body',
-                exercises: [
-                    // Compound movements for major muscles
-                    ...this.selectExercises('quadricipiti', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('petto', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('schiena', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises(variant === 'A' ? 'femorali' : 'glutei', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('spalle', variant === 'A' ? 'compound' : 'isolation', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    // Accessories
-                    ...this.selectExercises('bicipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
-                    ...this.selectExercises('tricipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
-                    ...this.selectExercises('addome', 'isolation', 1, 3, equipment, repRanges, restTimes)
-                ]
+                exercises: this.trimExercisesToFitTime(exercises, sessionDuration)
             });
         }
 
@@ -558,69 +680,74 @@ const TrainingAlgorithm = {
         const equipment = profile.equipment || [];
 
         // Chest Day
+        const chestExercises = [
+            ...this.selectExercises('petto', 'compound', 3, Math.ceil(setsPerMuscle * 0.7), equipment, repRanges, restTimes),
+            ...this.selectExercises('petto', 'isolation', 2, Math.ceil(setsPerMuscle * 0.3), equipment, repRanges, restTimes)
+        ];
         program.days.push({
             name: 'Giorno 1',
             type: 'Chest',
             focus: 'Petto',
             warmup: 'petto',
-            exercises: [
-                ...this.selectExercises('petto', 'compound', 3, Math.ceil(setsPerMuscle * 0.7), equipment, repRanges, restTimes),
-                ...this.selectExercises('petto', 'isolation', 2, Math.ceil(setsPerMuscle * 0.3), equipment, repRanges, restTimes)
-            ]
+            exercises: this.trimExercisesToFitTime(chestExercises, sessionDuration)
         });
 
         // Back Day
+        const backExercises = [
+            ...this.selectExercises('schiena', 'compound', 4, Math.ceil(setsPerMuscle * 0.8), equipment, repRanges, restTimes),
+            ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
+            { exerciseId: 'face-pull', name: 'Face Pull', sets: 3, reps: '15-20', rest: 60 }
+        ];
         program.days.push({
             name: 'Giorno 2',
             type: 'Back',
             focus: 'Schiena',
             warmup: 'schiena',
-            exercises: [
-                ...this.selectExercises('schiena', 'compound', 4, Math.ceil(setsPerMuscle * 0.8), equipment, repRanges, restTimes),
-                ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
-                { exerciseId: 'face-pull', name: 'Face Pull', sets: 3, reps: '15-20', rest: 60 }
-            ]
+            exercises: this.trimExercisesToFitTime(backExercises, sessionDuration)
         });
 
         // Shoulders Day
+        const shoulderExercises = [
+            ...this.selectExercises('spalle', 'compound', 2, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
+            ...this.selectExercises('spalle', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
+        ];
         program.days.push({
             name: 'Giorno 3',
             type: 'Shoulders',
             focus: 'Spalle',
             warmup: 'spalle',
-            exercises: [
-                ...this.selectExercises('spalle', 'compound', 2, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
-                ...this.selectExercises('spalle', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
-            ]
+            exercises: this.trimExercisesToFitTime(shoulderExercises, sessionDuration)
         });
 
         // Legs Day
+        const legsExercises = [
+            ...this.selectExercises('quadricipiti', 'compound', 2, Math.ceil(setsPerMuscle * 0.4), equipment, repRanges, restTimes),
+            ...this.selectExercises('femorali', 'compound', 1, Math.ceil(setsPerMuscle * 0.25), equipment, repRanges, restTimes),
+            ...this.selectExercises('glutei', 'compound', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
+            ...this.selectExercises('quadricipiti', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
+            ...this.selectExercises('femorali', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
+            ...this.selectExercises('polpacci', 'isolation', 2, 4, equipment, repRanges, restTimes)
+        ];
         program.days.push({
             name: 'Giorno 4',
             type: 'Legs',
             focus: 'Gambe',
             warmup: 'lower',
-            exercises: [
-                ...this.selectExercises('quadricipiti', 'compound', 2, Math.ceil(setsPerMuscle * 0.4), equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'compound', 1, Math.ceil(setsPerMuscle * 0.25), equipment, repRanges, restTimes),
-                ...this.selectExercises('glutei', 'compound', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
-                ...this.selectExercises('quadricipiti', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
-                ...this.selectExercises('polpacci', 'isolation', 2, 4, equipment, repRanges, restTimes)
-            ]
+            exercises: this.trimExercisesToFitTime(legsExercises, sessionDuration)
         });
 
         // Arms Day (if 5+ days)
         if (days >= 5) {
+            const armsExercises = [
+                ...this.selectExercises('bicipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
+                ...this.selectExercises('tricipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
+            ];
             program.days.push({
                 name: 'Giorno 5',
                 type: 'Arms',
                 focus: 'Bicipiti & Tricipiti',
                 warmup: 'bicipiti',
-                exercises: [
-                    ...this.selectExercises('bicipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
-                    ...this.selectExercises('tricipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
-                ]
+                exercises: this.trimExercisesToFitTime(armsExercises, sessionDuration)
             });
         }
 
@@ -630,6 +757,73 @@ const TrainingAlgorithm = {
     // ========================================
     // HELPER FUNCTIONS
     // ========================================
+
+    // Calculate time for a single exercise in minutes
+    calculateExerciseTime(exercise) {
+        const sets = exercise.sets || 3;
+        const rest = exercise.rest || 60;
+
+        // Time = (sets × secondsPerSet) + ((sets - 1) × rest) + transitionTime
+        const totalSeconds = (sets * this.TIME_CONFIG.secondsPerSet) +
+                            ((sets - 1) * rest) +
+                            this.TIME_CONFIG.transitionTime;
+
+        return totalSeconds / 60; // Return minutes
+    },
+
+    // Calculate total workout time in minutes
+    calculateWorkoutTime(exercises) {
+        return exercises.reduce((total, ex) => total + this.calculateExerciseTime(ex), 0);
+    },
+
+    // Get available training time (excluding warmup/cooldown)
+    getAvailableTrainingTime(sessionDuration) {
+        return sessionDuration - this.TIME_CONFIG.warmupTime - this.TIME_CONFIG.cooldownTime;
+    },
+
+    // Get max exercises based on session duration
+    getMaxExercises(sessionDuration) {
+        const maxExercisesByDuration = {
+            45: 5,   // 45 min → max 5 esercizi
+            60: 7,   // 60 min → max 7 esercizi
+            75: 9,   // 75 min → max 9 esercizi
+            90: 11   // 90 min → max 11 esercizi
+        };
+        return maxExercisesByDuration[sessionDuration] || 7;
+    },
+
+    // Trim exercises to fit available time, prioritizing first exercises (most important)
+    trimExercisesToFitTime(exercises, sessionDuration) {
+        const availableTime = this.getAvailableTrainingTime(sessionDuration);
+        const maxExercises = this.getMaxExercises(sessionDuration);
+
+        let currentTime = 0;
+        const fittingExercises = [];
+
+        for (const exercise of exercises) {
+            // Check both time and max exercise count
+            if (fittingExercises.length >= maxExercises) break;
+
+            const exerciseTime = this.calculateExerciseTime(exercise);
+
+            if (currentTime + exerciseTime <= availableTime) {
+                fittingExercises.push(exercise);
+                currentTime += exerciseTime;
+            } else {
+                // Try reducing sets if close to fitting
+                const reducedExercise = { ...exercise, sets: Math.max(2, exercise.sets - 1) };
+                const reducedTime = this.calculateExerciseTime(reducedExercise);
+
+                if (currentTime + reducedTime <= availableTime) {
+                    fittingExercises.push(reducedExercise);
+                    currentTime += reducedTime;
+                }
+                // Otherwise skip this exercise
+            }
+        }
+
+        return fittingExercises;
+    },
 
     selectExercises(muscle, type, count, sets, equipment, repRanges, restTimes) {
         const priorityList = this.EXERCISE_PRIORITY[muscle];
