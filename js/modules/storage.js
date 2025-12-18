@@ -360,6 +360,147 @@ const Storage = {
     },
 
     // ========================================
+    // DOUBLE PROGRESSION SYSTEM
+    // ========================================
+
+    /**
+     * Parse rep range string (e.g., "8-12") into min/max object
+     */
+    parseRepRange(repRangeStr) {
+        if (!repRangeStr || typeof repRangeStr !== 'string') {
+            return { min: 8, max: 12 }; // Default
+        }
+        const parts = repRangeStr.split('-').map(p => parseInt(p.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            return { min: parts[0], max: parts[1] };
+        }
+        // Single number case (e.g., "10")
+        const single = parseInt(repRangeStr);
+        if (!isNaN(single)) {
+            return { min: single, max: single };
+        }
+        return { min: 8, max: 12 };
+    },
+
+    /**
+     * Calculate progression suggestion based on Double Progression method
+     * @param {string} exerciseId - The exercise ID
+     * @param {string} targetRepRange - Target rep range (e.g., "8-12")
+     * @param {string} goal - User's goal (strength, hypertrophy, recomp, endurance)
+     * @param {string} exerciseType - 'compound' or 'isolation'
+     * @returns {Object} Suggestion object with weight, message, and status
+     */
+    getProgressionSuggestion(exerciseId, targetRepRange, goal = 'hypertrophy', exerciseType = 'compound') {
+        const lastPerf = this.getLastPerformance(exerciseId);
+        const range = this.parseRepRange(targetRepRange);
+
+        // Default suggestion for first time
+        if (!lastPerf) {
+            return {
+                suggestedWeight: null,
+                suggestedReps: range.min,
+                message: 'Prima volta! Inizia con un peso che ti permetta ' + range.min + '-' + range.max + ' rep',
+                status: 'new',
+                action: 'start'
+            };
+        }
+
+        const lastWeight = lastPerf.weight;
+        const lastReps = lastPerf.allSets.map(s => s.reps);
+        const avgReps = Math.round(lastReps.reduce((a, b) => a + b, 0) / lastReps.length);
+        const minRepsAchieved = Math.min(...lastReps);
+        const allSetsAtTop = lastReps.every(r => r >= range.max);
+        const allSetsInRange = lastReps.every(r => r >= range.min && r <= range.max);
+
+        // Weight increment based on exercise type
+        const weightIncrement = exerciseType === 'compound' ? 2.5 : 1.25;
+        // For lower body compounds, use larger increment
+        const lowerBodyExercises = ['squat', 'front-squat', 'leg-press', 'deadlift', 'romanian-deadlift', 'hip-thrust', 'hack-squat'];
+        const isLowerBody = lowerBodyExercises.some(ex => exerciseId.includes(ex));
+        const actualIncrement = isLowerBody ? 5 : weightIncrement;
+
+        // CASE 1: All sets at or above top of range → INCREASE WEIGHT
+        if (allSetsAtTop) {
+            const newWeight = lastWeight + actualIncrement;
+            return {
+                suggestedWeight: newWeight,
+                suggestedReps: range.min,
+                message: `🎯 Aumenta a ${newWeight}kg! Hai raggiunto ${range.max} rep su tutte le serie`,
+                status: 'increase_weight',
+                action: 'weight_up',
+                lastPerformance: { weight: lastWeight, reps: lastReps }
+            };
+        }
+
+        // CASE 2: All sets in range but not at top → INCREASE REPS
+        if (allSetsInRange) {
+            const targetReps = lastReps.map(r => Math.min(r + 1, range.max));
+            return {
+                suggestedWeight: lastWeight,
+                suggestedReps: targetReps,
+                message: `💪 Stesso peso (${lastWeight}kg), punta a +1 rep per serie`,
+                status: 'increase_reps',
+                action: 'reps_up',
+                lastPerformance: { weight: lastWeight, reps: lastReps }
+            };
+        }
+
+        // CASE 3: Some sets below range → MAINTAIN or check for issues
+        if (minRepsAchieved < range.min) {
+            // Check if this is a recurring problem (would need history check)
+            return {
+                suggestedWeight: lastWeight,
+                suggestedReps: range.min,
+                message: `⚠️ Mantieni ${lastWeight}kg, focus su raggiungere ${range.min} rep minimo`,
+                status: 'maintain',
+                action: 'consolidate',
+                lastPerformance: { weight: lastWeight, reps: lastReps }
+            };
+        }
+
+        // CASE 4: Mixed results → MAINTAIN
+        return {
+            suggestedWeight: lastWeight,
+            suggestedReps: avgReps,
+            message: `📊 Mantieni ${lastWeight}kg, prossimo obiettivo: ${range.max} rep consistenti`,
+            status: 'maintain',
+            action: 'maintain',
+            lastPerformance: { weight: lastWeight, reps: lastReps }
+        };
+    },
+
+    /**
+     * Get progression summary for all exercises in a workout
+     * @param {Array} exercises - Array of exercise objects with exerciseId and reps
+     * @param {string} goal - User's goal
+     * @returns {Array} Array of progression suggestions
+     */
+    getWorkoutProgressionSummary(exercises, goal = 'hypertrophy') {
+        return exercises.map(ex => {
+            const exerciseType = this.getExerciseType(ex.exerciseId);
+            return {
+                exerciseId: ex.exerciseId,
+                name: ex.name,
+                ...this.getProgressionSuggestion(ex.exerciseId, ex.reps || ex.targetReps, goal, exerciseType)
+            };
+        });
+    },
+
+    /**
+     * Determine if exercise is compound or isolation
+     */
+    getExerciseType(exerciseId) {
+        const compoundExercises = [
+            'bench-press', 'incline-bench-press', 'dumbbell-bench-press', 'dumbbell-incline-press',
+            'squat', 'front-squat', 'leg-press', 'hack-squat', 'deadlift', 'romanian-deadlift',
+            'barbell-row', 'pull-up', 'chin-up', 'lat-pulldown', 't-bar-row', 'seated-cable-row',
+            'overhead-press', 'dumbbell-shoulder-press', 'arnold-press', 'push-press',
+            'hip-thrust', 'bulgarian-split-squat', 'dumbbell-lunge', 'dips', 'close-grip-bench'
+        ];
+        return compoundExercises.some(ex => exerciseId.includes(ex)) ? 'compound' : 'isolation';
+    },
+
+    // ========================================
     // STREAK
     // ========================================
 

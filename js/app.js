@@ -1026,6 +1026,15 @@ const App = {
         // Get tempo from active program
         const activeProgram = Storage.getActiveProgram();
         const tempo = activeProgram?.metadata?.tempo;
+        const userGoal = activeProgram?.metadata?.goal || profile.goal || 'hypertrophy';
+
+        // Get progression suggestion (Double Progression)
+        const progressionSuggestion = Storage.getProgressionSuggestion(
+            exercise.exerciseId,
+            exercise.targetReps,
+            userGoal,
+            Storage.getExerciseType(exercise.exerciseId)
+        );
 
         // Check if this is a bodyweight exercise
         const isBodyweight = exerciseData?.category === 'corpo-libero' ||
@@ -1082,6 +1091,19 @@ const App = {
                 <div class="pr-info">
                     <span class="pr-badge">PR</span>
                     <span class="pr-value">${pr.maxWeight}kg × ${pr.maxWeightReps || '?'}</span>
+                </div>
+            `;
+        }
+
+        // Build progression suggestion HTML
+        let progressionHTML = '';
+        if (progressionSuggestion && progressionSuggestion.status !== 'new') {
+            const statusClass = progressionSuggestion.action === 'weight_up' ? 'suggestion-up' :
+                               progressionSuggestion.action === 'reps_up' ? 'suggestion-reps' :
+                               'suggestion-maintain';
+            progressionHTML = `
+                <div class="progression-suggestion ${statusClass}">
+                    <span class="progression-message">${progressionSuggestion.message}</span>
                 </div>
             `;
         }
@@ -1151,6 +1173,7 @@ const App = {
                 ${lastPerfHTML}
                 ${prHTML}
             </div>
+            ${progressionHTML}
             <div class="exercise-target-mobile">
                 <div class="target-item">
                     <span class="target-label">Serie</span>
@@ -1201,6 +1224,17 @@ const App = {
                             onclick="App.completeSet(${idx})">
                             ${set.completed ? '✓' : ''}${set.isNewPR ? '🏆' : ''}
                         </button>
+                        ${set.completed ? `
+                        <div class="rir-selector" title="Quante rep potevi ancora fare?">
+                            <span class="rir-label">RIR:</span>
+                            <div class="rir-buttons">
+                                ${[0,1,2,3,4].map(rir => `
+                                    <button class="rir-btn ${set.rir === rir ? 'active' : ''}"
+                                        onclick="App.setRir(${idx}, ${rir})">${rir}${rir === 4 ? '+' : ''}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                 `).join('')}
             </div>
@@ -1274,6 +1308,20 @@ const App = {
         exercise.setsData[setIndex][field] = value;
     },
 
+    setRir(setIndex, rir) {
+        if (!this.activeWorkout) return;
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        exercise.setsData[setIndex].rir = rir;
+        this.displayCurrentExercise();
+
+        // Show feedback based on RIR
+        if (rir === 0) {
+            this.showNotification('⚠️ RIR 0: Cedimento raggiunto. Considera meno peso prossima volta.', 'warning');
+        } else if (rir >= 4) {
+            this.showNotification('💡 RIR 4+: Troppo leggero! Considera più peso.', 'info');
+        }
+    },
+
     completeSet(setIndex) {
         if (!this.activeWorkout) return;
 
@@ -1301,6 +1349,25 @@ const App = {
 
                 // Play celebration sound
                 Timer.playCompletionSound();
+            }
+
+            // Check if all sets are completed at top of rep range
+            const completedSets = exercise.setsData.filter(s => s.completed && s.reps);
+            if (completedSets.length === exercise.targetSets) {
+                const range = Storage.parseRepRange(exercise.targetReps);
+                const allAtTop = completedSets.every(s => parseInt(s.reps) >= range.max);
+
+                if (allAtTop && !exercise.topRangeNotified) {
+                    exercise.topRangeNotified = true;
+                    const exerciseType = Storage.getExerciseType(exercise.exerciseId);
+                    const increment = exerciseType === 'compound' ? 2.5 : 1.25;
+                    const isLower = ['squat', 'deadlift', 'leg-press', 'hip-thrust'].some(ex => exercise.exerciseId.includes(ex));
+                    const actualIncrement = isLower ? 5 : increment;
+
+                    setTimeout(() => {
+                        this.showNotification(`🎯 Ottimo! Prossima volta aumenta di ${actualIncrement}kg!`, 'success');
+                    }, 500);
+                }
             }
         } else {
             set.isNewPR = false;
@@ -1446,9 +1513,48 @@ const App = {
             };
 
             Storage.saveWorkout(workoutData);
+
+            // Generate progression summary for next session
+            const profile = Storage.getProfile();
+            const activeProgram = Storage.getActiveProgram();
+            const userGoal = activeProgram?.metadata?.goal || profile.goal || 'hypertrophy';
+
+            const progressionSummary = this.activeWorkout.exercises.map(ex => {
+                const completedSets = ex.setsData.filter(s => s.completed && s.reps);
+                if (completedSets.length === 0) return null;
+
+                const range = Storage.parseRepRange(ex.targetReps);
+                const reps = completedSets.map(s => parseInt(s.reps));
+                const avgReps = Math.round(reps.reduce((a, b) => a + b, 0) / reps.length);
+                const weight = parseFloat(completedSets[0].weight) || 0;
+                const allAtTop = reps.every(r => r >= range.max);
+                const allInRange = reps.every(r => r >= range.min);
+
+                const exerciseType = Storage.getExerciseType(ex.exerciseId);
+                const increment = exerciseType === 'compound' ? 2.5 : 1.25;
+                const isLower = ['squat', 'deadlift', 'leg-press', 'hip-thrust'].some(e => ex.exerciseId.includes(e));
+                const actualIncrement = isLower ? 5 : increment;
+
+                if (allAtTop) {
+                    return { name: ex.name, action: 'up', message: `+${actualIncrement}kg → ${weight + actualIncrement}kg` };
+                } else if (allInRange) {
+                    return { name: ex.name, action: 'reps', message: `${weight}kg, +1 rep` };
+                } else {
+                    return { name: ex.name, action: 'maintain', message: `${weight}kg, consolida` };
+                }
+            }).filter(Boolean);
+
+            // Store summary for display
+            this.lastWorkoutSummary = {
+                volume: Math.round(totalVolume),
+                sets: totalSets,
+                duration: duration,
+                progressions: progressionSummary
+            };
         }
 
         // Reset state
+        const workoutExercises = this.activeWorkout?.exercises || [];
         this.activeWorkout = null;
         this.currentExerciseIndex = 0;
 
@@ -1461,8 +1567,62 @@ const App = {
         // Update dashboard
         this.loadDashboard();
 
+        // Show completion notification with progression hints
         this.showNotification(`Allenamento completato! Volume: ${this.formatNumber(totalVolume)} kg`, 'success');
+
+        // Show progression summary modal
+        if (this.lastWorkoutSummary && this.lastWorkoutSummary.progressions.length > 0) {
+            this.showProgressionSummary();
+        }
+
         this.showPage('dashboard');
+    },
+
+    showProgressionSummary() {
+        const summary = this.lastWorkoutSummary;
+        if (!summary) return;
+
+        const upCount = summary.progressions.filter(p => p.action === 'up').length;
+        const repsCount = summary.progressions.filter(p => p.action === 'reps').length;
+
+        let summaryHTML = `
+            <div class="progression-summary-modal" id="progression-summary-modal">
+                <div class="progression-summary-content">
+                    <h3>📈 Riepilogo Progressione</h3>
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="stat-value">${this.formatNumber(summary.volume)}</span>
+                            <span class="stat-label">kg volume</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${summary.sets}</span>
+                            <span class="stat-label">serie</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${upCount}</span>
+                            <span class="stat-label">↑ peso</span>
+                        </div>
+                    </div>
+                    <h4>Prossima sessione:</h4>
+                    <div class="progression-list">
+                        ${summary.progressions.map(p => `
+                            <div class="progression-item ${p.action}">
+                                <span class="prog-name">${p.name}</span>
+                                <span class="prog-action">${p.message}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-primary" onclick="App.closeProgressionSummary()">Ho capito!</button>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', summaryHTML);
+    },
+
+    closeProgressionSummary() {
+        const modal = document.getElementById('progression-summary-modal');
+        if (modal) modal.remove();
     },
 
     // ========================================
