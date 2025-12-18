@@ -1348,7 +1348,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Leg Swings Laterali": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Side-to-Side-Leg-Swings.gif",
+        gifUrl: "https://gymvisual.com/img/p/1/0/7/5/2/10752.gif",
         svgAnimation: "leg-swings-lateral",
         execution: {
             steps: [
@@ -1364,7 +1364,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Hip Circles": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hip-Circles.gif",
+        gifUrl: "https://gymvisual.com/img/p/9/1/8/2/9182.gif",
         svgAnimation: "hip-circles",
         execution: {
             steps: [
@@ -1425,7 +1425,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Inchworms": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Inchworm.gif",
+        gifUrl: "https://gymvisual.com/img/p/6/7/0/6/6706.gif",
         execution: {
             steps: [
                 "In piedi, piegati in avanti e tocca il pavimento",
@@ -1471,7 +1471,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Bird Dog": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bird-Dog.gif",
+        gifUrl: "https://gymvisual.com/img/p/9/0/3/1/9031.gif",
         execution: {
             steps: [
                 "A quattro zampe, core attivato",
@@ -1516,7 +1516,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Mountain Climbers": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif",
+        gifUrl: "https://gymvisual.com/img/p/1/9/8/5/7/19857.gif",
         execution: {
             steps: [
                 "In posizione di plank alto",
@@ -1531,7 +1531,7 @@ const WARMUP_DETAILS = {
         }
     },
     "High Knees": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/High-Knee-Run.gif",
+        gifUrl: "https://gymvisual.com/img/p/1/6/8/9/2/16892.gif",
         execution: {
             steps: [
                 "Corri sul posto sollevando le ginocchia alte",
@@ -1643,7 +1643,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Scapular Retraction": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Scapular-Retraction.gif",
+        gifUrl: "https://gymvisual.com/img/p/6/6/1/3/6613.gif",
         execution: {
             steps: [
                 "In piedi con buona postura",
@@ -1658,7 +1658,7 @@ const WARMUP_DETAILS = {
         }
     },
     "Arm Swings Orizzontali": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Arm-Crossover.gif",
+        gifUrl: "https://gymvisual.com/img/p/5/1/8/2/5182.gif",
         execution: {
             steps: [
                 "In piedi, braccia distese ai lati",
@@ -1822,7 +1822,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Seated Forward Fold": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Forward-Bend.gif",
+        gifUrl: "https://gymvisual.com/img/p/3/5/2/7/3/35273.gif",
         svgAnimation: "forward-fold",
         execution: {
             steps: [
@@ -1870,7 +1870,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Lying Spinal Twist": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Spinal-Twist.gif",
+        gifUrl: "https://gymvisual.com/img/p/2/7/2/9/7/27297.gif",
         svgAnimation: "spinal-twist",
         execution: {
             steps: [
@@ -1901,7 +1901,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Deep Breathing": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Diaphragmatic-Breathing.gif",
+        gifUrl: "",  // Nessuna GIF disponibile, usa SVG fallback
         svgAnimation: "breathing",
         execution: {
             steps: [
