@@ -25,20 +25,23 @@ const TrainingAlgorithm = {
         expert: { min: 14, optimal: 18, max: 22 }
     },
 
-    // Rep ranges based on goal
+    // Rep ranges based on goal (scientifically optimized)
+    // Sources: Schoenfeld et al., Stronger by Science, PMC research
     REP_RANGES: {
-        strength: { compound: { min: 3, max: 6 }, isolation: { min: 6, max: 8 } },
-        hypertrophy: { compound: { min: 6, max: 10 }, isolation: { min: 8, max: 12 } },
-        recomp: { compound: { min: 6, max: 10 }, isolation: { min: 8, max: 15 } },
-        endurance: { compound: { min: 12, max: 15 }, isolation: { min: 15, max: 20 } }
+        strength: { compound: { min: 3, max: 6 }, isolation: { min: 6, max: 10 } },
+        hypertrophy: { compound: { min: 6, max: 12 }, isolation: { min: 8, max: 15 } },
+        recomp: { compound: { min: 6, max: 12 }, isolation: { min: 10, max: 15 } },
+        endurance: { compound: { min: 15, max: 25 }, isolation: { min: 20, max: 30 } }
     },
 
-    // Rest times in seconds
+    // Rest times in seconds (scientifically optimized)
+    // Sources: Schoenfeld 2016, Frontiers Meta-Analysis 2024
+    // Longer rest = better strength AND hypertrophy gains
     REST_TIMES: {
-        strength: { compound: 180, isolation: 120 },
-        hypertrophy: { compound: 90, isolation: 60 },
-        recomp: { compound: 90, isolation: 60 },
-        endurance: { compound: 60, isolation: 45 }
+        strength: { compound: 210, isolation: 150 },      // 3.5min / 2.5min
+        hypertrophy: { compound: 120, isolation: 90 },    // 2min / 1.5min
+        recomp: { compound: 120, isolation: 90 },         // 2min / 1.5min
+        endurance: { compound: 60, isolation: 45 }        // 1min / 45s
     },
 
     // Muscle groups by category
@@ -114,6 +117,8 @@ const TrainingAlgorithm = {
 
         let program;
 
+        // Note: Bro Split removed - scientific research shows training each muscle
+        // 2x/week is superior to 1x/week (Schoenfeld meta-analysis)
         switch (split) {
             case 'upper-lower':
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
@@ -123,9 +128,6 @@ const TrainingAlgorithm = {
                 break;
             case 'full-body':
                 program = this.generateFullBody(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
-                break;
-            case 'bro-split':
-                program = this.generateBroSplit(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
                 break;
             default:
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration);
@@ -544,88 +546,6 @@ const TrainingAlgorithm = {
         return program;
     },
 
-    // ========================================
-    // BRO SPLIT
-    // ========================================
-
-    generateBroSplit(profile, volumeConfig, repRanges, restTimes, days, sessionDuration) {
-        const program = {
-            name: 'Bro Split',
-            days: []
-        };
-
-        const setsPerMuscle = volumeConfig.optimal;
-        const equipment = profile.equipment || [];
-
-        // Chest Day
-        program.days.push({
-            name: 'Giorno 1',
-            type: 'Chest',
-            focus: 'Petto',
-            warmup: 'petto',
-            exercises: [
-                ...this.selectExercises('petto', 'compound', 3, Math.ceil(setsPerMuscle * 0.7), equipment, repRanges, restTimes),
-                ...this.selectExercises('petto', 'isolation', 2, Math.ceil(setsPerMuscle * 0.3), equipment, repRanges, restTimes)
-            ]
-        });
-
-        // Back Day
-        program.days.push({
-            name: 'Giorno 2',
-            type: 'Back',
-            focus: 'Schiena',
-            warmup: 'schiena',
-            exercises: [
-                ...this.selectExercises('schiena', 'compound', 4, Math.ceil(setsPerMuscle * 0.8), equipment, repRanges, restTimes),
-                ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
-                { exerciseId: 'face-pull', name: 'Face Pull', sets: 3, reps: '15-20', rest: 60 }
-            ]
-        });
-
-        // Shoulders Day
-        program.days.push({
-            name: 'Giorno 3',
-            type: 'Shoulders',
-            focus: 'Spalle',
-            warmup: 'spalle',
-            exercises: [
-                ...this.selectExercises('spalle', 'compound', 2, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
-                ...this.selectExercises('spalle', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
-            ]
-        });
-
-        // Legs Day
-        program.days.push({
-            name: 'Giorno 4',
-            type: 'Legs',
-            focus: 'Gambe',
-            warmup: 'lower',
-            exercises: [
-                ...this.selectExercises('quadricipiti', 'compound', 2, Math.ceil(setsPerMuscle * 0.4), equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'compound', 1, Math.ceil(setsPerMuscle * 0.25), equipment, repRanges, restTimes),
-                ...this.selectExercises('glutei', 'compound', 1, Math.ceil(setsPerMuscle * 0.2), equipment, repRanges, restTimes),
-                ...this.selectExercises('quadricipiti', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'isolation', 1, Math.ceil(setsPerMuscle * 0.15), equipment, repRanges, restTimes),
-                ...this.selectExercises('polpacci', 'isolation', 2, 4, equipment, repRanges, restTimes)
-            ]
-        });
-
-        // Arms Day (if 5+ days)
-        if (days >= 5) {
-            program.days.push({
-                name: 'Giorno 5',
-                type: 'Arms',
-                focus: 'Bicipiti & Tricipiti',
-                warmup: 'bicipiti',
-                exercises: [
-                    ...this.selectExercises('bicipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes),
-                    ...this.selectExercises('tricipiti', 'isolation', 3, Math.ceil(setsPerMuscle * 0.5), equipment, repRanges, restTimes)
-                ]
-            });
-        }
-
-        return program;
-    },
 
     // ========================================
     // HELPER FUNCTIONS

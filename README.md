@@ -165,7 +165,7 @@ git branch -r | grep claude
 L'algoritmo genera schede in base a:
 - **Obiettivo**: Forza, Ipertrofia, Ricomposizione, Resistenza
 - **Giorni/settimana**: 3-6 giorni
-- **Split**: Upper/Lower, PPL, Full Body, Bro Split
+- **Split**: Upper/Lower, PPL, Full Body
 - **Durata sessione**: 45, 60, 75, 90 minuti
 
 Configurazioni per obiettivo:
@@ -236,7 +236,7 @@ Durante le settimane deload:
 Suggerimenti intelligenti per combinazioni ottimali:
 - 3 giorni → Full Body consigliato
 - 4 giorni → Upper/Lower consigliato
-- 5 giorni → PPL o Bro Split
+- 5 giorni → PPL o Upper/Lower
 - 6 giorni → PPL consigliato
 
 ### 7. Limitazione Esercizi per Durata
