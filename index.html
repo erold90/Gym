@@ -363,86 +363,80 @@
                     <h2>I Tuoi Progressi</h2>
                 </div>
 
-                <div class="progress-tabs">
-                    <button class="progress-tab active" data-tab="overview">Panoramica</button>
-                    <button class="progress-tab" data-tab="body">Corpo</button>
-                    <button class="progress-tab" data-tab="strength">Forza</button>
-                    <button class="progress-tab" data-tab="history">Storico</button>
+                <!-- Quick Stats Summary -->
+                <div class="progress-stats-bar">
+                    <div class="progress-stat">
+                        <span class="progress-stat-value" id="progress-total-workouts">0</span>
+                        <span class="progress-stat-label">Allenamenti</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="progress-stat-value" id="progress-total-volume">0</span>
+                        <span class="progress-stat-label">Volume (t)</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="progress-stat-value" id="progress-total-prs">0</span>
+                        <span class="progress-stat-label">PRs</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="progress-stat-value" id="progress-best-streak">0</span>
+                        <span class="progress-stat-label">Best Streak</span>
+                    </div>
                 </div>
 
-                <!-- Overview Tab -->
-                <div class="progress-content active" id="progress-overview">
-                    <div class="charts-grid">
-                        <div class="card chart-card">
-                            <h3>Volume Settimanale</h3>
+                <!-- Charts Section -->
+                <div class="progress-charts-grid">
+                    <div class="card chart-card-compact" id="volume-chart-card">
+                        <h4>📊 Volume Settimanale</h4>
+                        <div class="chart-container">
                             <canvas id="volume-chart"></canvas>
                         </div>
-                        <div class="card chart-card">
-                            <h3>Frequenza Allenamenti</h3>
+                        <p class="chart-empty-state" id="volume-empty">Nessun dato disponibile</p>
+                    </div>
+                    <div class="card chart-card-compact" id="frequency-chart-card">
+                        <h4>📈 Frequenza</h4>
+                        <div class="chart-container">
                             <canvas id="frequency-chart"></canvas>
                         </div>
-                    </div>
-                    <div class="card prs-card">
-                        <h3>🏆 Record Personali</h3>
-                        <div id="prs-list" class="prs-grid">
-                            <p class="empty-state">Completa qualche allenamento per vedere i tuoi PR!</p>
-                        </div>
+                        <p class="chart-empty-state" id="frequency-empty">Nessun dato disponibile</p>
                     </div>
                 </div>
 
-                <!-- Body Tab -->
-                <div class="progress-content" id="progress-body">
-                    <div class="card">
-                        <h3>Traccia Misurazioni</h3>
-                        <form id="body-measurement-form">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Peso (kg)</label>
-                                    <input type="number" step="0.1" id="measure-weight" placeholder="90.0">
-                                </div>
-                                <div class="form-group">
-                                    <label>% Grasso (opzionale)</label>
-                                    <input type="number" step="0.1" id="measure-bodyfat" placeholder="20.0">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Salva Misurazione</button>
+                <!-- Body Stats -->
+                <div class="card progress-body-section">
+                    <div class="progress-section-header">
+                        <h4>⚖️ Peso Corporeo</h4>
+                        <button class="btn btn-sm btn-secondary" id="toggle-weight-form">+ Aggiungi</button>
+                    </div>
+                    <div class="weight-form-container" id="weight-form-container" style="display: none;">
+                        <form id="body-measurement-form" class="inline-form">
+                            <input type="number" step="0.1" id="measure-weight" placeholder="Peso (kg)">
+                            <input type="number" step="0.1" id="measure-bodyfat" placeholder="% Grasso">
+                            <button type="submit" class="btn btn-primary btn-sm">Salva</button>
                         </form>
                     </div>
-                    <div class="card chart-card">
-                        <h3>Andamento Peso</h3>
+                    <div class="weight-chart-container" id="weight-chart-container">
                         <canvas id="weight-chart"></canvas>
-                    </div>
-                    <div class="card">
-                        <h3>Storico Misurazioni</h3>
-                        <div id="measurements-history"></div>
+                        <p class="chart-empty-state" id="weight-empty">Aggiungi la prima misurazione</p>
                     </div>
                 </div>
 
-                <!-- Strength Tab -->
-                <div class="progress-content" id="progress-strength">
-                    <div class="card">
-                        <h3>Seleziona Esercizio</h3>
-                        <select id="strength-exercise-select">
-                            <option value="">Seleziona un esercizio...</option>
-                        </select>
+                <!-- Personal Records -->
+                <div class="card">
+                    <div class="progress-section-header">
+                        <h4>🏆 Record Personali</h4>
                     </div>
-                    <div class="card chart-card">
-                        <h3>Progressione Carico</h3>
-                        <canvas id="strength-chart"></canvas>
-                    </div>
-                    <div class="card">
-                        <h3>Estimated 1RM</h3>
-                        <div id="estimated-1rm"></div>
+                    <div id="prs-list" class="prs-grid-compact">
+                        <p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>
                     </div>
                 </div>
 
-                <!-- History Tab -->
-                <div class="progress-content" id="progress-history">
-                    <div class="card">
-                        <h3>Storico Allenamenti</h3>
-                        <div id="workout-history-list">
-                            <p class="empty-state">Nessun allenamento registrato</p>
-                        </div>
+                <!-- Recent Workouts -->
+                <div class="card">
+                    <div class="progress-section-header">
+                        <h4>📋 Storico Allenamenti</h4>
+                    </div>
+                    <div id="workout-history-list" class="workout-history-compact">
+                        <p class="empty-state-mini">Nessun allenamento registrato</p>
                     </div>
                 </div>
             </section>

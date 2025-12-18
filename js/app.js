@@ -193,22 +193,18 @@ const App = {
             this.filterExercisesByMuscle(e.target.value);
         });
 
-        // Progress tabs
-        document.querySelectorAll('.progress-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.progress-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-
-                document.querySelectorAll('.progress-content').forEach(c => c.classList.remove('active'));
-                const content = document.getElementById(`progress-${tab.dataset.tab}`);
-                if (content) content.classList.add('active');
-            });
-        });
-
         // Body measurement form
         document.getElementById('body-measurement-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveMeasurement();
+        });
+
+        // Toggle weight form button
+        document.getElementById('toggle-weight-form')?.addEventListener('click', () => {
+            const container = document.getElementById('weight-form-container');
+            if (container) {
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            }
         });
 
         // Settings
@@ -2092,10 +2088,21 @@ const App = {
     // ========================================
 
     loadProgress() {
-        this.loadMeasurementsHistory();
+        this.updateProgressStats();
         this.loadWorkoutHistory();
         this.loadPersonalRecords();
-        this.populateStrengthExerciseSelect();
+    },
+
+    updateProgressStats() {
+        const stats = Storage.getStatistics();
+        const streak = Storage.getStreak();
+
+        // Update stats bar
+        const el = (id) => document.getElementById(id);
+        if (el('progress-total-workouts')) el('progress-total-workouts').textContent = stats.totalWorkouts;
+        if (el('progress-total-volume')) el('progress-total-volume').textContent = (stats.totalVolume / 1000).toFixed(1);
+        if (el('progress-total-prs')) el('progress-total-prs').textContent = stats.prCount;
+        if (el('progress-best-streak')) el('progress-best-streak').textContent = streak.best;
     },
 
     initCharts() {
@@ -2106,10 +2113,15 @@ const App = {
 
     initVolumeChart() {
         const ctx = document.getElementById('volume-chart');
-        if (!ctx) return;
+        const card = document.getElementById('volume-chart-card');
+        if (!ctx || !card) return;
 
-        // Get last 8 weeks of data
-        const weeks = this.getWeeklyVolumes(8);
+        const weeks = this.getWeeklyVolumes(4);
+        const hasData = weeks.some(w => w.volume > 0);
+
+        // Show/hide based on data
+        card.classList.toggle('no-data', !hasData);
+        if (!hasData) return;
 
         if (this.charts.volume) {
             this.charts.volume.destroy();
@@ -2130,19 +2142,10 @@ const App = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { color: '#a0a0b0' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    x: {
-                        ticks: { color: '#a0a0b0' },
-                        grid: { display: false }
-                    }
+                    y: { beginAtZero: true, ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#a0a0b0' }, grid: { display: false } }
                 }
             }
         });
@@ -2150,9 +2153,15 @@ const App = {
 
     initFrequencyChart() {
         const ctx = document.getElementById('frequency-chart');
-        if (!ctx) return;
+        const card = document.getElementById('frequency-chart-card');
+        if (!ctx || !card) return;
 
-        const weeks = this.getWeeklyWorkoutCounts(8);
+        const weeks = this.getWeeklyWorkoutCounts(4);
+        const hasData = weeks.some(w => w.count > 0);
+
+        // Show/hide based on data
+        card.classList.toggle('no-data', !hasData);
+        if (!hasData) return;
 
         if (this.charts.frequency) {
             this.charts.frequency.destroy();
@@ -2174,20 +2183,10 @@ const App = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 7,
-                        ticks: { color: '#a0a0b0', stepSize: 1 },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    x: {
-                        ticks: { color: '#a0a0b0' },
-                        grid: { display: false }
-                    }
+                    y: { beginAtZero: true, max: 7, ticks: { color: '#a0a0b0', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#a0a0b0' }, grid: { display: false } }
                 }
             }
         });
@@ -2195,17 +2194,22 @@ const App = {
 
     initWeightChart() {
         const ctx = document.getElementById('weight-chart');
+        const container = document.getElementById('weight-chart-container');
         if (!ctx) return;
 
-        const measurements = Storage.getMeasurements().slice(0, 20).reverse();
+        const measurements = Storage.getMeasurements().slice(0, 10).reverse();
+        const hasData = measurements.length > 0;
+
+        // Show/hide empty state
+        const emptyEl = document.getElementById('weight-empty');
+        if (emptyEl) emptyEl.style.display = hasData ? 'none' : 'block';
+        if (ctx) ctx.style.display = hasData ? 'block' : 'none';
 
         if (this.charts.weight) {
             this.charts.weight.destroy();
         }
 
-        if (measurements.length === 0) {
-            return;
-        }
+        if (!hasData) return;
 
         this.charts.weight = new Chart(ctx, {
             type: 'line',
@@ -2346,32 +2350,23 @@ const App = {
     },
 
     loadWorkoutHistory() {
-        const workouts = Storage.getRecentWorkouts(20);
+        const workouts = Storage.getRecentWorkouts(10);
         const container = document.getElementById('workout-history-list');
 
         if (!container) return;
 
         if (workouts.length === 0) {
-            container.innerHTML = '<p class="empty-state">Nessun allenamento registrato</p>';
+            container.innerHTML = '<p class="empty-state-mini">Nessun allenamento registrato</p>';
             return;
         }
 
         container.innerHTML = workouts.map(w => `
             <div class="workout-history-item" data-workout-id="${w.id}">
-                <div class="workout-main-info">
-                    <div class="workout-info">
-                        <strong>${w.name || 'Allenamento'}</strong>
-                        <small>${this.formatDate(new Date(w.date))}</small>
-                    </div>
-                    <div class="workout-stats">
-                        <span>${Math.round(w.duration / 60)} min</span>
-                        <span>${this.formatNumber(w.totalVolume)} kg</span>
-                        <span>${w.totalSets} set</span>
-                    </div>
+                <div class="workout-history-info">
+                    <div class="workout-history-name">${w.name || 'Allenamento'}</div>
+                    <div class="workout-history-meta">${this.formatDateShort(new Date(w.date))} • ${Math.round(w.duration / 60)}min</div>
                 </div>
-                <button class="delete-workout-btn" onclick="App.deleteWorkoutSession(${w.id}, event)" title="Elimina allenamento">
-                    <span class="delete-icon">🗑️</span>
-                </button>
+                <div class="workout-history-stats">${this.formatNumber(w.totalVolume)}kg</div>
             </div>
         `).join('');
     },
@@ -2413,18 +2408,18 @@ const App = {
         const prEntries = Object.entries(prs);
 
         if (prEntries.length === 0) {
-            container.innerHTML = '<p class="empty-state">Completa qualche allenamento per vedere i tuoi PR!</p>';
+            container.innerHTML = '<p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>';
             return;
         }
 
-        container.innerHTML = prEntries.slice(0, 12).map(([exId, pr]) => {
+        container.innerHTML = prEntries.slice(0, 8).map(([exId, pr]) => {
             const exercise = EXERCISES_DB[exId];
+            const name = exercise?.name || exId;
+            const shortName = name.length > 20 ? name.substring(0, 18) + '...' : name;
             return `
-                <div class="pr-item">
-                    <div class="exercise">${exercise?.name || exId}</div>
-                    <div class="weight">${pr.maxWeight} kg</div>
-                    <div class="reps">x ${pr.maxWeightReps || '-'} reps</div>
-                    <div class="e1rm">E1RM: ${pr.estimated1RM} kg</div>
+                <div class="pr-item-compact">
+                    <span class="pr-exercise">${shortName}</span>
+                    <span class="pr-value">${pr.maxWeight}kg</span>
                 </div>
             `;
         }).join('');
