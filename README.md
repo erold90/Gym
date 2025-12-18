@@ -24,30 +24,84 @@ GymTracker Pro è una Progressive Web App (PWA) per il tracciamento degli allena
         └── exerciseMedia.js # GIF e dettagli esercizi
 ```
 
-## ⚠️ REGOLE GIT FONDAMENTALI
+## ⚠️ SISTEMA GIT E SESSIONI CLAUDE
 
-### Branch UNICO da Usare
-- **SEMPRE usare**: `claude/main-IDVRj`
-- **MAI creare nuovi branch**
-- **MAI usare branch con ID sessione diversi**
+### Come Funziona
+Ogni sessione Claude Code ha un **ID univoco** (es: `DJyrV`, `IDVRj`).
+Per sicurezza, Claude può pushare **SOLO** su branch che terminano con il suo ID sessione corrente.
 
-### Comandi Git
+**Esempio:**
+- Sessione con ID `ABC12` → può pushare solo su `claude/*-ABC12`
+- Sessione con ID `XYZ99` → può pushare solo su `claude/*-XYZ99`
+
+Se Claude prova a pushare su un branch con ID diverso → **errore 403**.
+
+### Soluzione: Push con Sintassi Speciale
+Claude usa questo comando per pushare dal branch locale a un branch remoto con il suo ID:
+
 ```bash
-# Push modifiche (SEMPRE su main-IDVRj)
-git add -A && git commit -m "messaggio" && git push origin claude/main-IDVRj
+git push -u origin claude/main-IDVRj:claude/main-NUOVO_ID
+```
 
-# Se sei su un branch sbagliato
+Questo crea un nuovo branch `claude/main-NUOVO_ID` con i contenuti del branch locale.
+
+### Deploy Automatico con GitHub Actions
+Per fare merge automatico senza intervento manuale, crea questo file:
+
+**File**: `.github/workflows/auto-merge-claude.yml`
+
+```yaml
+name: Auto-merge Claude branches
+
+on:
+  push:
+    branches:
+      - 'claude/main-*'
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge to deploy branch
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git checkout claude/main-IDVRj || git checkout -b claude/main-IDVRj
+          git merge ${{ github.ref_name }} --no-edit
+          git push origin claude/main-IDVRj
+```
+
+### Configurazione GitHub Pages
+1. Vai su **Settings** → **Pages**
+2. **Source**: Deploy from a branch
+3. **Branch**: `claude/main-IDVRj` (o il branch di deploy)
+4. **Folder**: `/ (root)`
+
+### URL Deploy
+- **Sito**: https://erold90.github.io/Gym
+- **Deploy automatico** ad ogni push (~1-2 minuti)
+
+### Comandi Git per Claude
+```bash
+# Checkout branch principale
+git fetch origin claude/main-IDVRj
 git checkout claude/main-IDVRj
+
+# Commit modifiche
+git add -A && git commit -m "tipo: descrizione"
+
+# Push con ID sessione corrente (sostituire SESSIONE_ID)
+git push -u origin claude/main-IDVRj:claude/main-SESSIONE_ID
 
 # Verificare stato
 git status
 git log --oneline -5
 ```
-
-### GitHub Pages
-- **URL**: https://erold90.github.io/Gym
-- **Source**: branch `claude/main-IDVRj`, folder `/ (root)`
-- Il deploy è automatico ad ogni push (~1-2 minuti)
 
 ## Funzionalità Implementate
 
@@ -207,14 +261,15 @@ Se GIF non carica, mostra animazione SVG da `SVG_ANIMATIONS`.
 
 ## Checklist per Modifiche
 
-1. [ ] Verificare di essere su `claude/main-IDVRj`
+1. [ ] Checkout `claude/main-IDVRj` locale
 2. [ ] Fare le modifiche ai file
 3. [ ] Se modifichi exerciseMedia.js → incrementa CACHE_VERSION
 4. [ ] `git add -A`
 5. [ ] `git commit -m "tipo: descrizione"`
-6. [ ] `git push origin claude/main-IDVRj`
-7. [ ] Aspettare deploy (~1-2 minuti)
-8. [ ] Testare su https://erold90.github.io/Gym
+6. [ ] `git push -u origin claude/main-IDVRj:claude/main-SESSIONE_ID`
+7. [ ] GitHub Actions fa merge automatico (se configurato)
+8. [ ] Aspettare deploy (~1-2 minuti)
+9. [ ] Testare su https://erold90.github.io/Gym
 
 ## Problemi Comuni
 
@@ -230,7 +285,14 @@ Se GIF non carica, mostra animazione SVG da `SVG_ANIMATIONS`.
 3. DevTools → Application → Clear storage
 
 ### Push fallisce con 403
-**SOLUZIONE**: Usare SOLO il branch `claude/main-IDVRj`
+**Causa**: Claude può pushare solo su branch con il suo ID sessione corrente.
+**Soluzione**: Usare la sintassi `git push origin LOCAL:claude/main-SESSIONE_ID`
+
+### Branch multipli claude/main-*
+Se si accumulano troppi branch:
+1. Su GitHub → Settings → Branches
+2. Elimina i branch vecchi `claude/main-*` (tranne quello di deploy)
+3. Oppure usa GitHub Actions per auto-merge e cleanup
 
 ## Repository
 - **Owner**: erold90

@@ -1,0 +1,44 @@
+name: Auto-merge Claude branches to deploy
+
+on:
+  push:
+    branches:
+      - 'claude/main-*'
+
+jobs:
+  merge-to-deploy:
+    runs-on: ubuntu-latest
+    # Non eseguire se il push è già sul branch di deploy
+    if: github.ref != 'refs/heads/claude/main-IDVRj'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      - name: Merge to deploy branch
+        run: |
+          # Fetch il branch di deploy
+          git fetch origin claude/main-IDVRj:claude/main-IDVRj || true
+
+          # Checkout o crea il branch di deploy
+          git checkout claude/main-IDVRj || git checkout -b claude/main-IDVRj
+
+          # Merge il branch pushato
+          echo "Merging ${{ github.ref_name }} into claude/main-IDVRj"
+          git merge origin/${{ github.ref_name }} --no-edit -m "Auto-merge: ${{ github.ref_name }} into deploy branch"
+
+          # Push al branch di deploy
+          git push origin claude/main-IDVRj
+
+      - name: Summary
+        run: |
+          echo "✅ Merged ${{ github.ref_name }} into claude/main-IDVRj"
+          echo "🚀 GitHub Pages will auto-deploy from claude/main-IDVRj"
