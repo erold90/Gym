@@ -140,9 +140,9 @@ const App = {
             this.openManualBuilder();
         });
 
-        // Open AI generator modal
+        // Open AI generator wizard
         document.getElementById('open-ai-generator-btn')?.addEventListener('click', () => {
-            document.getElementById('ai-generator-modal').classList.add('active');
+            this.openWizard();
         });
 
         // Close AI generator modal
@@ -154,6 +154,14 @@ const App = {
             if (e.target.id === 'ai-generator-modal') {
                 document.getElementById('ai-generator-modal').classList.remove('active');
             }
+        });
+
+        // Wizard navigation
+        document.getElementById('wizard-back')?.addEventListener('click', () => {
+            this.wizardBack();
+        });
+        document.getElementById('wizard-next')?.addEventListener('click', () => {
+            this.wizardNext();
         });
 
         // Manual builder controls
@@ -1152,6 +1160,286 @@ const App = {
     // PROGRAMS
     // ========================================
 
+    // ========================================
+    // WIZARD - Step-by-step program generator
+    // ========================================
+
+    // Scientific recommendations per goal (Pelland 2025, Singer 2024, Schoenfeld 2021)
+    WIZARD_RECOMMENDATIONS: {
+        hypertrophy: {
+            days: { recommended: 4, alt: 6, reason: 'Pelland 2025: 12-20 serie/muscolo/settimana. 4 giorni U/L o 6 giorni PPL permettono il volume ottimale con 2+ stimoli/muscolo/settimana.' },
+            split: {
+                3: { recommended: 'full-body', reason: 'Con 3 giorni, il Full Body garantisce frequenza 3x/muscolo/settimana (Schoenfeld 2016: frequenza 2+ superiore per ipertrofia).' },
+                4: { recommended: 'upper-lower', reason: 'Upper/Lower 4x è lo split più bilanciato: ogni muscolo 2x/settimana con volume adeguato per sessione (Remmert 2025: ~11 serie/sessione PUOS).' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni aggiunge un giorno braccia/spalle per volume extra sui punti deboli, mantenendo frequenza 2x/settimana.' },
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x massimizza volume e frequenza (2x/settimana per gruppo). Rating 9.7/10 nelle analisi comparative 2025.' }
+            },
+            duration: { recommended: 60, range: '60-75', reason: 'Singer 2024: recupero 2-2.5 min tra serie compound. Remmert 2025: PUOS ~11 serie/sessione = 60-75 min ottimali.' }
+        },
+        strength: {
+            days: { recommended: 3, alt: 4, reason: 'La forza richiede alta frequenza per movimento (2-3x/sett). 3-4 giorni con Full Body o U/L permettono pratica frequente dei fondamentali.' },
+            split: {
+                3: { recommended: 'full-body', reason: 'Full Body 3x permette di praticare squat, panca e stacco 2-3x/settimana. Grgic 2018: frequenza è predittore chiave per forza.' },
+                4: { recommended: 'upper-lower', reason: 'U/L 4x bilancia frequenza dei fondamentali (2x) con recupero adeguato per carichi pesanti (>80% 1RM).' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni con giorno accessori. Buon compromesso tra frequenza e volume di pratica sui movimenti principali.' },
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x per intermedi/avanzati: permette alto volume sui fondamentali con varianti diverse nei giorni B.' }
+            },
+            duration: { recommended: 60, range: '45-60', reason: 'Remmert 2025: PUOS ~2 serie dirette/sessione per forza. Recuperi lunghi (3-5 min) ma poche serie = 45-60 min sufficienti.' }
+        },
+        recomp: {
+            days: { recommended: 4, alt: 3, reason: 'Frontiers Nutrition 2024: 3-4 sessioni/sett di resistenza ottimali per ricomposizione. Più sessioni = più dispendio calorico preservando massa.' },
+            split: {
+                3: { recommended: 'full-body', reason: 'Full Body 3x massimizza il dispendio calorico per sessione e la frequenza muscolare. Healthcare 2024: massa magra visibile a 8 settimane.' },
+                4: { recommended: 'upper-lower', reason: 'U/L 4x è il miglior compromesso: volume moderato (10-15 serie/muscolo/sett), gestibile in deficit calorico (JEHS 2024).' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni per chi vuole più dispendio. Attenzione al recupero in deficit calorico: non eccedere con il volume.' },
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x solo se deficit moderato (300-500 kcal). Volume alto in deficit aggressivo è controproducente (Int J Obesity 2025).' }
+            },
+            duration: { recommended: 45, range: '45-60', reason: 'Sessioni efficienti per gestire la fatica in deficit. Recuperi 1-2 min. Proteine 1.6-2.2 g/kg/giorno cruciali (meta-analisi 2024).' }
+        },
+        endurance: {
+            days: { recommended: 3, alt: 4, reason: 'Schoenfeld 2021: endurance muscolare richiede alto volume di ripetizioni (15-25+). 3-4 giorni con recuperi brevi sono sufficienti.' },
+            split: {
+                3: { recommended: 'full-body', reason: 'Full Body con circuiti o superset: i recuperi brevi (30-60s) sono il driver principale dell\'adattamento all\'endurance (Schoenfeld 2021).' },
+                4: { recommended: 'upper-lower', reason: 'U/L 4x permette più volume per sessione con recuperi brevi. Ideale per endurance specifica di singoli gruppi muscolari.' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni con sessioni corte e intense. Il volume alto è distribuibile ma attenzione al sovrallenamento.' },
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x per atleti condizionati: alto volume con recuperi brevi. Solo per avanzati con buona capacità di recupero.' }
+            },
+            duration: { recommended: 45, range: '30-50', reason: 'Recuperi brevi (30-60s) rendono le sessioni naturalmente corte. 30-50 min sufficienti per stimolo endurance completo.' }
+        }
+    },
+
+    openWizard() {
+        this.wizardState = { step: 1, goal: null, days: null, split: null, duration: null };
+
+        // Reset all steps
+        document.querySelectorAll('.wizard-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('wizard-step-1').classList.remove('hidden');
+        document.querySelectorAll('.wizard-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.wizard-step-dot').forEach(d => d.classList.remove('active', 'done'));
+        document.querySelector('.wizard-step-dot[data-step="1"]').classList.add('active');
+        document.getElementById('wizard-progress-fill').style.width = '25%';
+        document.getElementById('wizard-back').style.visibility = 'hidden';
+        document.getElementById('wizard-next').style.display = 'none';
+        document.getElementById('generate-program-btn').style.display = 'none';
+        document.getElementById('wizard-title').textContent = '🤖 Genera Scheda';
+
+        // Setup card click handlers
+        this._setupWizardCardClicks();
+
+        document.getElementById('ai-generator-modal').classList.add('active');
+    },
+
+    _setupWizardCardClicks() {
+        // Goal cards (step 1)
+        document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(card => {
+            card.onclick = () => {
+                document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.wizardState.goal = card.dataset.value;
+                // Reset downstream selections when goal changes
+                this.wizardState.days = null;
+                this.wizardState.split = null;
+                this.wizardState.duration = null;
+                document.getElementById('wizard-next').style.display = '';
+            };
+        });
+
+        // Days cards (step 2)
+        document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(card => {
+            card.onclick = () => {
+                document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.wizardState.days = parseInt(card.dataset.value);
+                this.wizardState.split = null;
+                document.getElementById('wizard-next').style.display = '';
+            };
+        });
+
+        // Split cards (step 3)
+        document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(card => {
+            card.onclick = () => {
+                document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.wizardState.split = card.dataset.value;
+                document.getElementById('wizard-next').style.display = '';
+            };
+        });
+
+        // Duration cards (step 4)
+        document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(card => {
+            card.onclick = () => {
+                document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                this.wizardState.duration = parseInt(card.dataset.value);
+                document.getElementById('wizard-next').style.display = '';
+            };
+        });
+    },
+
+    wizardNext() {
+        const s = this.wizardState;
+        if (s.step === 1 && !s.goal) return;
+        if (s.step === 2 && !s.days) return;
+        if (s.step === 3 && !s.split) return;
+        if (s.step === 4 && !s.duration) return;
+
+        s.step++;
+        this._renderWizardStep();
+    },
+
+    wizardBack() {
+        if (this.wizardState.step <= 1) return;
+        this.wizardState.step--;
+        this._renderWizardStep();
+    },
+
+    _renderWizardStep() {
+        const s = this.wizardState;
+        const recs = this.WIZARD_RECOMMENDATIONS[s.goal];
+
+        // Hide all steps
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
+
+        // Update progress
+        const totalSteps = 5; // 4 steps + summary
+        const progressStep = Math.min(s.step, 4);
+        document.getElementById('wizard-progress-fill').style.width = `${(progressStep / 4) * 100}%`;
+
+        // Update dots
+        document.querySelectorAll('.wizard-step-dot').forEach(d => {
+            const dotStep = parseInt(d.dataset.step);
+            d.classList.remove('active', 'done');
+            if (dotStep < s.step) d.classList.add('done');
+            else if (dotStep === s.step) d.classList.add('active');
+        });
+
+        // Back button visibility
+        document.getElementById('wizard-back').style.visibility = s.step > 1 ? 'visible' : 'hidden';
+
+        // Next/Generate button
+        document.getElementById('wizard-next').style.display = 'none';
+        document.getElementById('generate-program-btn').style.display = 'none';
+
+        if (s.step === 2) {
+            this._renderDaysSuggestion(recs);
+            document.getElementById('wizard-step-2').classList.remove('hidden');
+            if (s.days) {
+                document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(c => {
+                    c.classList.toggle('selected', parseInt(c.dataset.value) === s.days);
+                });
+                document.getElementById('wizard-next').style.display = '';
+            }
+            // Highlight recommended
+            this._highlightRecommended('wizard-days-cards', String(recs.days.recommended));
+        } else if (s.step === 3) {
+            this._renderSplitSuggestion(recs, s.days);
+            document.getElementById('wizard-step-3').classList.remove('hidden');
+            if (s.split) {
+                document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
+                    c.classList.toggle('selected', c.dataset.value === s.split);
+                });
+                document.getElementById('wizard-next').style.display = '';
+            }
+            // Highlight recommended split
+            const recSplit = recs.split[s.days]?.recommended;
+            if (recSplit) this._highlightRecommended('wizard-split-cards', recSplit);
+        } else if (s.step === 4) {
+            this._renderDurationSuggestion(recs);
+            document.getElementById('wizard-step-4').classList.remove('hidden');
+            if (s.duration) {
+                document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(c => {
+                    c.classList.toggle('selected', parseInt(c.dataset.value) === s.duration);
+                });
+                document.getElementById('wizard-next').style.display = '';
+            }
+            this._highlightRecommended('wizard-duration-cards', String(recs.duration.recommended));
+        } else if (s.step >= 5) {
+            this._renderWizardSummary();
+            document.getElementById('wizard-step-summary').classList.remove('hidden');
+            document.getElementById('generate-program-btn').style.display = '';
+        } else {
+            // Step 1
+            document.getElementById('wizard-step-1').classList.remove('hidden');
+            if (s.goal) {
+                document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(c => {
+                    c.classList.toggle('selected', c.dataset.value === s.goal);
+                });
+                document.getElementById('wizard-next').style.display = '';
+            }
+        }
+    },
+
+    _highlightRecommended(containerId, value) {
+        document.querySelectorAll(`#${containerId} .wizard-card`).forEach(c => {
+            c.classList.remove('wizard-recommended');
+            if (c.dataset.value === value) {
+                c.classList.add('wizard-recommended');
+            }
+        });
+    },
+
+    _renderDaysSuggestion(recs) {
+        const el = document.getElementById('wizard-days-suggestion');
+        el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${recs.days.recommended} giorni</strong><br>${recs.days.reason}</div>`;
+    },
+
+    _renderSplitSuggestion(recs, days) {
+        const el = document.getElementById('wizard-split-suggestion');
+        const splitRec = recs.split[days];
+        if (splitRec) {
+            el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${this._splitLabel(splitRec.recommended)}</strong><br>${splitRec.reason}</div>`;
+        } else {
+            el.innerHTML = '';
+        }
+    },
+
+    _renderDurationSuggestion(recs) {
+        const el = document.getElementById('wizard-duration-suggestion');
+        el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${recs.duration.recommended} min (range ${recs.duration.range})</strong><br>${recs.duration.reason}</div>`;
+    },
+
+    _splitLabel(value) {
+        const labels = { 'upper-lower': 'Upper/Lower', 'push-pull-legs': 'Push/Pull/Legs', 'full-body': 'Full Body' };
+        return labels[value] || value;
+    },
+
+    _goalLabel(value) {
+        const labels = { hypertrophy: 'Ipertrofia', strength: 'Forza', recomp: 'Ricomposizione', endurance: 'Resistenza' };
+        return labels[value] || value;
+    },
+
+    _renderWizardSummary() {
+        const s = this.wizardState;
+        const recs = this.WIZARD_RECOMMENDATIONS[s.goal];
+        const splitRec = recs.split[s.days];
+        const isRecommendedSplit = splitRec && splitRec.recommended === s.split;
+        const isRecommendedDays = s.days === recs.days.recommended;
+        const isRecommendedDuration = s.duration === recs.duration.recommended;
+
+        document.getElementById('wizard-summary-content').innerHTML = `
+            <div class="wizard-summary-row">
+                <span class="wizard-summary-label">Obiettivo</span>
+                <span class="wizard-summary-value">${this._goalLabel(s.goal)}</span>
+            </div>
+            <div class="wizard-summary-row">
+                <span class="wizard-summary-label">Frequenza</span>
+                <span class="wizard-summary-value">${s.days} giorni/sett ${isRecommendedDays ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
+            </div>
+            <div class="wizard-summary-row">
+                <span class="wizard-summary-label">Split</span>
+                <span class="wizard-summary-value">${this._splitLabel(s.split)} ${isRecommendedSplit ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
+            </div>
+            <div class="wizard-summary-row">
+                <span class="wizard-summary-label">Durata</span>
+                <span class="wizard-summary-value">${s.duration} min ${isRecommendedDuration ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
+            </div>
+            <div class="wizard-summary-note">
+                La scheda includerà periodizzazione a mesociclo con fasi di accumulo, intensificazione e deload.
+                Gli esercizi ruoteranno automaticamente tra i cicli per stimolo continuo.
+            </div>
+        `;
+    },
+
     generateProgram() {
         const profile = Storage.getProfile();
 
@@ -1167,11 +1455,13 @@ const App = {
             return;
         }
 
+        // Read from wizard state if available, fallback to select elements
+        const ws = this.wizardState;
         const options = {
-            goal: document.getElementById('program-goal').value,
-            daysPerWeek: parseInt(document.getElementById('program-days').value),
-            split: document.getElementById('program-split').value,
-            sessionDuration: parseInt(document.getElementById('program-duration').value)
+            goal: ws?.goal || document.getElementById('program-goal')?.value || 'recomp',
+            daysPerWeek: ws?.days || parseInt(document.getElementById('program-days')?.value || '4'),
+            split: ws?.split || document.getElementById('program-split')?.value || 'upper-lower',
+            sessionDuration: ws?.duration || parseInt(document.getElementById('program-duration')?.value || '60')
         };
 
         const program = TrainingAlgorithm.generateProgram(profile, options);
