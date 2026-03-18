@@ -5422,6 +5422,10 @@ input[type="number"] {
    WIZARD - Step-by-step generator
    ======================================== */
 
+.hidden {
+    display: none !important;
+}
+
 .modal-wizard {
     max-width: 480px;
 }

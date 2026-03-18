@@ -1230,48 +1230,47 @@ const App = {
     },
 
     _setupWizardCardClicks() {
-        // Goal cards (step 1)
+        // Goal cards (step 1) — auto-advance on click
         document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(card => {
             card.onclick = () => {
                 document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.wizardState.goal = card.dataset.value;
-                // Reset downstream selections when goal changes
                 this.wizardState.days = null;
                 this.wizardState.split = null;
                 this.wizardState.duration = null;
-                document.getElementById('wizard-next').style.display = '';
+                setTimeout(() => this.wizardNext(), 250);
             };
         });
 
-        // Days cards (step 2)
+        // Days cards (step 2) — auto-advance
         document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(card => {
             card.onclick = () => {
                 document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.wizardState.days = parseInt(card.dataset.value);
                 this.wizardState.split = null;
-                document.getElementById('wizard-next').style.display = '';
+                setTimeout(() => this.wizardNext(), 250);
             };
         });
 
-        // Split cards (step 3)
+        // Split cards (step 3) — auto-advance
         document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(card => {
             card.onclick = () => {
                 document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.wizardState.split = card.dataset.value;
-                document.getElementById('wizard-next').style.display = '';
+                setTimeout(() => this.wizardNext(), 250);
             };
         });
 
-        // Duration cards (step 4)
+        // Duration cards (step 4) — auto-advance to summary
         document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(card => {
             card.onclick = () => {
                 document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.wizardState.duration = parseInt(card.dataset.value);
-                document.getElementById('wizard-next').style.display = '';
+                setTimeout(() => this.wizardNext(), 250);
             };
         });
     },
@@ -1327,9 +1326,7 @@ const App = {
                 document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(c => {
                     c.classList.toggle('selected', parseInt(c.dataset.value) === s.days);
                 });
-                document.getElementById('wizard-next').style.display = '';
             }
-            // Highlight recommended
             this._highlightRecommended('wizard-days-cards', String(recs.days.recommended));
         } else if (s.step === 3) {
             this._renderSplitSuggestion(recs, s.days);
@@ -1338,9 +1335,7 @@ const App = {
                 document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
                     c.classList.toggle('selected', c.dataset.value === s.split);
                 });
-                document.getElementById('wizard-next').style.display = '';
             }
-            // Highlight recommended split
             const recSplit = recs.split[s.days]?.recommended;
             if (recSplit) this._highlightRecommended('wizard-split-cards', recSplit);
         } else if (s.step === 4) {
@@ -1350,7 +1345,6 @@ const App = {
                 document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(c => {
                     c.classList.toggle('selected', parseInt(c.dataset.value) === s.duration);
                 });
-                document.getElementById('wizard-next').style.display = '';
             }
             this._highlightRecommended('wizard-duration-cards', String(recs.duration.recommended));
         } else if (s.step >= 5) {
@@ -1364,7 +1358,6 @@ const App = {
                 document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(c => {
                     c.classList.toggle('selected', c.dataset.value === s.goal);
                 });
-                document.getElementById('wizard-next').style.display = '';
             }
         }
     },
