@@ -160,9 +160,6 @@ const App = {
         document.getElementById('wizard-back')?.addEventListener('click', () => {
             this.wizardBack();
         });
-        document.getElementById('wizard-next')?.addEventListener('click', () => {
-            this.wizardNext();
-        });
 
         // Manual builder controls
         document.getElementById('close-manual-builder')?.addEventListener('click', () => {
@@ -1219,7 +1216,6 @@ const App = {
         document.querySelector('.wizard-step-dot[data-step="1"]').classList.add('active');
         document.getElementById('wizard-progress-fill').style.width = '25%';
         document.getElementById('wizard-back').style.visibility = 'hidden';
-        document.getElementById('wizard-next').style.display = 'none';
         document.getElementById('generate-program-btn').style.display = 'none';
         document.getElementById('wizard-title').textContent = '🤖 Genera Scheda';
 
@@ -1315,8 +1311,7 @@ const App = {
         // Back button visibility
         document.getElementById('wizard-back').style.visibility = s.step > 1 ? 'visible' : 'hidden';
 
-        // Next/Generate button
-        document.getElementById('wizard-next').style.display = 'none';
+        // Generate button
         document.getElementById('generate-program-btn').style.display = 'none';
 
         if (s.step === 2) {
