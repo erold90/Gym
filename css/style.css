@@ -48,6 +48,7 @@
 html {
     font-size: 16px;
     scroll-behavior: smooth;
+    touch-action: manipulation;
 }
 
 body {
@@ -2935,6 +2936,20 @@ body {
     }
 }
 
+/* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="number"],
+    input[type="search"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    textarea,
+    select {
+        font-size: 16px !important;
+    }
+}
+
 /* Extra small screens */
 @media (max-width: 380px) {
     .exercise-title-mobile {
@@ -2947,7 +2962,6 @@ body {
 
     .input-group input {
         padding: 10px 8px;
-        font-size: 1rem;
     }
 
     .set-done-btn {
