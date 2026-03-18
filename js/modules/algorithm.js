@@ -453,31 +453,32 @@ const TrainingAlgorithm = {
         const exercises = [];
         const equipment = profile.equipment || [];
         const usedExercises = new Set(); // Track used exercises to avoid duplicates
+        const co = this._currentCycleOffset || 0; // Cycle offset for exercise rotation
 
         // Variant-specific exercise selection
         if (variant === 'strength') {
             // Heavy compound focus
-            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(5, baseSets), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(4, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else if (variant === 'hypertrophy' || variant === 'pump') {
             // Higher rep, more isolation
-            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(4, baseSets), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 2, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(4, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 2, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else {
             // Default balanced
-            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, baseSets - 1, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, baseSets - 1, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         }
 
         // Arms: 1 exercise each
-        exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-        exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+        exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
 
         // Face pulls for shoulder health (always include)
         exercises.push({
@@ -496,39 +497,36 @@ const TrainingAlgorithm = {
         const exercises = [];
         const equipment = profile.equipment || [];
         const usedExercises = new Set();
+        const co = this._currentCycleOffset || 0;
 
         if (variant === 'quad') {
-            // Quad-dominant day
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else if (variant === 'hamstring') {
-            // Hamstring/glute-dominant day
-            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else if (variant === 'full') {
-            // Balanced full leg day
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 1, Math.ceil(baseSets * 0.8), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 1, Math.ceil(baseSets * 0.8), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
         } else {
-            // Default (same as hamstring)
-            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
-            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         }
 
         // Calves
-        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 4, equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 4, equipment, repRanges, restTimes, usedExercises, co));
 
         // Core
-        exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
 
         return exercises;
     },
@@ -537,15 +535,16 @@ const TrainingAlgorithm = {
         const exercises = [];
         const equipment = profile.equipment || [];
         const usedExercises = new Set();
+        const co = this._currentCycleOffset || 0;
 
         // Biceps: 3 exercises
-        exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 3, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 3, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
 
         // Triceps: 3 exercises
-        exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 3, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 3, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
 
         // Shoulders (lateral delts focus)
-        exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 2, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises));
+        exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 2, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
 
         // Forearms if time permits
         exercises.push({
@@ -572,6 +571,7 @@ const TrainingAlgorithm = {
 
         const setsPerMuscle = Math.round(volumeConfig.optimal / 2);
         const equipment = profile.equipment || [];
+        const co = this._currentCycleOffset || 0;
 
         // Push Day
         program.days.push({
@@ -580,11 +580,11 @@ const TrainingAlgorithm = {
             focus: 'Petto, Spalle, Tricipiti',
             warmup: 'push',
             exercises: [
-                ...this.selectExercises('petto', 'compound', 2, setsPerMuscle, equipment, repRanges, restTimes),
-                ...this.selectExercises('spalle', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes),
-                ...this.selectExercises('petto', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),
-                ...this.selectExercises('spalle', 'isolation', 2, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),
-                ...this.selectExercises('tricipiti', 'isolation', 2, setsPerMuscle, equipment, repRanges, restTimes)
+                ...this.selectExercises('petto', 'compound', 2, setsPerMuscle, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('spalle', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('petto', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes, co),
+                ...this.selectExercises('spalle', 'isolation', 2, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes, co),
+                ...this.selectExercises('tricipiti', 'isolation', 2, setsPerMuscle, equipment, repRanges, restTimes, co)
             ]
         });
 
@@ -595,9 +595,9 @@ const TrainingAlgorithm = {
             focus: 'Schiena, Bicipiti',
             warmup: 'pull',
             exercises: [
-                ...this.selectExercises('schiena', 'compound', 3, setsPerMuscle, equipment, repRanges, restTimes),
-                ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),
-                ...this.selectExercises('bicipiti', 'isolation', 2, setsPerMuscle, equipment, repRanges, restTimes),
+                ...this.selectExercises('schiena', 'compound', 3, setsPerMuscle, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('schiena', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes, co),
+                ...this.selectExercises('bicipiti', 'isolation', 2, setsPerMuscle, equipment, repRanges, restTimes, co),
                 { exerciseId: 'face-pull', name: 'Face Pull', sets: 3, reps: '15-20', rest: 60 }
             ]
         });
@@ -609,13 +609,13 @@ const TrainingAlgorithm = {
             focus: 'Gambe Complete',
             warmup: 'lower',
             exercises: [
-                ...this.selectExercises('quadricipiti', 'compound', 2, setsPerMuscle, equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes),
-                ...this.selectExercises('glutei', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes),
-                ...this.selectExercises('quadricipiti', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),
-                ...this.selectExercises('femorali', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes),
-                ...this.selectExercises('polpacci', 'isolation', 1, 4, equipment, repRanges, restTimes),
-                ...this.selectExercises('addome', 'isolation', 2, 3, equipment, repRanges, restTimes)
+                ...this.selectExercises('quadricipiti', 'compound', 2, setsPerMuscle, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('femorali', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('glutei', 'compound', 1, setsPerMuscle - 1, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('quadricipiti', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes, co),
+                ...this.selectExercises('femorali', 'isolation', 1, Math.ceil(setsPerMuscle / 2), equipment, repRanges, restTimes, co),
+                ...this.selectExercises('polpacci', 'isolation', 1, 4, equipment, repRanges, restTimes, co),
+                ...this.selectExercises('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, co)
             ]
         });
 
@@ -650,6 +650,7 @@ const TrainingAlgorithm = {
 
         const setsPerMusclePerSession = Math.round(volumeConfig.optimal / days);
         const equipment = profile.equipment || [];
+        const co = this._currentCycleOffset || 0;
 
         for (let i = 0; i < days; i++) {
             const dayNum = i + 1;
@@ -662,15 +663,15 @@ const TrainingAlgorithm = {
                 warmup: 'full-body',
                 exercises: [
                     // Compound movements for major muscles
-                    ...this.selectExercises('quadricipiti', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('petto', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('schiena', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises(variant === 'A' ? 'femorali' : 'glutei', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
-                    ...this.selectExercises('spalle', variant === 'A' ? 'compound' : 'isolation', 1, setsPerMusclePerSession, equipment, repRanges, restTimes),
+                    ...this.selectExercises('quadricipiti', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes, co),
+                    ...this.selectExercises('petto', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes, co),
+                    ...this.selectExercises('schiena', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes, co),
+                    ...this.selectExercises(variant === 'A' ? 'femorali' : 'glutei', 'compound', 1, setsPerMusclePerSession, equipment, repRanges, restTimes, co),
+                    ...this.selectExercises('spalle', variant === 'A' ? 'compound' : 'isolation', 1, setsPerMusclePerSession, equipment, repRanges, restTimes, co),
                     // Accessories
-                    ...this.selectExercises('bicipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
-                    ...this.selectExercises('tricipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes),
-                    ...this.selectExercises('addome', 'isolation', 1, 3, equipment, repRanges, restTimes)
+                    ...this.selectExercises('bicipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes, co),
+                    ...this.selectExercises('tricipiti', 'isolation', 1, Math.max(2, setsPerMusclePerSession - 1), equipment, repRanges, restTimes, co),
+                    ...this.selectExercises('addome', 'isolation', 1, 3, equipment, repRanges, restTimes, co)
                 ]
             });
         }
@@ -683,7 +684,7 @@ const TrainingAlgorithm = {
     // HELPER FUNCTIONS
     // ========================================
 
-    selectExercises(muscle, type, count, sets, equipment, repRanges, restTimes) {
+    selectExercises(muscle, type, count, sets, equipment, repRanges, restTimes, cycleOffset = 0) {
         const priorityList = this.EXERCISE_PRIORITY[muscle];
         if (!priorityList) return [];
 
@@ -696,7 +697,11 @@ const TrainingAlgorithm = {
         const reps = specialReps || (type === 'compound' ? repRanges.compound : repRanges.isolation);
         const rest = type === 'compound' ? restTimes.compound : restTimes.isolation;
 
-        for (const exId of exerciseIds) {
+        // Apply cycle-based rotation: offset into the exercise list
+        // Every new cycle shifts which exercises are prioritized
+        const rotatedIds = this._rotateArray(exerciseIds, cycleOffset);
+
+        for (const exId of rotatedIds) {
             if (exercisesAdded >= count) break;
 
             const exercise = EXERCISES_DB[exId];
@@ -728,7 +733,7 @@ const TrainingAlgorithm = {
     },
 
     // Same as selectExercises but tracks used exercises to avoid duplicates
-    selectExercisesUnique(muscle, type, count, sets, equipment, repRanges, restTimes, usedExercises) {
+    selectExercisesUnique(muscle, type, count, sets, equipment, repRanges, restTimes, usedExercises, cycleOffset = 0) {
         const priorityList = this.EXERCISE_PRIORITY[muscle];
         if (!priorityList) return [];
 
@@ -741,7 +746,10 @@ const TrainingAlgorithm = {
         const reps = specialReps || (type === 'compound' ? repRanges.compound : repRanges.isolation);
         const rest = type === 'compound' ? restTimes.compound : restTimes.isolation;
 
-        for (const exId of exerciseIds) {
+        // Apply cycle-based rotation
+        const rotatedIds = this._rotateArray(exerciseIds, cycleOffset);
+
+        for (const exId of rotatedIds) {
             if (exercisesAdded >= count) break;
 
             // Skip if already used
@@ -1049,5 +1057,126 @@ const TrainingAlgorithm = {
             : config.preferredType;
 
         return `${config.frequency}x ${typeText} a settimana consigliato per ${goal}`;
+    },
+
+    // ========================================
+    // EXERCISE ROTATION & PROGRESSIVE VOLUME
+    // ========================================
+
+    /**
+     * Rotate array elements by offset positions
+     * Used to cycle through exercise variants between mesocycles
+     * @param {Array} arr - Original array
+     * @param {number} offset - Number of positions to rotate (based on cycleNumber)
+     * @returns {Array} Rotated copy of the array
+     */
+    _rotateArray(arr, offset) {
+        if (!arr || arr.length <= 1 || offset === 0) return arr;
+        const n = arr.length;
+        const shift = ((offset % n) + n) % n; // normalize to positive
+        return [...arr.slice(shift), ...arr.slice(0, shift)];
+    },
+
+    /**
+     * Regenerate program with rotated exercises for a new mesocycle
+     * Called when completing a cycle to provide fresh exercise stimulus
+     *
+     * Rotation logic: each cycle shifts the exercise selection by 1 position
+     * in each muscle's priority list, so different variants get prioritized.
+     *
+     * Progressive volume: after the first cycle, slightly increases volume
+     * (+1 set/muscle/week) up to the user's level max, then resets.
+     *
+     * @param {Object} program - Current active program
+     * @param {Object} profile - User profile
+     * @returns {Object} Updated program with rotated exercises
+     */
+    rotateProgram(program, profile) {
+        if (!program?.metadata) return program;
+
+        const { goal, split, daysPerWeek, sessionDuration } = program.metadata;
+        const cycleNumber = (program.metadata.cycleNumber || 0) + 1;
+
+        // Progressive volume: increase optimal volume by 1 per cycle (up to max)
+        const baseVolume = this.VOLUME_CONFIG[profile.level] || this.VOLUME_CONFIG.intermediate;
+        const volumeBoost = Math.min(cycleNumber - 1, baseVolume.max - baseVolume.optimal);
+        const adjustedVolume = {
+            ...baseVolume,
+            optimal: baseVolume.optimal + volumeBoost
+        };
+
+        const repRanges = this.REP_RANGES[goal] || this.REP_RANGES.hypertrophy;
+        const restTimes = this.REST_TIMES[goal] || this.REST_TIMES.hypertrophy;
+
+        // Store cycleOffset so selectExercises/selectExercisesUnique can use it
+        this._currentCycleOffset = cycleNumber;
+
+        // Regenerate the program structure with rotated exercises
+        let newProgram;
+        switch (split) {
+            case 'upper-lower':
+                newProgram = this.generateUpperLower(profile, adjustedVolume, repRanges, restTimes, daysPerWeek, sessionDuration);
+                break;
+            case 'push-pull-legs':
+                newProgram = this.generatePPL(profile, adjustedVolume, repRanges, restTimes, daysPerWeek, sessionDuration);
+                break;
+            case 'full-body':
+                newProgram = this.generateFullBody(profile, adjustedVolume, repRanges, restTimes, daysPerWeek, sessionDuration);
+                break;
+            default:
+                newProgram = this.generateUpperLower(profile, adjustedVolume, repRanges, restTimes, daysPerWeek, sessionDuration);
+        }
+
+        // Reset offset
+        this._currentCycleOffset = 0;
+
+        // Preserve metadata, update cycle info
+        const tempo = this.TEMPO[goal] || this.TEMPO.hypertrophy;
+        const cycle = this.generateCycleStructure(goal, profile.level);
+
+        newProgram.metadata = {
+            ...program.metadata,
+            weeklyVolume: this.calculateWeeklyVolume(newProgram),
+            tempo: tempo,
+            cycle: cycle,
+            cycleNumber: cycleNumber,
+            previousExercises: this._extractExerciseIds(program),
+            rotatedAt: new Date().toISOString()
+        };
+
+        return newProgram;
+    },
+
+    /**
+     * Extract all exercise IDs from a program (for tracking rotation history)
+     */
+    _extractExerciseIds(program) {
+        if (!program?.days) return [];
+        const ids = new Set();
+        program.days.forEach(day => {
+            (day.exercises || []).forEach(ex => ids.add(ex.exerciseId));
+        });
+        return [...ids];
+    },
+
+    /**
+     * Get a summary of what changed between old and new program
+     * Useful for showing the user what exercises rotated
+     */
+    getRotationSummary(oldProgram, newProgram) {
+        const oldIds = new Set(this._extractExerciseIds(oldProgram));
+        const newIds = new Set(this._extractExerciseIds(newProgram));
+
+        const added = [...newIds].filter(id => !oldIds.has(id));
+        const removed = [...oldIds].filter(id => !newIds.has(id));
+        const kept = [...newIds].filter(id => oldIds.has(id));
+
+        return {
+            added: added.map(id => ({ id, name: EXERCISES_DB[id]?.name || id })),
+            removed: removed.map(id => ({ id, name: EXERCISES_DB[id]?.name || id })),
+            kept: kept.map(id => ({ id, name: EXERCISES_DB[id]?.name || id })),
+            totalChanged: added.length + removed.length,
+            cycleNumber: newProgram?.metadata?.cycleNumber || 1
+        };
     }
 };

@@ -771,9 +771,61 @@ const App = {
     confirmCompleteCycle() {
         document.getElementById('cycle-summary-modal')?.remove();
         Storage.completeCycle();
-        this.showNotification('🎯 Nuovo ciclo iniziato!', 'success');
+
+        // Show rotation summary if exercises changed
+        const rotation = Storage.getLastRotationSummary();
+        if (rotation && rotation.totalChanged > 0) {
+            const addedNames = rotation.added.map(e => e.name).join(', ');
+            const removedNames = rotation.removed.map(e => e.name).join(', ');
+            const cycleNum = rotation.cycleNumber;
+
+            let rotationMsg = `Ciclo #${cycleNum} iniziato! Esercizi ruotati: `;
+            if (rotation.added.length > 0) rotationMsg += `+${rotation.added.length} nuovi`;
+            if (rotation.removed.length > 0) rotationMsg += `, -${rotation.removed.length} sostituiti`;
+
+            this.showNotification(rotationMsg, 'success');
+
+            // Show detailed rotation modal
+            this.showRotationDetail(rotation);
+        } else {
+            this.showNotification('Nuovo ciclo iniziato!', 'success');
+        }
+
         this.updateCycleCard();
         this.loadDashboard();
+    },
+
+    showRotationDetail(rotation) {
+        const addedHtml = rotation.added.map(e =>
+            `<div class="rotation-item rotation-added">+ ${e.name}</div>`
+        ).join('');
+        const removedHtml = rotation.removed.map(e =>
+            `<div class="rotation-item rotation-removed">- ${e.name}</div>`
+        ).join('');
+
+        const html = `
+            <div class="cycle-summary-modal" id="rotation-detail-modal">
+                <div class="cycle-summary-content">
+                    <div class="cycle-summary-header">
+                        <h2>Esercizi Ruotati - Ciclo #${rotation.cycleNumber}</h2>
+                        <p>Nuovi stimoli per continuare a progredire</p>
+                    </div>
+                    <div style="padding: 1rem;">
+                        ${addedHtml ? `<h4 style="color: var(--success-color, #4CAF50); margin-bottom: 0.5rem;">Nuovi esercizi</h4>${addedHtml}` : ''}
+                        ${removedHtml ? `<h4 style="color: var(--danger-color, #f44336); margin: 0.75rem 0 0.5rem;">Esercizi sostituiti</h4>${removedHtml}` : ''}
+                        <p style="margin-top: 1rem; opacity: 0.7; font-size: 0.85rem;">
+                            ${rotation.kept.length} esercizi mantenuti dal ciclo precedente
+                        </p>
+                    </div>
+                    <div class="cycle-summary-actions">
+                        <button class="btn btn-primary" onclick="document.getElementById('rotation-detail-modal')?.remove()">
+                            OK, iniziamo!
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', html);
     },
 
     closeCycleSummary() {

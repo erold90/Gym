@@ -649,6 +649,7 @@ const Storage = {
 
     /**
      * Complete current cycle and save to history with stats
+     * Rotates exercises and progressively increases volume for the new cycle
      */
     completeCycle() {
         const cycleInfo = this.getCycleInfo();
@@ -671,8 +672,35 @@ const Storage = {
         // Save to history
         this.saveCycleToHistory(cycleRecord);
 
-        // Reset cycle for new one
+        // Rotate exercises and create new cycle with progressive volume
+        if (typeof TrainingAlgorithm !== 'undefined' && program) {
+            const profile = this.getProfile() || {};
+            profile.level = program.metadata?.level || 'intermediate';
+            profile.equipment = profile.equipment || [];
+
+            const oldProgram = JSON.parse(JSON.stringify(program)); // deep copy for summary
+            const rotatedProgram = TrainingAlgorithm.rotateProgram(program, profile);
+
+            if (rotatedProgram) {
+                this.setActiveProgram(rotatedProgram);
+
+                // Store rotation summary for UI display
+                const summary = TrainingAlgorithm.getRotationSummary(oldProgram, rotatedProgram);
+                this._lastRotationSummary = summary;
+
+                return this.getCycleInfo();
+            }
+        }
+
+        // Fallback: simple reset if rotation fails
         return this.resetCycle();
+    },
+
+    /**
+     * Get the last rotation summary (what exercises changed)
+     */
+    getLastRotationSummary() {
+        return this._lastRotationSummary || null;
     },
 
     /**
