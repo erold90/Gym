@@ -5078,3 +5078,74 @@ input[type="number"] {
     font-size: 0.95rem;
     resize: vertical;
 }
+
+/* ========================================
+   WORKOUT DETAIL & COMPLETION SUMMARY
+   ======================================== */
+
+.workout-detail-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 8px 0 16px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.workout-detail-exercise {
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+
+.workout-detail-ex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.workout-detail-ex-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.workout-detail-ex-vol {
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.workout-detail-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.workout-detail-set {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+}
+
+.workout-detail-set.completed {
+    color: var(--success);
+    border: 1px solid rgba(6, 214, 160, 0.3);
+}
+
+.workout-detail-set.skipped {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    font-style: italic;
+}
+
+/* Clickable workout history items */
+.workout-history-item.clickable {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.workout-history-item.clickable:hover {
+    background: var(--bg-hover);
+}

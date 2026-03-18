@@ -1564,8 +1564,124 @@ const App = {
     },
 
     startFreeWorkout() {
-        // TODO: Implement free workout mode
-        this.showNotification('Modalità allenamento libero in arrivo!', 'info');
+        // Show free workout modal to pick exercises
+        this.freeWorkoutExercises = [];
+        document.getElementById('free-workout-modal').classList.add('active');
+        document.getElementById('free-workout-search').value = '';
+        document.getElementById('free-workout-search').focus();
+        this.freeWorkoutRenderSelected();
+        this.freeWorkoutSearchResults([]);
+    },
+
+    freeWorkoutSearch(query) {
+        if (!query || query.length < 2) {
+            this.freeWorkoutSearchResults([]);
+            return;
+        }
+        const results = searchExercises(query).slice(0, 15);
+        this.freeWorkoutSearchResults(results);
+    },
+
+    freeWorkoutSearchResults(results) {
+        const container = document.getElementById('free-workout-results');
+        if (!results.length) {
+            container.innerHTML = '<p class="empty-state-mini">Cerca un esercizio...</p>';
+            return;
+        }
+        const addedIds = this.freeWorkoutExercises.map(e => e.id);
+        container.innerHTML = results.map(ex => {
+            const already = addedIds.includes(ex.id);
+            return `
+                <div class="builder-search-result ${already ? 'already-added' : ''}" data-id="${ex.id}">
+                    <div>
+                        <strong>${ex.name}</strong>
+                        <small>${ex.primaryMuscles.join(', ')}</small>
+                    </div>
+                    ${already ? '<span class="added-badge">Aggiunto</span>' : `<button class="btn btn-sm btn-primary" onclick="App.freeWorkoutAddExercise('${ex.id}')">+</button>`}
+                </div>
+            `;
+        }).join('');
+    },
+
+    freeWorkoutAddExercise(exerciseId) {
+        const exercise = EXERCISES_DB[exerciseId];
+        if (!exercise) return;
+        if (this.freeWorkoutExercises.find(e => e.id === exerciseId)) return;
+
+        const isCompound = exercise.type === 'compound';
+        this.freeWorkoutExercises.push({
+            id: exerciseId,
+            name: exercise.name,
+            sets: isCompound ? 4 : 3,
+            reps: isCompound ? '6-10' : '10-15',
+            rest: isCompound ? 120 : 60
+        });
+
+        this.freeWorkoutRenderSelected();
+        // Re-run search to update "already added" state
+        const query = document.getElementById('free-workout-search').value;
+        if (query) this.freeWorkoutSearch(query);
+    },
+
+    freeWorkoutRemoveExercise(index) {
+        this.freeWorkoutExercises.splice(index, 1);
+        this.freeWorkoutRenderSelected();
+        const query = document.getElementById('free-workout-search').value;
+        if (query) this.freeWorkoutSearch(query);
+    },
+
+    freeWorkoutRenderSelected() {
+        const container = document.getElementById('free-workout-selected');
+        if (!this.freeWorkoutExercises.length) {
+            container.innerHTML = '<p class="empty-state-mini">Nessun esercizio selezionato</p>';
+            return;
+        }
+        container.innerHTML = this.freeWorkoutExercises.map((ex, i) => `
+            <div class="builder-exercise-item">
+                <div class="builder-exercise-info">
+                    <span class="builder-exercise-name">${ex.name}</span>
+                    <div class="builder-exercise-params">
+                        <label>Serie<input type="number" min="1" max="10" value="${ex.sets}" onchange="App.freeWorkoutUpdateExercise(${i},'sets',this.value)"></label>
+                        <label>Reps<input type="text" value="${ex.reps}" onchange="App.freeWorkoutUpdateExercise(${i},'reps',this.value)" style="width:60px"></label>
+                        <label>Rec<input type="number" min="30" max="300" step="15" value="${ex.rest}" onchange="App.freeWorkoutUpdateExercise(${i},'rest',this.value)">s</label>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="App.freeWorkoutRemoveExercise(${i})">✕</button>
+            </div>
+        `).join('');
+    },
+
+    freeWorkoutUpdateExercise(index, field, value) {
+        if (this.freeWorkoutExercises[index]) {
+            this.freeWorkoutExercises[index][field] = field === 'reps' ? value : parseInt(value);
+        }
+    },
+
+    freeWorkoutStart() {
+        if (!this.freeWorkoutExercises.length) {
+            this.showNotification('Aggiungi almeno un esercizio', 'warning');
+            return;
+        }
+
+        // Build workout object compatible with startWorkout()
+        const workout = {
+            type: 'Allenamento Libero',
+            isFreeWorkout: true,
+            exercises: this.freeWorkoutExercises.map(ex => ({
+                exerciseId: ex.id,
+                name: ex.name,
+                sets: ex.sets,
+                targetReps: ex.reps,
+                rest: ex.rest
+            }))
+        };
+
+        document.getElementById('free-workout-modal').classList.remove('active');
+        this.startWorkout(workout);
+    },
+
+    closeFreeWorkoutModal() {
+        document.getElementById('free-workout-modal').classList.remove('active');
     },
 
     startWorkout(workout) {
@@ -2253,8 +2369,10 @@ const App = {
             };
         }
 
+        // Save exercises for completion summary before resetting
+        this.lastWorkoutExercises = this.activeWorkout?.exercises || [];
+
         // Reset state
-        const workoutExercises = this.activeWorkout?.exercises || [];
         this.activeWorkout = null;
         this.currentExerciseIndex = 0;
 
@@ -2270,9 +2388,9 @@ const App = {
         // Show completion notification with progression hints
         this.showNotification(`Allenamento completato! Volume: ${this.formatNumber(totalVolume)} kg`, 'success');
 
-        // Show progression summary modal
-        if (this.lastWorkoutSummary && this.lastWorkoutSummary.progressions.length > 0) {
-            this.showProgressionSummary();
+        // Always show workout completion summary
+        if (this.lastWorkoutSummary) {
+            this.showWorkoutCompletionSummary();
         }
 
         // Check for deload suggestion
@@ -2466,6 +2584,171 @@ const App = {
 
     closeProgressionSummary() {
         const modal = document.getElementById('progression-summary-modal');
+        if (modal) modal.remove();
+    },
+
+    showWorkoutCompletionSummary() {
+        const summary = this.lastWorkoutSummary;
+        if (!summary) return;
+
+        const durationMin = Math.round((summary.duration || 0) / 60);
+        const hasProgressions = summary.progressions && summary.progressions.length > 0;
+
+        const upCount = hasProgressions ? summary.progressions.filter(p => p.action === 'up').length : 0;
+        const repsCount = hasProgressions ? summary.progressions.filter(p => p.action === 'reps').length : 0;
+
+        // Build exercise breakdown from last workout
+        let exerciseBreakdownHTML = '';
+        if (this.lastWorkoutExercises && this.lastWorkoutExercises.length > 0) {
+            exerciseBreakdownHTML = `
+                <h4>Dettaglio esercizi</h4>
+                <div class="workout-detail-exercises">
+                    ${this.lastWorkoutExercises.map(ex => {
+                        const completedSets = ex.setsData.filter(s => s.completed);
+                        const exVolume = completedSets.reduce((sum, s) => sum + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0);
+                        return `
+                            <div class="workout-detail-exercise">
+                                <div class="workout-detail-ex-header">
+                                    <span class="workout-detail-ex-name">${ex.name}</span>
+                                    <span class="workout-detail-ex-vol">${this.formatNumber(Math.round(exVolume))}kg</span>
+                                </div>
+                                <div class="workout-detail-sets">
+                                    ${ex.setsData.map((s, i) => `
+                                        <span class="workout-detail-set ${s.completed ? 'completed' : 'skipped'}">
+                                            ${s.completed ? `${s.weight}kg × ${s.reps}` : `Set ${i + 1}: saltato`}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        let progressionHTML = '';
+        if (hasProgressions) {
+            progressionHTML = `
+                <h4>Prossima sessione</h4>
+                <div class="progression-list">
+                    ${summary.progressions.map(p => `
+                        <div class="progression-item ${p.action}">
+                            <span class="prog-name">${p.name}</span>
+                            <span class="prog-action">${p.message}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        const html = `
+            <div class="progression-summary-modal" id="workout-completion-modal">
+                <div class="progression-summary-content">
+                    <h3>🎉 Allenamento Completato!</h3>
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="stat-value">${this.formatNumber(summary.volume)}</span>
+                            <span class="stat-label">kg volume</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${summary.sets}</span>
+                            <span class="stat-label">serie</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${durationMin}</span>
+                            <span class="stat-label">minuti</span>
+                        </div>
+                        ${hasProgressions ? `<div class="summary-stat">
+                            <span class="stat-value">${upCount}</span>
+                            <span class="stat-label">↑ peso</span>
+                        </div>` : ''}
+                    </div>
+                    ${exerciseBreakdownHTML}
+                    ${progressionHTML}
+                    <button class="btn btn-primary" onclick="App.closeWorkoutCompletionSummary()">Chiudi</button>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    closeWorkoutCompletionSummary() {
+        const modal = document.getElementById('workout-completion-modal');
+        if (modal) modal.remove();
+    },
+
+    showWorkoutDetail(workoutId) {
+        const workout = Storage.getWorkoutById(workoutId);
+        if (!workout) {
+            this.showNotification('Allenamento non trovato', 'error');
+            return;
+        }
+
+        const date = this.formatDate(new Date(workout.date));
+        const durationMin = Math.round((workout.duration || 0) / 60);
+
+        let exercisesHTML = '<p class="empty-state-mini">Nessun dettaglio disponibile</p>';
+        if (workout.exercises && workout.exercises.length > 0) {
+            exercisesHTML = workout.exercises.map(ex => {
+                const sets = ex.sets || [];
+                const completedSets = sets.filter(s => s.completed);
+                const exVolume = completedSets.reduce((sum, s) => sum + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0);
+
+                return `
+                    <div class="workout-detail-exercise">
+                        <div class="workout-detail-ex-header">
+                            <span class="workout-detail-ex-name">${ex.name}</span>
+                            <span class="workout-detail-ex-vol">${this.formatNumber(Math.round(exVolume))}kg</span>
+                        </div>
+                        <div class="workout-detail-sets">
+                            ${sets.map((s, i) => `
+                                <span class="workout-detail-set ${s.completed ? 'completed' : 'skipped'}">
+                                    ${s.completed ? `${s.weight}kg × ${s.reps}` : `Set ${i + 1}: saltato`}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        const html = `
+            <div class="progression-summary-modal" id="workout-detail-modal">
+                <div class="progression-summary-content">
+                    <h3>📋 ${workout.name || 'Allenamento'}</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">${date}</p>
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="stat-value">${this.formatNumber(workout.totalVolume || 0)}</span>
+                            <span class="stat-label">kg volume</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${workout.totalSets || 0}</span>
+                            <span class="stat-label">serie</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${durationMin}</span>
+                            <span class="stat-label">minuti</span>
+                        </div>
+                    </div>
+                    <h4>Esercizi</h4>
+                    <div class="workout-detail-exercises">
+                        ${exercisesHTML}
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:16px;">
+                        <button class="btn btn-primary" onclick="App.closeWorkoutDetail()" style="flex:1;">Chiudi</button>
+                        <button class="btn btn-danger btn-sm" onclick="App.deleteWorkoutSession(${workout.id}); App.closeWorkoutDetail();">Elimina</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    closeWorkoutDetail() {
+        const modal = document.getElementById('workout-detail-modal');
         if (modal) modal.remove();
     },
 
@@ -2803,14 +3086,22 @@ const App = {
         }
 
         container.innerHTML = workouts.map(w => `
-            <div class="workout-history-item" data-workout-id="${w.id}">
+            <div class="workout-history-item clickable" data-workout-id="${w.id}">
                 <div class="workout-history-info">
                     <div class="workout-history-name">${w.name || 'Allenamento'}</div>
                     <div class="workout-history-meta">${this.formatDateShort(new Date(w.date))} • ${Math.round(w.duration / 60)}min</div>
                 </div>
-                <div class="workout-history-stats">${this.formatNumber(w.totalVolume)}kg</div>
+                <div class="workout-history-stats">${this.formatNumber(w.totalVolume)}kg →</div>
             </div>
         `).join('');
+
+        // Add click handlers for workout detail view
+        container.querySelectorAll('.workout-history-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.workoutId);
+                if (id) this.showWorkoutDetail(id);
+            });
+        });
     },
 
     deleteWorkoutSession(workoutId, event) {

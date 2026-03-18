@@ -257,6 +257,29 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Free Workout Modal -->
+                <div class="modal" id="free-workout-modal">
+                    <div class="modal-content modal-large">
+                        <div class="modal-header">
+                            <h3 id="free-workout-modal-title">🏋️ Allenamento Libero</h3>
+                            <button class="modal-close" onclick="App.closeFreeWorkoutModal()">✕</button>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 12px;">Scegli gli esercizi per il tuo allenamento</p>
+                        <input type="text" id="free-workout-search" class="form-control" placeholder="Cerca esercizio..." oninput="App.freeWorkoutSearch(this.value)">
+                        <div id="free-workout-results" class="builder-exercise-results" style="max-height: 200px; overflow-y: auto; margin: 12px 0;">
+                            <p class="empty-state-mini">Cerca un esercizio...</p>
+                        </div>
+                        <h4 style="margin-top: 12px;">Esercizi selezionati</h4>
+                        <div id="free-workout-selected" style="margin: 8px 0;">
+                            <p class="empty-state-mini">Nessun esercizio selezionato</p>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 16px;">
+                            <button class="btn btn-secondary" onclick="App.closeFreeWorkoutModal()" style="flex:1;">Annulla</button>
+                            <button class="btn btn-primary" onclick="App.freeWorkoutStart()" style="flex:1;">Inizia Allenamento</button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Exercises Database Page -->
