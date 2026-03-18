@@ -314,8 +314,10 @@ const App = {
             if (confirm('Vuoi cancellare solo i progressi (allenamenti, PR, streak, cicli)?\n\nIl profilo, le impostazioni e le schede verranno mantenuti.')) {
                 Storage.clearProgressData();
                 this.showToast('Progressi cancellati!', 'success');
-                this.updateDashboard();
+                this.loadDashboard();
                 this.updateCycleCard();
+                this.loadProgress();
+                this.initCharts();
                 this.updateStorageUsage();
             }
         });
