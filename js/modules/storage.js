@@ -564,10 +564,14 @@ const Storage = {
         const cycle = program.metadata.cycle;
         const currentPhase = cycle.phases.find(p => p.week === cycle.currentWeek);
 
+        // Progresso basato su settimane completate (currentWeek-1), non la settimana corrente
+        const completedWeeks = cycle.currentWeek - 1;
+        const progress = Math.round((completedWeeks / cycle.duration) * 100);
+
         return {
             ...cycle,
             currentPhase: currentPhase || cycle.phases[0],
-            progress: Math.round((cycle.currentWeek / cycle.duration) * 100),
+            progress: progress,
             weeksRemaining: cycle.duration - cycle.currentWeek,
             isLastWeek: cycle.currentWeek === cycle.duration
         };

@@ -3528,7 +3528,7 @@ const App = {
                     <div class="cycle-progress-bar">
                         <div class="cycle-progress-fill" style="width: ${cycleInfo.progress}%"></div>
                     </div>
-                    <span class="cycle-progress-text">${cycleInfo.progress}% completato</span>
+                    <span class="cycle-progress-text">${cycleInfo.progress > 0 ? cycleInfo.progress + '% completato' : 'Settimana ' + cycleInfo.currentWeek + ' in corso'}</span>
                 </div>
             </div>
         `;
