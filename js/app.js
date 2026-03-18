@@ -3200,21 +3200,38 @@ const App = {
 
         if (!container) return;
 
-        const prEntries = Object.entries(prs);
+        const prEntries = Object.entries(prs).filter(([, pr]) => pr.estimated1RM > 0 || pr.maxWeight > 0);
 
         if (prEntries.length === 0) {
             container.innerHTML = '<p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>';
             return;
         }
 
-        container.innerHTML = prEntries.slice(0, 8).map(([exId, pr]) => {
-            const exercise = EXERCISES_DB[exId];
+        // Sort by E1RM descending (strongest lifts first)
+        prEntries.sort((a, b) => (b[1].estimated1RM || 0) - (a[1].estimated1RM || 0));
+
+        container.innerHTML = prEntries.slice(0, 10).map(([exId, pr]) => {
+            const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[exId] : null;
             const name = exercise?.name || exId;
-            const shortName = name.length > 20 ? name.substring(0, 18) + '...' : name;
+            const shortName = name.length > 22 ? name.substring(0, 20) + '...' : name;
+            const e1rm = pr.estimated1RM || 0;
+            const bestDetail = pr.e1rmWeight && pr.e1rmReps
+                ? `${pr.e1rmWeight}kg x ${pr.e1rmReps}`
+                : `${pr.maxWeight}kg x ${pr.maxWeightReps || '?'}`;
+            const dateStr = pr.e1rmDate
+                ? new Date(pr.e1rmDate).toLocaleDateString()
+                : (pr.maxWeightDate ? new Date(pr.maxWeightDate).toLocaleDateString() : '');
+
             return `
-                <div class="pr-item-compact">
-                    <span class="pr-exercise">${shortName}</span>
-                    <span class="pr-value">${pr.maxWeight}kg</span>
+                <div class="pr-item-detail">
+                    <div class="pr-item-top">
+                        <span class="pr-exercise">${shortName}</span>
+                        <span class="pr-e1rm">${e1rm}kg <small>E1RM</small></span>
+                    </div>
+                    <div class="pr-item-bottom">
+                        <span class="pr-best-set">${bestDetail}</span>
+                        <span class="pr-date">${dateStr}</span>
+                    </div>
                 </div>
             `;
         }).join('');

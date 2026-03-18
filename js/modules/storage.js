@@ -217,6 +217,32 @@ const Storage = {
         return data ? JSON.parse(data) : {};
     },
 
+    /**
+     * Calculate estimated 1RM using the best formula for the rep range
+     * - Brzycki (1993): more accurate for 1-10 reps → 1RM = weight × 36 / (37 - reps)
+     * - Epley: better for 10+ reps → 1RM = weight × (1 + reps/30)
+     * - For 20+ reps: capped, formulas become unreliable
+     * Sources: LeSuer et al. 1997 comparison study, NSCA guidelines
+     */
+    calculateE1RM(weight, reps) {
+        if (!weight || !reps || reps <= 0) return 0;
+        if (reps === 1) return weight;
+
+        let e1rm;
+        if (reps <= 10) {
+            // Brzycki formula — most accurate for 1-10 reps
+            e1rm = weight * (36 / (37 - reps));
+        } else if (reps <= 20) {
+            // Epley formula — more accurate for higher rep ranges
+            e1rm = weight * (1 + reps / 30);
+        } else {
+            // 20+ reps: cap at Epley with 20 reps equivalent (formulas unreliable above 20)
+            e1rm = weight * (1 + 20 / 30);
+        }
+
+        return Math.round(e1rm * 10) / 10;
+    },
+
     updatePersonalRecords(workout) {
         const prs = this.getPersonalRecords();
 
@@ -225,64 +251,86 @@ const Storage = {
         workout.exercises.forEach(exercise => {
             if (!exercise.sets) return;
 
+            const exerciseId = exercise.exerciseId;
+
+            // Find the BEST set of this exercise in this workout (highest E1RM)
+            let bestSet = null;
+            let bestE1rm = 0;
+
             exercise.sets.forEach(set => {
                 if (!set.weight || !set.reps || !set.completed) return;
 
-                const exerciseId = exercise.exerciseId;
                 const weight = parseFloat(set.weight);
                 const reps = parseInt(set.reps);
+                const e1rm = this.calculateE1RM(weight, reps);
 
-                // Calculate estimated 1RM using Epley formula
-                const e1rm = weight * (1 + reps / 30);
-
-                if (!prs[exerciseId]) {
-                    prs[exerciseId] = {
-                        maxWeight: 0,
-                        maxReps: 0,
-                        maxVolume: 0,
-                        estimated1RM: 0,
-                        history: []
-                    };
-                }
-
-                let updated = false;
-
-                // Check for new max weight
-                if (weight > prs[exerciseId].maxWeight) {
-                    prs[exerciseId].maxWeight = weight;
-                    prs[exerciseId].maxWeightReps = reps;
-                    prs[exerciseId].maxWeightDate = workout.date;
-                    updated = true;
-                }
-
-                // Check for new max reps (with at least some weight)
-                if (weight >= prs[exerciseId].maxWeight * 0.5 && reps > prs[exerciseId].maxReps) {
-                    prs[exerciseId].maxReps = reps;
-                    prs[exerciseId].maxRepsWeight = weight;
-                    prs[exerciseId].maxRepsDate = workout.date;
-                    updated = true;
-                }
-
-                // Check for new estimated 1RM
-                if (e1rm > prs[exerciseId].estimated1RM) {
-                    prs[exerciseId].estimated1RM = Math.round(e1rm * 10) / 10;
-                    prs[exerciseId].e1rmDate = workout.date;
-                    updated = true;
-                }
-
-                // Add to history
-                prs[exerciseId].history.push({
-                    date: workout.date,
-                    weight: weight,
-                    reps: reps,
-                    e1rm: Math.round(e1rm * 10) / 10
-                });
-
-                // Keep only last 50 entries per exercise
-                if (prs[exerciseId].history.length > 50) {
-                    prs[exerciseId].history = prs[exerciseId].history.slice(-50);
+                if (e1rm > bestE1rm) {
+                    bestE1rm = e1rm;
+                    bestSet = { weight, reps, e1rm };
                 }
             });
+
+            if (!bestSet) return;
+
+            if (!prs[exerciseId]) {
+                prs[exerciseId] = {
+                    maxWeight: 0,
+                    maxWeightReps: 0,
+                    maxWeightDate: null,
+                    maxReps: 0,
+                    maxRepsWeight: 0,
+                    maxRepsDate: null,
+                    estimated1RM: 0,
+                    e1rmDate: null,
+                    e1rmWeight: 0,
+                    e1rmReps: 0,
+                    history: []
+                };
+            }
+
+            // Check for new max weight
+            if (bestSet.weight > prs[exerciseId].maxWeight) {
+                prs[exerciseId].maxWeight = bestSet.weight;
+                prs[exerciseId].maxWeightReps = bestSet.reps;
+                prs[exerciseId].maxWeightDate = workout.date;
+            }
+
+            // Check for new max reps (with at least 50% of max weight)
+            const bestRepsSet = exercise.sets
+                .filter(s => s.completed && s.weight && s.reps)
+                .reduce((best, s) => {
+                    const r = parseInt(s.reps);
+                    const w = parseFloat(s.weight);
+                    return (w >= prs[exerciseId].maxWeight * 0.5 && r > (best?.reps || 0))
+                        ? { weight: w, reps: r } : best;
+                }, null);
+
+            if (bestRepsSet && bestRepsSet.reps > prs[exerciseId].maxReps) {
+                prs[exerciseId].maxReps = bestRepsSet.reps;
+                prs[exerciseId].maxRepsWeight = bestRepsSet.weight;
+                prs[exerciseId].maxRepsDate = workout.date;
+            }
+
+            // Check for new estimated 1RM
+            if (bestE1rm > prs[exerciseId].estimated1RM) {
+                prs[exerciseId].estimated1RM = bestE1rm;
+                prs[exerciseId].e1rmDate = workout.date;
+                prs[exerciseId].e1rmWeight = bestSet.weight;
+                prs[exerciseId].e1rmReps = bestSet.reps;
+            }
+
+            // Add ONLY best set of this session to history (not every single set)
+            prs[exerciseId].history.push({
+                date: workout.date,
+                weight: bestSet.weight,
+                reps: bestSet.reps,
+                e1rm: bestE1rm
+            });
+
+            // Keep only last 50 sessions per exercise
+            if (prs[exerciseId].history.length > 50) {
+                prs[exerciseId].history = prs[exerciseId].history.slice(-50);
+            }
         });
 
         localStorage.setItem(this.KEYS.PERSONAL_RECORDS, JSON.stringify(prs));
@@ -352,10 +400,10 @@ const Storage = {
             return { isNewPR: true, type: 'weight', oldValue: current.maxWeight };
         }
 
-        // Check estimated 1RM
-        const newE1RM = weight * (1 + reps / 30);
+        // Check estimated 1RM using proper formula (Brzycki ≤10, Epley >10)
+        const newE1RM = this.calculateE1RM(weight, reps);
         if (newE1RM > current.estimated1RM) {
-            return { isNewPR: true, type: 'e1rm', oldValue: current.estimated1RM, newValue: Math.round(newE1RM * 10) / 10 };
+            return { isNewPR: true, type: 'e1rm', oldValue: current.estimated1RM, newValue: newE1RM };
         }
 
         return { isNewPR: false };

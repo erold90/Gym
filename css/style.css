@@ -5367,3 +5367,53 @@ input[type="number"] {
     background: rgba(244, 67, 54, 0.1);
     color: #f44336;
 }
+
+/* PR Items - Detailed View */
+.pr-item-detail {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.pr-item-detail:last-child {
+    border-bottom: none;
+}
+
+.pr-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.2rem;
+}
+
+.pr-item-top .pr-exercise {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.pr-e1rm {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #06d6a0;
+}
+
+.pr-e1rm small {
+    font-size: 0.65rem;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.pr-item-bottom {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #a0a0b0);
+}
+
+.pr-best-set {
+    opacity: 0.8;
+}
+
+.pr-date {
+    opacity: 0.5;
+}
