@@ -188,6 +188,9 @@
                             <button class="btn btn-primary" id="start-scheduled-workout">
                                 Inizia Scheda del Giorno
                             </button>
+                            <button class="btn btn-outline" id="preview-workout-btn">
+                                Anteprima Scheda
+                            </button>
                             <button class="btn btn-secondary" id="start-free-workout">
                                 Allenamento Libero
                             </button>
@@ -195,11 +198,24 @@
                     </div>
                 </div>
 
+                <!-- Workout Preview (read-only, no tracking) -->
+                <div id="workout-preview" style="display: none;">
+                    <div class="workout-header-bar preview-bar">
+                        <span class="preview-badge">ANTEPRIMA</span>
+                        <button class="btn btn-secondary btn-sm" id="close-preview-btn">Chiudi</button>
+                    </div>
+                    <div id="preview-day-nav" class="preview-day-nav"></div>
+                    <div id="preview-content"></div>
+                </div>
+
                 <!-- Active Workout -->
                 <div id="workout-active" style="display: none;">
                     <div class="workout-header-bar">
                         <div class="workout-timer" id="workout-timer">00:00:00</div>
-                        <button class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
+                        <div class="workout-header-actions">
+                            <button class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
+                            <button class="btn btn-outline btn-sm" id="cancel-workout-btn" title="Annulla senza salvare">Annulla</button>
+                        </div>
                     </div>
 
                     <!-- Warm-up Section (Collapsible) -->

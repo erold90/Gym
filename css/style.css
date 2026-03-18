@@ -5417,3 +5417,143 @@ input[type="number"] {
 .pr-date {
     opacity: 0.5;
 }
+
+/* ========================================
+   WORKOUT PREVIEW MODE
+   ======================================== */
+
+.preview-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(114, 9, 183, 0.15);
+    border: 1px solid rgba(114, 9, 183, 0.3);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.preview-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #b388ff;
+}
+
+.preview-day-nav {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.preview-day-tab {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-secondary, #1a1a2e);
+    color: var(--text-secondary, #a0a0b0);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.preview-day-tab.active {
+    background: var(--accent, #7209b7);
+    color: #fff;
+    border-color: var(--accent, #7209b7);
+}
+
+.preview-day-card {
+    background: var(--bg-card, #16213e);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.preview-day-card h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary, #fff);
+}
+
+.preview-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.preview-exercise-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+}
+
+.preview-ex-gif {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.05);
+    flex-shrink: 0;
+}
+
+.preview-ex-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.preview-ex-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.preview-ex-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #a0a0b0);
+    margin-top: 2px;
+}
+
+.preview-ex-last {
+    font-size: 0.7rem;
+    color: var(--accent, #7209b7);
+    margin-top: 2px;
+    font-style: italic;
+}
+
+/* Workout header actions (Termina + Annulla) */
+.workout-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-outline {
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: transparent;
+    color: var(--text-secondary, #a0a0b0);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline:hover {
+    border-color: #f44336;
+    color: #f44336;
+}

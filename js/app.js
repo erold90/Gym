@@ -196,6 +196,18 @@ const App = {
             this.startFreeWorkout();
         });
 
+        document.getElementById('preview-workout-btn')?.addEventListener('click', () => {
+            this.showWorkoutPreview();
+        });
+
+        document.getElementById('close-preview-btn')?.addEventListener('click', () => {
+            this.closeWorkoutPreview();
+        });
+
+        document.getElementById('cancel-workout-btn')?.addEventListener('click', () => {
+            this.cancelWorkout();
+        });
+
         document.getElementById('start-workout-btn')?.addEventListener('click', () => {
             this.startScheduledWorkout();
         });
@@ -1598,6 +1610,123 @@ const App = {
     },
 
     // ========================================
+    // WORKOUT PREVIEW (read-only, no tracking)
+    // ========================================
+
+    showWorkoutPreview() {
+        const program = Storage.getActiveProgram();
+        if (!program || !program.days || program.days.length === 0) {
+            this.showNotification('Nessuna scheda attiva!', 'warning');
+            return;
+        }
+
+        // Hide other sections, show preview
+        document.getElementById('workout-not-started').style.display = 'none';
+        document.getElementById('workout-active').style.display = 'none';
+        document.getElementById('workout-preview').style.display = 'block';
+
+        // Build day navigation tabs
+        const navContainer = document.getElementById('preview-day-nav');
+        navContainer.innerHTML = program.days.map((day, i) => `
+            <button class="preview-day-tab ${i === 0 ? 'active' : ''}" data-day-index="${i}">
+                ${day.type || day.name}
+            </button>
+        `).join('');
+
+        // Add tab click handlers
+        navContainer.querySelectorAll('.preview-day-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                navContainer.querySelectorAll('.preview-day-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.renderPreviewDay(program.days[parseInt(tab.dataset.dayIndex)]);
+            });
+        });
+
+        // Show first day
+        this.renderPreviewDay(program.days[0]);
+    },
+
+    renderPreviewDay(day) {
+        const container = document.getElementById('preview-content');
+        if (!container || !day) return;
+
+        const cycleInfo = Storage.getCycleInfo();
+        const isDeload = Storage.isDeloadActive();
+        const volumeMultiplier = Storage.getCurrentVolumeMultiplier();
+
+        container.innerHTML = `
+            <div class="card preview-day-card">
+                <h3>${day.focus || day.type || day.name}</h3>
+                ${cycleInfo ? `<p class="preview-phase-info">${isDeload ? 'Deload' : cycleInfo.currentPhase?.phaseName} - Sett. ${cycleInfo.currentWeek}/${cycleInfo.duration} - RIR ${isDeload ? '4+' : cycleInfo.currentPhase?.rirTarget?.min + '-' + cycleInfo.currentPhase?.rirTarget?.max}</p>` : ''}
+                <div class="preview-exercises">
+                    ${(day.exercises || []).map((ex, i) => {
+                        const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
+                        const gifUrl = exercise ? (typeof ExerciseMedia !== 'undefined' ? ExerciseMedia.getGifUrl(ex.exerciseId) : null) : null;
+                        const sets = isDeload ? Math.max(2, Math.round(ex.sets * volumeMultiplier)) : ex.sets;
+
+                        // Get last performance for progression hint
+                        const lastPerf = Storage.getLastPerformance(ex.exerciseId);
+                        let hint = '';
+                        if (lastPerf) {
+                            const bestWeight = lastPerf.weight;
+                            hint = `<span class="preview-hint">Ultimo: ${bestWeight}kg x ${lastPerf.reps}</span>`;
+                        }
+
+                        return `
+                            <div class="preview-exercise-row">
+                                <span class="preview-ex-num">${i + 1}</span>
+                                <div class="preview-ex-info">
+                                    <div class="preview-ex-name">${ex.name}</div>
+                                    <div class="preview-ex-details">${sets} x ${ex.reps} · ${ex.rest}s pausa</div>
+                                    ${hint}
+                                </div>
+                                ${gifUrl ? `<img src="${gifUrl}" class="preview-ex-gif" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    closeWorkoutPreview() {
+        document.getElementById('workout-preview').style.display = 'none';
+        document.getElementById('workout-not-started').style.display = 'block';
+    },
+
+    /**
+     * Cancel active workout without saving any data
+     */
+    cancelWorkout() {
+        if (!this.activeWorkout) return;
+
+        // Check if any data was entered
+        const hasData = this.activeWorkout.exercises.some(ex =>
+            ex.setsData.some(s => s.completed || s.weight || s.reps)
+        );
+
+        const message = hasData
+            ? 'Hai dei dati inseriti. Annullare senza salvare?'
+            : 'Annullare la sessione?';
+
+        if (!confirm(message)) return;
+
+        // Stop timers
+        Timer.stopWorkoutTimer();
+        Timer.stopRestTimer();
+        document.getElementById('rest-timer-modal').style.display = 'none';
+
+        // Reset UI without saving
+        this.activeWorkout = null;
+        this.currentExerciseIndex = 0;
+        document.getElementById('workout-active').style.display = 'none';
+        document.getElementById('workout-not-started').style.display = 'block';
+        document.getElementById('phase-banner')?.remove();
+
+        this.showNotification('Sessione annullata', 'info');
+    },
+
+    // ========================================
     // WORKOUT EXECUTION
     // ========================================
 
@@ -2386,6 +2515,17 @@ const App = {
                 totalVolume: Math.round(totalVolume),
                 totalSets: totalSets
             };
+
+            // Non salvare sessioni vuote (nessuna serie completata)
+            if (totalSets === 0) {
+                this.activeWorkout = null;
+                this.currentExerciseIndex = 0;
+                this.currentSetIndex = 0;
+                document.getElementById('workout-active').classList.add('hidden');
+                document.getElementById('workout-not-started').classList.remove('hidden');
+                this.showNotification('Sessione annullata (nessuna serie completata)', 'info');
+                return;
+            }
 
             Storage.saveWorkout(workoutData);
 
