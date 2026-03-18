@@ -256,10 +256,12 @@ const App = {
 
         // Cooldown controls
         document.getElementById('skip-cooldown')?.addEventListener('click', () => {
+            if (!confirm('Terminare e salvare l\'allenamento?')) return;
             this.finishWorkout();
         });
 
         document.getElementById('complete-cooldown')?.addEventListener('click', () => {
+            if (!confirm('Terminare e salvare l\'allenamento?')) return;
             this.finishWorkout();
         });
 
@@ -1716,6 +1718,12 @@ const App = {
         Timer.stopRestTimer();
         document.getElementById('rest-timer-modal').style.display = 'none';
 
+        // Rimuovi protezione refresh
+        if (this._beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+            this._beforeUnloadHandler = null;
+        }
+
         // Reset UI without saving
         this.activeWorkout = null;
         this.currentExerciseIndex = 0;
@@ -1904,6 +1912,13 @@ const App = {
         // Show workout UI
         document.getElementById('workout-not-started').style.display = 'none';
         document.getElementById('workout-active').style.display = 'block';
+
+        // Proteggi da refresh/chiusura accidentale durante allenamento
+        this._beforeUnloadHandler = (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', this._beforeUnloadHandler);
 
         // Start workout timer
         Timer.startWorkoutTimer((time) => {
@@ -2485,6 +2500,12 @@ const App = {
     },
 
     finishWorkout() {
+        // Rimuovi protezione refresh
+        if (this._beforeUnloadHandler) {
+            window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+            this._beforeUnloadHandler = null;
+        }
+
         // Stop workout timer
         const duration = Timer.stopWorkoutTimer();
 
