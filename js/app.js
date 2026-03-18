@@ -14,6 +14,13 @@ const App = {
     currentSetIndex: 0,
     charts: {},
 
+    // Manual builder state
+    builderState: {
+        days: [],           // [{name: 'Push', exercises: [{exerciseId, name, sets, reps, rest}]}]
+        currentDayIndex: 0,
+        isEditing: false    // true when editing existing program
+    },
+
     // Conditioning state
     conditioningState: {
         type: null,          // 'hiit' o 'liss'
@@ -121,6 +128,63 @@ const App = {
         // Delete program button
         document.getElementById('delete-program-btn')?.addEventListener('click', () => {
             this.deleteActiveProgram();
+        });
+
+        // Edit program button
+        document.getElementById('edit-program-btn')?.addEventListener('click', () => {
+            this.editActiveProgram();
+        });
+
+        // Open manual builder
+        document.getElementById('open-manual-builder-btn')?.addEventListener('click', () => {
+            this.openManualBuilder();
+        });
+
+        // Open AI generator modal
+        document.getElementById('open-ai-generator-btn')?.addEventListener('click', () => {
+            document.getElementById('ai-generator-modal').classList.add('active');
+        });
+
+        // Close AI generator modal
+        document.getElementById('close-ai-generator')?.addEventListener('click', () => {
+            document.getElementById('ai-generator-modal').classList.remove('active');
+        });
+
+        document.getElementById('ai-generator-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'ai-generator-modal') {
+                document.getElementById('ai-generator-modal').classList.remove('active');
+            }
+        });
+
+        // Manual builder controls
+        document.getElementById('close-manual-builder')?.addEventListener('click', () => {
+            this.closeManualBuilder();
+        });
+
+        document.getElementById('manual-builder-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'manual-builder-modal') {
+                this.closeManualBuilder();
+            }
+        });
+
+        document.getElementById('builder-add-day-btn')?.addEventListener('click', () => {
+            this.builderAddDay();
+        });
+
+        document.getElementById('builder-to-exercises-btn')?.addEventListener('click', () => {
+            this.builderGoToExercises();
+        });
+
+        document.getElementById('builder-back-to-days-btn')?.addEventListener('click', () => {
+            this.builderGoToDays();
+        });
+
+        document.getElementById('builder-save-btn')?.addEventListener('click', () => {
+            this.builderSaveProgram();
+        });
+
+        document.getElementById('builder-exercise-search')?.addEventListener('input', (e) => {
+            this.builderSearchExercises(e.target.value);
         });
 
         // Start workout buttons
@@ -1029,6 +1093,12 @@ const App = {
             return;
         }
 
+        // Confirm overwrite if active program exists
+        const existing = Storage.getActiveProgram();
+        if (existing && !confirm('Hai già una scheda attiva. Vuoi sostituirla con quella generata?')) {
+            return;
+        }
+
         const options = {
             goal: document.getElementById('program-goal').value,
             daysPerWeek: parseInt(document.getElementById('program-days').value),
@@ -1038,9 +1108,11 @@ const App = {
 
         const program = TrainingAlgorithm.generateProgram(profile, options);
 
-        // Save as active program
+        // Save only as active program (no multi-program list)
         Storage.setActiveProgram(program);
-        Storage.saveProgram(program);
+
+        // Close modal
+        document.getElementById('ai-generator-modal')?.classList.remove('active');
 
         this.loadPrograms();
         this.loadDashboard();
@@ -1049,20 +1121,22 @@ const App = {
 
     loadPrograms() {
         this.displayActiveProgram();
-        this.displaySavedPrograms();
     },
 
     displayActiveProgram() {
         const program = Storage.getActiveProgram();
         const card = document.getElementById('active-program-card');
         const content = document.getElementById('active-program-content');
+        const noState = document.getElementById('no-program-state');
 
         if (!program) {
             card.style.display = 'none';
+            if (noState) noState.style.display = 'block';
             return;
         }
 
         card.style.display = 'block';
+        if (noState) noState.style.display = 'none';
 
         // Build tempo info if available
         const tempoInfo = program.metadata?.tempo
@@ -1092,7 +1166,7 @@ const App = {
                             <div class="program-exercise program-exercise-item">
                                 <div class="program-exercise-content">
                                     <span class="exercise-name">${ex.name}</span>
-                                    <span class="exercise-details">${ex.sets} x ${ex.reps}</span>
+                                    <span class="exercise-details">${ex.sets} x ${ex.reps} ${ex.rest ? '• ' + ex.rest + 's' : ''}</span>
                                 </div>
                                 <button class="exercise-info-btn" data-exercise-id="${ex.exerciseId || ''}" data-exercise-name="${ex.name}" title="Vedi esecuzione">
                                     ℹ️
@@ -1133,54 +1207,340 @@ const App = {
         });
     },
 
-    displaySavedPrograms() {
-        const programs = Storage.getPrograms();
-        const container = document.getElementById('saved-programs-list');
-
-        if (programs.length === 0) {
-            container.innerHTML = '<p class="empty-state">Nessuna scheda salvata</p>';
-            return;
-        }
-
-        container.innerHTML = programs.map(p => `
-            <div class="saved-program-item">
-                <div class="program-info">
-                    <strong>${p.name}</strong>
-                    <small>${new Date(p.createdAt).toLocaleDateString()}</small>
-                </div>
-                <div class="program-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="App.loadSavedProgram(${p.id})">Attiva</button>
-                    <button class="btn btn-sm btn-danger" onclick="App.deleteSavedProgram(${p.id})">🗑️</button>
-                </div>
-            </div>
-        `).join('');
-    },
-
-    loadSavedProgram(id) {
-        const programs = Storage.getPrograms();
-        const program = programs.find(p => p.id === id);
-        if (program) {
-            Storage.setActiveProgram(program);
-            this.loadPrograms();
-            this.loadDashboard();
-            this.showNotification('Scheda attivata!', 'success');
-        }
-    },
-
-    deleteSavedProgram(id) {
-        if (confirm('Eliminare questa scheda?')) {
-            Storage.deleteProgram(id);
-            this.loadPrograms();
-        }
-    },
-
     deleteActiveProgram() {
-        if (confirm('Eliminare la scheda attiva?')) {
+        if (confirm('Eliminare la scheda attiva? I progressi degli allenamenti rimarranno.')) {
             Storage.clearActiveProgram();
             this.loadPrograms();
             this.loadDashboard();
             this.showNotification('Scheda eliminata', 'info');
         }
+    },
+
+    // ========================================
+    // MANUAL PROGRAM BUILDER
+    // ========================================
+
+    openManualBuilder(editMode = false) {
+        this.builderState = {
+            days: [],
+            currentDayIndex: 0,
+            isEditing: editMode
+        };
+
+        if (editMode) {
+            // Load existing program into builder
+            const program = Storage.getActiveProgram();
+            if (program && program.days) {
+                this.builderState.days = program.days.map(day => ({
+                    name: day.type || day.name,
+                    exercises: day.exercises.map(ex => ({
+                        exerciseId: ex.exerciseId,
+                        name: ex.name,
+                        sets: ex.sets,
+                        reps: ex.reps,
+                        rest: ex.rest
+                    }))
+                }));
+            }
+            document.getElementById('builder-modal-title').textContent = '✏️ Modifica Scheda';
+        } else {
+            // Start with one empty day
+            this.builderState.days = [{ name: 'Giorno 1', exercises: [] }];
+            document.getElementById('builder-modal-title').textContent = '✏️ Crea la Tua Scheda';
+        }
+
+        this.builderRenderDays();
+        document.getElementById('builder-step-days').style.display = 'block';
+        document.getElementById('builder-step-exercises').style.display = 'none';
+        document.getElementById('manual-builder-modal').classList.add('active');
+    },
+
+    closeManualBuilder() {
+        document.getElementById('manual-builder-modal').classList.remove('active');
+    },
+
+    editActiveProgram() {
+        this.openManualBuilder(true);
+    },
+
+    builderAddDay() {
+        const num = this.builderState.days.length + 1;
+        this.builderState.days.push({ name: `Giorno ${num}`, exercises: [] });
+        this.builderRenderDays();
+    },
+
+    builderRemoveDay(index) {
+        if (this.builderState.days.length <= 1) {
+            this.showNotification('Serve almeno un giorno', 'warning');
+            return;
+        }
+        this.builderState.days.splice(index, 1);
+        this.builderRenderDays();
+    },
+
+    builderRenderDays() {
+        const container = document.getElementById('builder-days-list');
+        container.innerHTML = this.builderState.days.map((day, i) => `
+            <div class="builder-day-row">
+                <span class="day-number">${i + 1}</span>
+                <input type="text" value="${day.name}" placeholder="Es: Push, Pull, Gambe..."
+                    onchange="App.builderUpdateDayName(${i}, this.value)">
+                <span style="color:var(--text-muted);font-size:0.8rem;">${day.exercises.length} es.</span>
+                <button class="remove-day-btn" onclick="App.builderRemoveDay(${i})" title="Rimuovi">✕</button>
+            </div>
+        `).join('');
+    },
+
+    builderUpdateDayName(index, name) {
+        this.builderState.days[index].name = name;
+    },
+
+    builderGoToExercises() {
+        if (this.builderState.days.length === 0) {
+            this.showNotification('Aggiungi almeno un giorno', 'warning');
+            return;
+        }
+
+        // Validate all days have names
+        for (const day of this.builderState.days) {
+            if (!day.name.trim()) {
+                this.showNotification('Dai un nome a tutti i giorni', 'warning');
+                return;
+            }
+        }
+
+        this.builderState.currentDayIndex = 0;
+        document.getElementById('builder-step-days').style.display = 'none';
+        document.getElementById('builder-step-exercises').style.display = 'block';
+        this.builderRenderDayTabs();
+        this.builderRenderCurrentDayExercises();
+    },
+
+    builderGoToDays() {
+        document.getElementById('builder-step-days').style.display = 'block';
+        document.getElementById('builder-step-exercises').style.display = 'none';
+        document.getElementById('builder-exercise-results').innerHTML = '';
+        document.getElementById('builder-exercise-search').value = '';
+        this.builderRenderDays();
+    },
+
+    builderRenderDayTabs() {
+        const container = document.getElementById('builder-day-tabs');
+        container.innerHTML = this.builderState.days.map((day, i) => `
+            <button class="builder-day-tab ${i === this.builderState.currentDayIndex ? 'active' : ''}"
+                onclick="App.builderSelectDay(${i})">
+                ${day.name}
+                <span style="opacity:0.6;margin-left:4px;">(${day.exercises.length})</span>
+            </button>
+        `).join('');
+    },
+
+    builderSelectDay(index) {
+        this.builderState.currentDayIndex = index;
+        this.builderRenderDayTabs();
+        this.builderRenderCurrentDayExercises();
+        document.getElementById('builder-exercise-search').value = '';
+        document.getElementById('builder-exercise-results').innerHTML = '';
+    },
+
+    builderRenderCurrentDayExercises() {
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        const container = document.getElementById('builder-current-day-exercises');
+
+        if (!day || day.exercises.length === 0) {
+            container.innerHTML = '<div class="builder-empty-day">Nessun esercizio. Cerca e aggiungi dal campo sotto.</div>';
+            return;
+        }
+
+        container.innerHTML = day.exercises.map((ex, i) => `
+            <div class="builder-exercise-item" data-index="${i}">
+                <span class="drag-handle">⠿</span>
+                <span class="ex-name">${ex.name}</span>
+                <div class="ex-params">
+                    <input type="number" value="${ex.sets}" min="1" max="10" title="Serie"
+                        onchange="App.builderUpdateExercise(${i}, 'sets', this.value)">
+                    <span>×</span>
+                    <input type="text" value="${ex.reps}" title="Reps (es: 8-12)" style="width:60px;"
+                        onchange="App.builderUpdateExercise(${i}, 'reps', this.value)">
+                    <span>⏱</span>
+                    <input type="number" value="${ex.rest}" min="15" max="600" step="15" title="Recupero (sec)"
+                        onchange="App.builderUpdateExercise(${i}, 'rest', this.value)">
+                    <span>s</span>
+                </div>
+                <button class="remove-exercise-btn" onclick="App.builderRemoveExercise(${i})" title="Rimuovi">✕</button>
+            </div>
+        `).join('');
+    },
+
+    builderUpdateExercise(exerciseIndex, field, value) {
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        if (field === 'sets' || field === 'rest') {
+            day.exercises[exerciseIndex][field] = parseInt(value) || (field === 'sets' ? 3 : 60);
+        } else {
+            day.exercises[exerciseIndex][field] = value;
+        }
+    },
+
+    builderRemoveExercise(exerciseIndex) {
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        day.exercises.splice(exerciseIndex, 1);
+        this.builderRenderCurrentDayExercises();
+        this.builderRenderDayTabs();
+    },
+
+    builderSearchExercises(query) {
+        const container = document.getElementById('builder-exercise-results');
+
+        if (!query || query.length < 2) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const results = searchExercises(query).slice(0, 15);
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        const existingIds = new Set(day.exercises.map(e => e.exerciseId));
+
+        container.innerHTML = results.map(ex => {
+            const alreadyAdded = existingIds.has(ex.id);
+            return `
+                <div class="builder-search-result ${alreadyAdded ? 'already-added' : ''}"
+                    onclick="${alreadyAdded ? '' : `App.builderAddExercise('${ex.id}')`}"
+                    style="${alreadyAdded ? 'opacity:0.4;cursor:default;' : ''}">
+                    <div>
+                        <div class="result-name">${ex.name}</div>
+                        <div class="result-muscles">${ex.primaryMuscles.join(', ')} • ${ex.type}</div>
+                    </div>
+                    <span class="result-add">${alreadyAdded ? '✓' : '+'}</span>
+                </div>
+            `;
+        }).join('');
+
+        if (results.length === 0) {
+            container.innerHTML = '<div style="padding:12px;color:var(--text-muted);text-align:center;">Nessun esercizio trovato</div>';
+        }
+    },
+
+    builderAddExercise(exerciseId) {
+        const exercise = EXERCISES_DB[exerciseId];
+        if (!exercise) return;
+
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        const profile = Storage.getProfile();
+        const isCompound = exercise.type === 'compound';
+
+        // Smart defaults based on exercise type
+        const defaultSets = isCompound ? 4 : 3;
+        const defaultReps = isCompound ? '6-10' : '10-15';
+        const defaultRest = isCompound ? 120 : 60;
+
+        day.exercises.push({
+            exerciseId: exercise.id,
+            name: exercise.name,
+            sets: defaultSets,
+            reps: defaultReps,
+            rest: defaultRest
+        });
+
+        this.builderRenderCurrentDayExercises();
+        this.builderRenderDayTabs();
+
+        // Refresh search to update "already added" state
+        const searchInput = document.getElementById('builder-exercise-search');
+        if (searchInput.value) {
+            this.builderSearchExercises(searchInput.value);
+        }
+
+        this.showNotification(`${exercise.name} aggiunto`, 'success');
+    },
+
+    builderSaveProgram() {
+        // Validate
+        const days = this.builderState.days;
+        if (days.length === 0) {
+            this.showNotification('Aggiungi almeno un giorno', 'warning');
+            return;
+        }
+
+        const hasExercises = days.some(d => d.exercises.length > 0);
+        if (!hasExercises) {
+            this.showNotification('Aggiungi almeno un esercizio', 'warning');
+            return;
+        }
+
+        // Confirm overwrite if editing or replacing
+        if (!this.builderState.isEditing) {
+            const existing = Storage.getActiveProgram();
+            if (existing && !confirm('Hai già una scheda attiva. Vuoi sostituirla?')) {
+                return;
+            }
+        }
+
+        const profile = Storage.getProfile();
+
+        // Build program in the same format as the algorithm
+        const program = {
+            name: 'Scheda Personalizzata',
+            days: days.map((day, i) => ({
+                name: `Giorno ${i + 1}`,
+                type: day.name,
+                focus: day.name,
+                warmup: this.builderGuessWarmup(day),
+                exercises: day.exercises.map(ex => ({
+                    exerciseId: ex.exerciseId,
+                    name: ex.name,
+                    sets: parseInt(ex.sets) || 3,
+                    reps: ex.reps || '8-12',
+                    rest: parseInt(ex.rest) || 60,
+                    type: EXERCISES_DB[ex.exerciseId]?.type || 'compound',
+                    notes: ''
+                }))
+            })),
+            metadata: {
+                goal: profile.goal || 'hypertrophy',
+                split: 'custom',
+                daysPerWeek: days.length,
+                sessionDuration: 60,
+                level: profile.level || 'intermediate',
+                createdFor: profile.name || '',
+                isCustom: true,
+                weeklyVolume: this.builderCalcWeeklyVolume(days)
+            }
+        };
+
+        Storage.setActiveProgram(program);
+        this.closeManualBuilder();
+        this.loadPrograms();
+        this.loadDashboard();
+        this.showNotification(this.builderState.isEditing ? 'Scheda aggiornata!' : 'Scheda creata!', 'success');
+    },
+
+    builderGuessWarmup(day) {
+        // Determine warmup type based on exercises' primary muscles
+        const muscles = new Set();
+        day.exercises.forEach(ex => {
+            const dbEx = EXERCISES_DB[ex.exerciseId];
+            if (dbEx) dbEx.primaryMuscles.forEach(m => muscles.add(m));
+        });
+
+        if (muscles.has('quadricipiti') || muscles.has('femorali') || muscles.has('glutei')) return 'lower';
+        if (muscles.has('petto') || muscles.has('spalle') || muscles.has('tricipiti')) return 'upper';
+        if (muscles.has('schiena') || muscles.has('bicipiti')) return 'upper';
+        return 'full-body';
+    },
+
+    builderCalcWeeklyVolume(days) {
+        const volume = {};
+        days.forEach(day => {
+            day.exercises.forEach(ex => {
+                const dbEx = EXERCISES_DB[ex.exerciseId];
+                if (dbEx) {
+                    dbEx.primaryMuscles.forEach(m => {
+                        volume[m] = (volume[m] || 0) + (parseInt(ex.sets) || 3);
+                    });
+                }
+            });
+        });
+        return volume;
     },
 
     // ========================================

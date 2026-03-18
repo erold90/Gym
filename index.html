@@ -307,11 +307,45 @@
                     <h2>Schede di Allenamento</h2>
                 </div>
 
-                <div class="programs-container">
-                    <!-- Generate Program Card -->
-                    <div class="card generate-program">
-                        <h3>🤖 Genera Scheda Personalizzata</h3>
-                        <p>L'algoritmo creerà una scheda ottimizzata basata sui tuoi dati</p>
+                <!-- Active Program (shown when a program exists) -->
+                <div class="card active-program" id="active-program-card" style="display: none;">
+                    <div class="program-header">
+                        <h3>📋 Scheda Attiva</h3>
+                        <div class="program-header-actions">
+                            <button class="btn btn-sm btn-secondary" id="edit-program-btn">Modifica</button>
+                            <button class="btn btn-sm btn-danger" id="delete-program-btn">Elimina</button>
+                        </div>
+                    </div>
+                    <div id="active-program-content"></div>
+                </div>
+
+                <!-- No Program State (shown when no program exists) -->
+                <div id="no-program-state">
+                    <div class="program-choice-grid">
+                        <!-- Manual Builder Option -->
+                        <div class="card program-choice-card" id="choice-manual">
+                            <div class="choice-icon">✏️</div>
+                            <h3>Crea la Tua Scheda</h3>
+                            <p>Scegli gli esercizi, serie, ripetizioni e recupero</p>
+                            <button class="btn btn-primary btn-large" id="open-manual-builder-btn">Crea Scheda</button>
+                        </div>
+                        <!-- AI Generator Option -->
+                        <div class="card program-choice-card" id="choice-ai">
+                            <div class="choice-icon">🤖</div>
+                            <h3>Genera con AI</h3>
+                            <p>L'algoritmo crea una scheda ottimizzata per te</p>
+                            <button class="btn btn-secondary btn-large" id="open-ai-generator-btn">Genera</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Generator Modal -->
+                <div class="modal" id="ai-generator-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🤖 Genera Scheda</h3>
+                            <button class="modal-close" id="close-ai-generator">&times;</button>
+                        </div>
                         <div class="program-options">
                             <div class="option-group">
                                 <label>Obiettivo</label>
@@ -349,25 +383,42 @@
                                 </select>
                             </div>
                         </div>
-                        <button class="btn btn-primary btn-large" id="generate-program-btn">
-                            Genera Scheda
-                        </button>
+                        <button class="btn btn-primary btn-large" id="generate-program-btn">Genera Scheda</button>
                     </div>
+                </div>
 
-                    <!-- Active Program -->
-                    <div class="card active-program" id="active-program-card" style="display: none;">
-                        <div class="program-header">
-                            <h3>📋 Scheda Attiva</h3>
-                            <button class="btn btn-sm btn-danger" id="delete-program-btn">Elimina</button>
+                <!-- Manual Builder Modal -->
+                <div class="modal" id="manual-builder-modal">
+                    <div class="modal-content modal-large">
+                        <div class="modal-header">
+                            <h3 id="builder-modal-title">✏️ Crea la Tua Scheda</h3>
+                            <button class="modal-close" id="close-manual-builder">&times;</button>
                         </div>
-                        <div id="active-program-content"></div>
-                    </div>
 
-                    <!-- Saved Programs -->
-                    <div class="card saved-programs">
-                        <h3>📁 Schede Salvate</h3>
-                        <div id="saved-programs-list">
-                            <p class="empty-state">Nessuna scheda salvata</p>
+                        <!-- Step 1: Define Days -->
+                        <div class="builder-step" id="builder-step-days">
+                            <h4>Definisci i giorni di allenamento</h4>
+                            <div id="builder-days-list"></div>
+                            <button class="btn btn-secondary" id="builder-add-day-btn">+ Aggiungi Giorno</button>
+                            <div class="builder-nav">
+                                <button class="btn btn-primary" id="builder-to-exercises-btn">Avanti: Esercizi</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Add Exercises per Day -->
+                        <div class="builder-step" id="builder-step-exercises" style="display:none;">
+                            <div class="builder-day-tabs" id="builder-day-tabs"></div>
+                            <div id="builder-current-day-exercises"></div>
+                            <div class="builder-add-exercise-section">
+                                <div class="exercise-search-bar">
+                                    <input type="text" id="builder-exercise-search" placeholder="Cerca esercizio..." autocomplete="off">
+                                </div>
+                                <div id="builder-exercise-results" class="builder-exercise-results"></div>
+                            </div>
+                            <div class="builder-nav">
+                                <button class="btn btn-secondary" id="builder-back-to-days-btn">Indietro</button>
+                                <button class="btn btn-primary" id="builder-save-btn">Salva Scheda</button>
+                            </div>
                         </div>
                     </div>
                 </div>
