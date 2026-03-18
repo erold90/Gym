@@ -1663,7 +1663,7 @@ const App = {
                 <div class="preview-exercises">
                     ${(day.exercises || []).map((ex, i) => {
                         const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
-                        const gifUrl = exercise ? (typeof ExerciseMedia !== 'undefined' ? ExerciseMedia.getGifUrl(ex.exerciseId) : null) : null;
+                        const gifUrl = typeof getExerciseGif === 'function' ? getExerciseGif(ex.exerciseId) : null;
                         const sets = isDeload ? Math.max(2, Math.round(ex.sets * volumeMultiplier)) : ex.sets;
 
                         // Get last performance for progression hint
@@ -1677,12 +1677,12 @@ const App = {
                         return `
                             <div class="preview-exercise-row">
                                 <span class="preview-ex-num">${i + 1}</span>
+                                ${gifUrl ? `<img src="${gifUrl}" class="preview-ex-gif" alt="${ex.name}" loading="lazy" onerror="this.style.display='none'">` : '<div class="preview-ex-gif-placeholder"></div>'}
                                 <div class="preview-ex-info">
                                     <div class="preview-ex-name">${ex.name}</div>
                                     <div class="preview-ex-details">${sets} x ${ex.reps} · ${ex.rest}s pausa</div>
                                     ${hint}
                                 </div>
-                                ${gifUrl ? `<img src="${gifUrl}" class="preview-ex-gif" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
                             </div>
                         `;
                     }).join('')}
