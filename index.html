@@ -473,17 +473,27 @@
                     </div>
                 </div>
 
+                <!-- Mesocycle Status -->
+                <div class="card" id="progress-cycle-card">
+                    <div class="progress-section-header">
+                        <h4>Mesociclo</h4>
+                    </div>
+                    <div id="progress-cycle-info">
+                        <p class="empty-state-mini">Nessuna scheda attiva</p>
+                    </div>
+                </div>
+
                 <!-- Charts Section -->
                 <div class="progress-charts-grid">
                     <div class="card chart-card-compact" id="volume-chart-card">
-                        <h4>📊 Volume Settimanale</h4>
+                        <h4>Volume Settimanale</h4>
                         <div class="chart-container">
                             <canvas id="volume-chart"></canvas>
                         </div>
                         <p class="chart-empty-state" id="volume-empty">Nessun dato disponibile</p>
                     </div>
                     <div class="card chart-card-compact" id="frequency-chart-card">
-                        <h4>📈 Frequenza</h4>
+                        <h4>Frequenza</h4>
                         <div class="chart-container">
                             <canvas id="frequency-chart"></canvas>
                         </div>
@@ -491,10 +501,49 @@
                     </div>
                 </div>
 
+                <!-- Volume per Muscle Group -->
+                <div class="card" id="muscle-volume-card">
+                    <div class="progress-section-header">
+                        <h4>Volume per Gruppo Muscolare</h4>
+                        <span class="progress-subtitle" id="muscle-volume-period">Questa settimana</span>
+                    </div>
+                    <div id="muscle-volume-bars">
+                        <p class="empty-state-mini">Completa allenamenti per vedere il volume per muscolo</p>
+                    </div>
+                </div>
+
+                <!-- Strength Progress per Exercise -->
+                <div class="card">
+                    <div class="progress-section-header">
+                        <h4>Forza per Esercizio</h4>
+                    </div>
+                    <div class="strength-select-container">
+                        <select id="strength-exercise-select" class="form-select">
+                            <option value="">Seleziona un esercizio...</option>
+                        </select>
+                    </div>
+                    <div class="chart-container" id="strength-chart-container" style="display:none;">
+                        <canvas id="strength-chart"></canvas>
+                    </div>
+                    <p class="empty-state-mini" id="strength-empty">Seleziona un esercizio per vedere il trend di forza</p>
+                </div>
+
+                <!-- RIR Average Trend -->
+                <div class="card" id="rir-trend-card">
+                    <div class="progress-section-header">
+                        <h4>RIR Medio</h4>
+                        <span class="progress-subtitle">Intensita nel tempo</span>
+                    </div>
+                    <div class="chart-container" id="rir-chart-container">
+                        <canvas id="rir-chart"></canvas>
+                    </div>
+                    <p class="chart-empty-state" id="rir-empty">Registra il RIR durante gli allenamenti</p>
+                </div>
+
                 <!-- Body Stats -->
                 <div class="card progress-body-section">
                     <div class="progress-section-header">
-                        <h4>⚖️ Peso Corporeo</h4>
+                        <h4>Peso Corporeo</h4>
                         <button class="btn btn-sm btn-secondary" id="toggle-weight-form">+ Aggiungi</button>
                     </div>
                     <div class="weight-form-container" id="weight-form-container" style="display: none;">
@@ -513,17 +562,27 @@
                 <!-- Personal Records -->
                 <div class="card">
                     <div class="progress-section-header">
-                        <h4>🏆 Record Personali</h4>
+                        <h4>Record Personali</h4>
                     </div>
                     <div id="prs-list" class="prs-grid-compact">
                         <p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>
                     </div>
                 </div>
 
+                <!-- Cycle History -->
+                <div class="card" id="cycle-history-card">
+                    <div class="progress-section-header">
+                        <h4>Storico Mesocicli</h4>
+                    </div>
+                    <div id="cycle-history-list">
+                        <p class="empty-state-mini">Nessun ciclo completato</p>
+                    </div>
+                </div>
+
                 <!-- Recent Workouts -->
                 <div class="card">
                     <div class="progress-section-header">
-                        <h4>📋 Storico Allenamenti</h4>
+                        <h4>Storico Allenamenti</h4>
                     </div>
                     <div id="workout-history-list" class="workout-history-compact">
                         <p class="empty-state-mini">Nessun allenamento registrato</p>

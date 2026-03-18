@@ -2873,6 +2873,11 @@ const App = {
         this.updateProgressStats();
         this.loadWorkoutHistory();
         this.loadPersonalRecords();
+        this.loadProgressCycleInfo();
+        this.loadMuscleVolumeBars();
+        this.loadRirTrend();
+        this.loadCycleHistory();
+        this.populateStrengthExerciseSelect();
     },
 
     updateProgressStats() {
@@ -3241,7 +3246,8 @@ const App = {
 
         const history = Storage.getExerciseHistory(exerciseId);
         const ctx = document.getElementById('strength-chart');
-        const e1rmContainer = document.getElementById('estimated-1rm');
+        const chartContainer = document.getElementById('strength-chart-container');
+        const emptyEl = document.getElementById('strength-empty');
 
         if (!ctx) return;
 
@@ -3250,11 +3256,14 @@ const App = {
         }
 
         if (history.length === 0) {
-            e1rmContainer.innerHTML = '<p class="empty-state">Nessun dato disponibile</p>';
+            if (chartContainer) chartContainer.style.display = 'none';
+            if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = 'Nessun dato per questo esercizio'; }
             return;
         }
 
-        // Show chart
+        if (chartContainer) chartContainer.style.display = 'block';
+        if (emptyEl) emptyEl.style.display = 'none';
+
         this.charts.strength = new Chart(ctx, {
             type: 'line',
             data: {
@@ -3265,45 +3274,245 @@ const App = {
                     borderColor: 'rgba(67, 97, 238, 1)',
                     backgroundColor: 'rgba(67, 97, 238, 0.2)',
                     fill: true,
-                    tension: 0.3,
-                    yAxisID: 'y'
+                    tension: 0.3
                 }, {
                     label: 'E1RM (kg)',
                     data: history.map(h => h.e1rm),
                     borderColor: 'rgba(6, 214, 160, 1)',
                     borderDash: [5, 5],
                     fill: false,
-                    tension: 0.3,
-                    yAxisID: 'y'
+                    tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#a0a0b0' } } },
                 scales: {
-                    y: {
-                        ticks: { color: '#a0a0b0' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    x: {
-                        ticks: { color: '#a0a0b0' },
-                        grid: { display: false }
-                    }
+                    y: { ticks: { color: '#a0a0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#a0a0b0' }, grid: { display: false } }
                 }
             }
         });
+    },
 
-        // Show E1RM info
-        const prs = Storage.getPersonalRecords();
-        const pr = prs[exerciseId];
-        if (pr) {
-            e1rmContainer.innerHTML = `
-                <div class="e1rm-info">
-                    <p><strong>Miglior E1RM:</strong> ${pr.estimated1RM} kg</p>
-                    <p><strong>Peso Massimo:</strong> ${pr.maxWeight} kg x ${pr.maxWeightReps}</p>
+    // ========================================
+    // PROGRESS PAGE - MESOCYCLE, MUSCLE VOLUME, RIR, CYCLE HISTORY
+    // ========================================
+
+    loadProgressCycleInfo() {
+        const container = document.getElementById('progress-cycle-info');
+        if (!container) return;
+
+        const cycleInfo = Storage.getCycleInfo();
+        const program = Storage.getActiveProgram();
+
+        if (!cycleInfo || !program) {
+            container.innerHTML = '<p class="empty-state-mini">Nessuna scheda attiva</p>';
+            return;
+        }
+
+        const phase = cycleInfo.currentPhase;
+        const isDeload = Storage.isDeloadActive();
+        const goalLabels = { strength: 'Forza', hypertrophy: 'Ipertrofia', recomp: 'Ricomposizione', endurance: 'Resistenza' };
+        const goal = goalLabels[program.metadata?.goal] || 'Allenamento';
+        const cycleNum = program.metadata?.cycleNumber || 1;
+
+        container.innerHTML = `
+            <div class="cycle-progress-detail">
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">Obiettivo</span>
+                    <span class="cycle-detail-value">${goal}</span>
+                </div>
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">Ciclo #</span>
+                    <span class="cycle-detail-value">${cycleNum}</span>
+                </div>
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">Settimana</span>
+                    <span class="cycle-detail-value">${cycleInfo.currentWeek} / ${cycleInfo.duration}</span>
+                </div>
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">Fase</span>
+                    <span class="cycle-detail-value phase-badge ${isDeload ? 'deload' : phase.phase}">${isDeload ? 'Deload' : phase.phaseName}</span>
+                </div>
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">RIR Target</span>
+                    <span class="cycle-detail-value">${isDeload ? '4-5' : `${phase.rirTarget.min}-${phase.rirTarget.max}`}</span>
+                </div>
+                <div class="cycle-detail-row">
+                    <span class="cycle-detail-label">Volume</span>
+                    <span class="cycle-detail-value">${isDeload ? '50%' : Math.round((phase.volumeMultiplier || 1) * 100) + '%'}</span>
+                </div>
+                <div class="cycle-progress-bar-container">
+                    <div class="cycle-progress-bar">
+                        <div class="cycle-progress-fill" style="width: ${cycleInfo.progress}%"></div>
+                    </div>
+                    <span class="cycle-progress-text">${cycleInfo.progress}% completato</span>
+                </div>
+            </div>
+        `;
+    },
+
+    loadMuscleVolumeBars() {
+        const container = document.getElementById('muscle-volume-bars');
+        if (!container) return;
+
+        // Get this week's workouts
+        const workoutsThisWeek = Storage.getWorkoutsThisWeek();
+        if (!workoutsThisWeek || workoutsThisWeek.length === 0) {
+            container.innerHTML = '<p class="empty-state-mini">Completa allenamenti per vedere il volume per muscolo</p>';
+            return;
+        }
+
+        // Calculate sets per muscle from this week's workouts
+        const muscleVolume = {};
+        workoutsThisWeek.forEach(w => {
+            (w.exercises || []).forEach(ex => {
+                const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
+                if (!exercise) return;
+                const sets = (ex.sets || []).filter(s => s.reps > 0).length || ex.completedSets || 0;
+                (exercise.primaryMuscles || []).forEach(m => {
+                    muscleVolume[m] = (muscleVolume[m] || 0) + sets;
+                });
+                (exercise.secondaryMuscles || []).forEach(m => {
+                    muscleVolume[m] = (muscleVolume[m] || 0) + Math.ceil(sets * 0.5);
+                });
+            });
+        });
+
+        if (Object.keys(muscleVolume).length === 0) {
+            container.innerHTML = '<p class="empty-state-mini">Nessun dato di volume questa settimana</p>';
+            return;
+        }
+
+        // Optimal range (weekly sets per muscle for hypertrophy: 10-20)
+        const minOptimal = 5; // half weekly (showing per-session equivalent)
+        const maxOptimal = 10;
+
+        const muscleLabels = {
+            petto: 'Petto', schiena: 'Schiena', spalle: 'Spalle', bicipiti: 'Bicipiti',
+            tricipiti: 'Tricipiti', quadricipiti: 'Quadricipiti', femorali: 'Femorali',
+            glutei: 'Glutei', polpacci: 'Polpacci', addome: 'Addome', trapezio: 'Trapezio'
+        };
+
+        // Sort by volume descending
+        const sorted = Object.entries(muscleVolume)
+            .filter(([m]) => muscleLabels[m])
+            .sort((a, b) => b[1] - a[1]);
+
+        const maxSets = Math.max(...sorted.map(([, v]) => v), 20);
+
+        container.innerHTML = sorted.map(([muscle, sets]) => {
+            const pct = Math.min(100, (sets / maxSets) * 100);
+            const label = muscleLabels[muscle] || muscle;
+            const status = sets < minOptimal ? 'low' : sets > maxOptimal ? 'high' : 'optimal';
+            return `
+                <div class="muscle-volume-row">
+                    <span class="muscle-volume-label">${label}</span>
+                    <div class="muscle-volume-bar-bg">
+                        <div class="muscle-volume-bar-fill muscle-vol-${status}" style="width: ${pct}%"></div>
+                    </div>
+                    <span class="muscle-volume-value">${sets}</span>
                 </div>
             `;
+        }).join('');
+    },
+
+    loadRirTrend() {
+        const ctx = document.getElementById('rir-chart');
+        const card = document.getElementById('rir-trend-card');
+        const emptyEl = document.getElementById('rir-empty');
+        if (!ctx || !card) return;
+
+        const workouts = Storage.getRecentWorkouts(10);
+        // Extract average RIR per workout
+        const rirData = workouts
+            .map(w => {
+                const rirs = [];
+                (w.exercises || []).forEach(ex => {
+                    (ex.sets || []).forEach(s => {
+                        if (s.rir !== undefined && s.rir !== null) rirs.push(s.rir);
+                    });
+                });
+                if (rirs.length === 0) return null;
+                return {
+                    date: new Date(w.date).toLocaleDateString(),
+                    avgRir: (rirs.reduce((a, b) => a + b, 0) / rirs.length).toFixed(1)
+                };
+            })
+            .filter(Boolean)
+            .reverse();
+
+        if (rirData.length < 2) {
+            if (emptyEl) emptyEl.style.display = 'block';
+            ctx.style.display = 'none';
+            return;
         }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+        ctx.style.display = 'block';
+
+        if (this.charts.rir) this.charts.rir.destroy();
+
+        this.charts.rir = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: rirData.map(d => d.date),
+                datasets: [{
+                    label: 'RIR Medio',
+                    data: rirData.map(d => parseFloat(d.avgRir)),
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { min: 0, max: 5, reverse: true, ticks: { color: '#a0a0b0', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#a0a0b0' }, grid: { display: false } }
+                }
+            }
+        });
+    },
+
+    loadCycleHistory() {
+        const container = document.getElementById('cycle-history-list');
+        if (!container) return;
+
+        const history = Storage.getCycleHistory();
+        if (!history || history.length === 0) {
+            container.innerHTML = '<p class="empty-state-mini">Nessun ciclo completato</p>';
+            return;
+        }
+
+        const goalLabels = { strength: 'Forza', hypertrophy: 'Ipertrofia', recomp: 'Ricomposizione', endurance: 'Resistenza' };
+
+        container.innerHTML = history.slice(0, 5).map((c, i) => {
+            const goal = goalLabels[c.goal] || c.goal;
+            const startDate = c.startDate ? new Date(c.startDate).toLocaleDateString() : '?';
+            const endDate = c.completedAt ? new Date(c.completedAt).toLocaleDateString() : '?';
+            const stats = c.statistics || {};
+            return `
+                <div class="cycle-history-item">
+                    <div class="cycle-history-header">
+                        <strong>Ciclo ${history.length - i}</strong>
+                        <span class="cycle-history-dates">${startDate} - ${endDate}</span>
+                    </div>
+                    <div class="cycle-history-meta">
+                        <span>${goal}</span>
+                        <span>${c.duration} sett</span>
+                        <span>${stats.totalWorkouts || 0} allenamenti</span>
+                        <span>${stats.totalVolume ? this.formatNumber(stats.totalVolume) + 'kg' : '-'}</span>
+                        ${stats.prsAchieved ? `<span>${stats.prsAchieved} PR</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
     },
 
     // ========================================
