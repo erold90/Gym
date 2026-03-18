@@ -6,8 +6,8 @@
  * - 10-20 sets per muscle group per week
  * - Each muscle trained 2x per week
  * - Compound exercises first
- * - 6-12 rep range for hypertrophy
- * - Rest times: 90-120s compound, 60-90s isolation
+ * - 8-12 rep range for hypertrophy (Schoenfeld 2021, PMC7927075)
+ * - Rest times: 150s compound, 60-90s isolation (Singer 2024 meta-analysis)
  * - Progressive overload through volume
  */
 
@@ -26,20 +26,28 @@ const TrainingAlgorithm = {
     },
 
     // Rep ranges based on goal (scientifically optimized)
-    // Sources: Schoenfeld et al., Stronger by Science, PMC research
+    // Sources: Schoenfeld 2021 (PMC7927075), ACSM, NSCA, Pelland 2025
     REP_RANGES: {
-        strength: { compound: { min: 3, max: 6 }, isolation: { min: 6, max: 10 } },
-        hypertrophy: { compound: { min: 6, max: 12 }, isolation: { min: 8, max: 15 } },
-        recomp: { compound: { min: 6, max: 12 }, isolation: { min: 10, max: 15 } },
-        endurance: { compound: { min: 15, max: 25 }, isolation: { min: 20, max: 30 } }
+        strength: { compound: { min: 1, max: 5 }, isolation: { min: 6, max: 8 } },
+        hypertrophy: { compound: { min: 8, max: 12 }, isolation: { min: 10, max: 15 } },
+        recomp: { compound: { min: 8, max: 12 }, isolation: { min: 10, max: 15 } },
+        endurance: { compound: { min: 15, max: 20 }, isolation: { min: 15, max: 25 } }
+    },
+
+    // Special rep ranges for small/endurance muscles (always higher reps)
+    SPECIAL_REP_RANGES: {
+        polpacci: { min: 15, max: 20 },
+        addome: { min: 12, max: 20 },
+        avambracci: { min: 15, max: 20 }
     },
 
     // Rest times in seconds (scientifically optimized)
-    // Sources: Schoenfeld 2016, Frontiers Meta-Analysis 2024
-    // Longer rest = better strength AND hypertrophy gains
+    // Sources: Singer 2024 Bayesian meta-analysis (Frontiers), de Salles 2009
+    // Hypertrophy: 1-3 min optimal (2-2.5 min compounds, Singer 2024)
+    // Strength: 3-5 min for compounds (de Salles 2009, Grgic 2023)
     REST_TIMES: {
-        strength: { compound: 210, isolation: 150 },      // 3.5min / 2.5min
-        hypertrophy: { compound: 120, isolation: 90 },    // 2min / 1.5min
+        strength: { compound: 240, isolation: 150 },      // 4min / 2.5min
+        hypertrophy: { compound: 150, isolation: 90 },    // 2.5min / 1.5min
         recomp: { compound: 120, isolation: 90 },         // 2min / 1.5min
         endurance: { compound: 60, isolation: 45 }        // 1min / 45s
     },
@@ -54,9 +62,9 @@ const TrainingAlgorithm = {
             detail: 'Fase negativa controllata, spingi con forza massima'
         },
         hypertrophy: {
-            notation: '3-1-2-0',
-            description: '3s giù → 1s pausa → 2s su',
-            detail: 'Movimento controllato, massimizza tempo sotto tensione'
+            notation: '3-1-1-0',
+            description: '3s giù → 1s pausa → esplosivo su',
+            detail: 'Eccentrica controllata 3s, pausa breve in allungamento, concentrica esplosiva (PMC10801605)'
         },
         recomp: {
             notation: '2-1-2-0',
@@ -87,9 +95,11 @@ const TrainingAlgorithm = {
             deload: 0.15          // 15% - Recovery, RIR 4+
         },
         // RIR targets per phase
+        // Sources: Robinson 2024 (Sports Medicine), Helms/RP Strength
+        // Most sets at 1-3 RIR, allow failure (0 RIR) in intensification
         rirTargets: {
-            accumulation: { min: 3, max: 4 },
-            intensification: { min: 1, max: 2 },
+            accumulation: { min: 2, max: 4 },
+            intensification: { min: 0, max: 2 },
             deload: { min: 4, max: 5 }
         },
         // Volume multiplier per phase
@@ -681,8 +691,9 @@ const TrainingAlgorithm = {
         const selected = [];
         let exercisesAdded = 0;
 
-        // Get rep range based on exercise type
-        const reps = type === 'compound' ? repRanges.compound : repRanges.isolation;
+        // Use special rep ranges for muscles that need higher reps (calves, abs, forearms)
+        const specialReps = this.SPECIAL_REP_RANGES[muscle];
+        const reps = specialReps || (type === 'compound' ? repRanges.compound : repRanges.isolation);
         const rest = type === 'compound' ? restTimes.compound : restTimes.isolation;
 
         for (const exId of exerciseIds) {
@@ -697,13 +708,13 @@ const TrainingAlgorithm = {
                 exercise.equipment.some(eq => equipment.includes(eq) || eq === 'corpo-libero');
 
             if (hasEquipment) {
-                // Calculate sets per exercise
+                // Calculate sets per exercise (Pelland 2025: 2-4 sets per exercise optimal)
                 const setsForExercise = exercisesAdded === 0 ? Math.ceil(sets * 0.6) : Math.ceil(sets * 0.4);
 
                 selected.push({
                     exerciseId: exId,
                     name: exercise.name,
-                    sets: Math.max(2, Math.min(5, setsForExercise)),
+                    sets: Math.max(2, Math.min(4, setsForExercise)),
                     reps: `${reps.min}-${reps.max}`,
                     rest: rest,
                     type: exercise.type,
@@ -725,8 +736,9 @@ const TrainingAlgorithm = {
         const selected = [];
         let exercisesAdded = 0;
 
-        // Get rep range based on exercise type
-        const reps = type === 'compound' ? repRanges.compound : repRanges.isolation;
+        // Use special rep ranges for muscles that need higher reps (calves, abs, forearms)
+        const specialReps = this.SPECIAL_REP_RANGES[muscle];
+        const reps = specialReps || (type === 'compound' ? repRanges.compound : repRanges.isolation);
         const rest = type === 'compound' ? restTimes.compound : restTimes.isolation;
 
         for (const exId of exerciseIds) {
@@ -744,13 +756,13 @@ const TrainingAlgorithm = {
                 exercise.equipment.some(eq => equipment.includes(eq) || eq === 'corpo-libero');
 
             if (hasEquipment) {
-                // Calculate sets per exercise
+                // Calculate sets per exercise (Pelland 2025: 2-4 sets per exercise optimal)
                 const setsForExercise = exercisesAdded === 0 ? Math.ceil(sets * 0.6) : Math.ceil(sets * 0.4);
 
                 selected.push({
                     exerciseId: exId,
                     name: exercise.name,
-                    sets: Math.max(2, Math.min(5, setsForExercise)),
+                    sets: Math.max(2, Math.min(4, setsForExercise)),
                     reps: `${reps.min}-${reps.max}`,
                     rest: rest,
                     type: exercise.type,
@@ -837,31 +849,59 @@ const TrainingAlgorithm = {
         return Math.round(totalSeconds / 60); // Return minutes
     },
 
-    // Progressive overload suggestion
+    // Progressive overload suggestion (Double Progression model)
+    // Sources: Pelland 2025, Schoenfeld 2021
+    // When all sets hit top of rep range → increase weight
+    // Weight increments: +5kg lower compound, +2.5kg upper compound, +1.25kg isolation
     suggestProgression(exerciseId, lastPerformance) {
         if (!lastPerformance) return null;
 
-        const { weight, reps, targetReps } = lastPerformance;
+        const { weight, reps, targetReps, repRange, exerciseType, muscle } = lastPerformance;
 
-        // If hit target reps, suggest weight increase
-        if (reps >= targetReps) {
+        // Parse rep range if available (e.g., "8-12" → {min: 8, max: 12})
+        let maxReps = targetReps;
+        let minReps = targetReps;
+        if (repRange) {
+            const parts = repRange.split('-').map(Number);
+            if (parts.length === 2) {
+                minReps = parts[0];
+                maxReps = parts[1];
+            }
+        }
+
+        // Determine weight increment based on exercise type and muscle group
+        const isLower = ['quadricipiti', 'femorali', 'glutei'].includes(muscle);
+        const isCompound = exerciseType === 'compound';
+        const increment = isLower && isCompound ? 5 : (isCompound ? 2.5 : 1.25);
+
+        // Double Progression: hit top of range on all sets → increase weight
+        if (reps >= maxReps) {
             return {
                 type: 'weight',
-                suggestion: `Aumenta il peso a ${weight + 2.5}kg`,
-                newWeight: weight + 2.5
+                suggestion: `Aumenta a ${weight + increment}kg (hai raggiunto il top del range)`,
+                newWeight: weight + increment
             };
         }
 
-        // If close to target, keep weight
-        if (reps >= targetReps - 2) {
+        // Within range: keep weight, push for more reps
+        if (reps >= minReps) {
             return {
                 type: 'reps',
-                suggestion: `Mantieni ${weight}kg, punta a ${reps + 1} reps`,
-                targetReps: reps + 1
+                suggestion: `Mantieni ${weight}kg, punta a ${Math.min(reps + 1, maxReps)} reps`,
+                targetReps: Math.min(reps + 1, maxReps)
             };
         }
 
-        // If far from target, might need to decrease
+        // Below minimum range: weight too heavy
+        if (reps < minReps && weight > 0) {
+            return {
+                type: 'decrease',
+                suggestion: `Riduci a ${Math.max(0, weight - increment)}kg (sotto il range minimo)`,
+                newWeight: Math.max(0, weight - increment)
+            };
+        }
+
+        // Default: maintain
         return {
             type: 'maintain',
             suggestion: `Mantieni ${weight}kg e lavora sulla tecnica`
