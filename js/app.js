@@ -2200,10 +2200,15 @@ const App = {
             }
         }
 
-        // Start rest timer if completed
+        // Start rest timer if completed, but NOT on the last set of the exercise
         if (set.completed) {
-            const restTime = exercise.rest || 60;
-            this.showRestTimer(restTime);
+            const completedCount = exercise.setsData.filter(s => s.completed).length;
+            const isLastSet = completedCount >= exercise.targetSets;
+
+            if (!isLastSet) {
+                const restTime = exercise.rest || 60;
+                this.showRestTimer(restTime);
+            }
         }
     },
 
