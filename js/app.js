@@ -94,6 +94,7 @@ const App = {
 
             // Page-specific initialization
             if (pageName === 'progress') {
+                this.loadProgress();
                 this.initCharts();
             }
         }
