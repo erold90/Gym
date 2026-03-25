@@ -4027,7 +4027,7 @@ const App = {
             .filter(Boolean)
             .reverse();
 
-        if (rirData.length < 2) {
+        if (rirData.length < 1) {
             if (emptyEl) emptyEl.style.display = 'block';
             ctx.style.display = 'none';
             return;
