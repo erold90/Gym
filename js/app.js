@@ -1208,6 +1208,16 @@ const App = {
                 6: { recommended: 'push-pull-legs', reason: 'PPL 6x per atleti condizionati: alto volume con recuperi brevi. Solo per avanzati con buona capacità di recupero.' }
             },
             duration: { recommended: 45, range: '30-50', reason: 'Recuperi brevi (30-60s) rendono le sessioni naturalmente corte. 30-50 min sufficienti per stimolo endurance completo.' }
+        },
+        toning: {
+            days: { recommended: 4, alt: 3, reason: 'Schoenfeld 2016: glutei 2-4x/settimana. 4 giorni U/L con priorità lower body (62% volume) è ottimale. Contreras 2015: hip thrust + squat + hinge coprono tutti gli angoli glutei.' },
+            split: {
+                3: { recommended: 'upper-lower', reason: 'U/L 3x: 2 giorni lower (glutei-quad + glutei-femorali) + 1 upper. Glutei allenati 2x/sett con recupero ottimale (Barbalho 2019).' },
+                4: { recommended: 'upper-lower', reason: 'U/L 4x è lo split ideale per tonificazione: 2 giorni glutei/gambe + 2 upper leggeri. Volume 62% lower / 38% upper (Frontiers 2025).' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5x con giorno extra Glute Burn: 3 giorni lower + 2 upper. Glutei 3x/settimana per massimo sviluppo (Barbalho 2020).' },
+                6: { recommended: 'upper-lower', reason: 'U/L 6x: 3 lower + 3 upper. Permette massimo volume glutei (16-22 serie/sett) con recupero adeguato tra sessioni.' }
+            },
+            duration: { recommended: 50, range: '45-60', reason: 'Harty 2018: le donne recuperano 25-50% più velocemente tra le serie. Con pause 60-90s compound e 30-60s isolation, 45-60 min sono sufficienti.' }
         }
     },
 
@@ -1398,7 +1408,7 @@ const App = {
     },
 
     _goalLabel(value) {
-        const labels = { hypertrophy: 'Ipertrofia', strength: 'Forza', recomp: 'Ricomposizione', endurance: 'Resistenza' };
+        const labels = { hypertrophy: 'Ipertrofia', strength: 'Forza', recomp: 'Ricomposizione', endurance: 'Resistenza', toning: 'Tonificazione' };
         return labels[value] || value;
     },
 

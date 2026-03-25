@@ -27,11 +27,13 @@ const TrainingAlgorithm = {
 
     // Rep ranges based on goal (scientifically optimized)
     // Sources: Schoenfeld 2021 (PMC7927075), ACSM, NSCA, Pelland 2025
+    // Toning: Lasevicius 2022, Carvalho & Schoenfeld 2022 - higher reps equally effective for hypertrophy
     REP_RANGES: {
         strength: { compound: { min: 1, max: 5 }, isolation: { min: 6, max: 8 } },
         hypertrophy: { compound: { min: 8, max: 12 }, isolation: { min: 10, max: 15 } },
         recomp: { compound: { min: 8, max: 12 }, isolation: { min: 10, max: 15 } },
-        endurance: { compound: { min: 15, max: 20 }, isolation: { min: 15, max: 25 } }
+        endurance: { compound: { min: 15, max: 20 }, isolation: { min: 15, max: 25 } },
+        toning: { compound: { min: 8, max: 12 }, isolation: { min: 12, max: 15 }, glute_accessory: { min: 12, max: 20 } }
     },
 
     // Special rep ranges for small/endurance muscles (always higher reps)
@@ -45,11 +47,13 @@ const TrainingAlgorithm = {
     // Sources: Singer 2024 Bayesian meta-analysis (Frontiers), de Salles 2009
     // Hypertrophy: 1-3 min optimal (2-2.5 min compounds, Singer 2024)
     // Strength: 3-5 min for compounds (de Salles 2009, Grgic 2023)
+    // Toning: Harty 2018, Judge & Burke 2011 - women recover 25-50% faster between sets
     REST_TIMES: {
         strength: { compound: 240, isolation: 150 },      // 4min / 2.5min
         hypertrophy: { compound: 150, isolation: 90 },    // 2.5min / 1.5min
         recomp: { compound: 120, isolation: 90 },         // 2min / 1.5min
-        endurance: { compound: 60, isolation: 45 }        // 1min / 45s
+        endurance: { compound: 60, isolation: 45 },       // 1min / 45s
+        toning: { compound: 90, isolation: 45 }           // 1.5min / 45s (female recovery, Harty 2018)
     },
 
     // Execution tempo by goal (scientifically optimized)
@@ -75,6 +79,11 @@ const TrainingAlgorithm = {
             notation: '2-0-1-0',
             description: '2s giù → 1s su',
             detail: 'Movimento fluido e continuo'
+        },
+        toning: {
+            notation: '3-1-1-0',
+            description: '3s giù → 1s pausa → esplosivo su',
+            detail: 'Eccentrica controllata per massima attivazione muscolare e definizione (Schoenfeld 2021)'
         }
     },
 
@@ -86,7 +95,8 @@ const TrainingAlgorithm = {
             strength: { beginner: 4, intermediate: 6, advanced: 8, expert: 8 },
             hypertrophy: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
             recomp: { beginner: 4, intermediate: 5, advanced: 6, expert: 6 },
-            endurance: { beginner: 3, intermediate: 4, advanced: 5, expert: 5 }
+            endurance: { beginner: 3, intermediate: 4, advanced: 5, expert: 5 },
+            toning: { beginner: 4, intermediate: 5, advanced: 5, expert: 6 }
         },
         // Phase distribution (% of cycle)
         phases: {
@@ -191,13 +201,13 @@ const TrainingAlgorithm = {
         // 2x/week is superior to 1x/week (Schoenfeld meta-analysis)
         switch (split) {
             case 'upper-lower':
-                program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor);
+                program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor, goal);
                 break;
             case 'push-pull-legs':
-                program = this.generatePPL(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor);
+                program = this.generatePPL(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor, goal);
                 break;
             case 'full-body':
-                program = this.generateFullBody(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor);
+                program = this.generateFullBody(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor, goal);
                 break;
             default:
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor);
@@ -296,9 +306,10 @@ const TrainingAlgorithm = {
     // UPPER/LOWER SPLIT (Recommended for 4 days)
     // ========================================
 
-    generateUpperLower(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1) {
+    generateUpperLower(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1, goal = 'hypertrophy') {
+        const isToning = goal === 'toning';
         const program = {
-            name: 'Upper/Lower Split',
+            name: isToning ? 'Tonificazione Upper/Lower' : 'Upper/Lower Split',
             days: []
         };
 
@@ -307,6 +318,149 @@ const TrainingAlgorithm = {
         const frequencyMultiplier = days <= 3 ? 1.2 : (days === 4 ? 1 : 0.85);
         const setsPerMuscle = Math.round((volumeConfig.optimal / 2) * frequencyMultiplier * durationFactor);
 
+        if (isToning) {
+            // TONING-SPECIFIC SPLITS
+            // Sources: Contreras 2015 (EMG), Plotkin 2023, Barbalho 2019/2020
+            // 62% lower / 38% upper volume distribution (Frontiers 2025)
+            // Glutes 2-4x/week (Schoenfeld 2016), shorter rest (Harty 2018)
+            const lowerSets = Math.round(setsPerMuscle * 1.2);  // More volume for lower body
+            const upperSets = Math.round(setsPerMuscle * 0.8);  // Less volume for upper body
+
+            if (days === 3) {
+                program.days.push({
+                    name: 'Giorno 1',
+                    type: 'Lower A',
+                    focus: 'Glutei & Quadricipiti',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-quad', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 2',
+                    type: 'Upper',
+                    focus: 'Upper Body Tono',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 3',
+                    type: 'Lower B',
+                    focus: 'Glutei & Femorali',
+                    warmup: 'legs-hamstring',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-ham', sessionDuration)
+                });
+            } else if (days === 4) {
+                program.days.push({
+                    name: 'Giorno 1',
+                    type: 'Lower A',
+                    focus: 'Glutei & Quadricipiti',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-quad', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 2',
+                    type: 'Upper A',
+                    focus: 'Schiena & Spalle',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 3',
+                    type: 'Lower B',
+                    focus: 'Glutei & Femorali',
+                    warmup: 'legs-hamstring',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-ham', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 4',
+                    type: 'Upper B',
+                    focus: 'Braccia & Core',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration, 'arms')
+                });
+            } else if (days === 5) {
+                program.days.push({
+                    name: 'Giorno 1',
+                    type: 'Lower A',
+                    focus: 'Glutei & Quadricipiti',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-quad', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 2',
+                    type: 'Upper A',
+                    focus: 'Schiena & Spalle',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 3',
+                    type: 'Lower B',
+                    focus: 'Glutei & Femorali',
+                    warmup: 'legs-hamstring',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-ham', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 4',
+                    type: 'Upper B',
+                    focus: 'Braccia & Core',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration, 'arms')
+                });
+                program.days.push({
+                    name: 'Giorno 5',
+                    type: 'Glute Burn',
+                    focus: 'Glutei & Core Extra',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-focus', sessionDuration)
+                });
+            } else if (days >= 6) {
+                program.days.push({
+                    name: 'Giorno 1',
+                    type: 'Lower A',
+                    focus: 'Glutei & Quadricipiti',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-quad', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 2',
+                    type: 'Upper A',
+                    focus: 'Schiena & Spalle',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 3',
+                    type: 'Lower B',
+                    focus: 'Glutei & Femorali',
+                    warmup: 'legs-hamstring',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-ham', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 4',
+                    type: 'Upper B',
+                    focus: 'Braccia & Core',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, upperSets, repRanges, restTimes, sessionDuration, 'arms')
+                });
+                program.days.push({
+                    name: 'Giorno 5',
+                    type: 'Lower C',
+                    focus: 'Glute Burn & Gambe',
+                    warmup: 'legs-quad',
+                    exercises: this.buildToningLowerWorkout(profile, lowerSets, repRanges, restTimes, 'glute-focus', sessionDuration)
+                });
+                program.days.push({
+                    name: 'Giorno 6',
+                    type: 'Upper C',
+                    focus: 'Tono Completo',
+                    warmup: 'upper',
+                    exercises: this.buildToningUpperWorkout(profile, Math.round(upperSets * 0.8), repRanges, restTimes, sessionDuration, 'full')
+                });
+            }
+            return program;
+        }
+
+        // STANDARD (non-toning) splits below
         if (days === 3) {
             // 3 days: Upper, Lower, Upper (alternate each week) or Upper, Lower, Full Body
             program.days.push({
@@ -574,10 +728,100 @@ const TrainingAlgorithm = {
     },
 
     // ========================================
+    // TONING-SPECIFIC WORKOUT BUILDERS
+    // Sources: Contreras 2015 (EMG hip thrust), Plotkin 2023 (squat vs thrust hypertrophy),
+    // Barbalho 2019/2020 (volume thresholds women), Harty 2018 (female recovery),
+    // Schoenfeld 2016 (frequency 2x+), Frontiers 2025 (62/38 lower/upper distribution)
+    // ========================================
+
+    buildToningLowerWorkout(profile, baseSets, repRanges, restTimes, variant, sessionDuration) {
+        const exercises = [];
+        const equipment = profile.equipment || [];
+        const usedExercises = new Set();
+        const co = this._currentCycleOffset || 0;
+        const gluteAccessoryReps = repRanges.glute_accessory || repRanges.isolation;
+
+        if (variant === 'glute-quad') {
+            // Glute-Quad day: hip thrust pattern + squat pattern + quad isolation + glute isolation
+            // Contreras 2015: hip thrust > squat for glute activation (86.8% vs 45.4% lower glute)
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'compound', 2, Math.ceil(baseSets * 0.8), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'isolation', 1, 3, equipment,
+                { compound: gluteAccessoryReps, isolation: gluteAccessoryReps }, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('quadricipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+        } else if (variant === 'glute-ham') {
+            // Glute-Ham day: RDL/hinge pattern + hip thrust + hamstring isolation + glute isolation
+            // Plotkin 2023: squat AND thrust both produce similar gluteal hypertrophy
+            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 1, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 1, Math.ceil(baseSets * 0.8), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'isolation', 1, 3, equipment,
+                { compound: gluteAccessoryReps, isolation: gluteAccessoryReps }, restTimes, usedExercises, co));
+        } else if (variant === 'glute-focus') {
+            // Pure glute day with extra volume - Barbalho 2020: hip thrust addition boosts glute thickness
+            exercises.push(...this.selectExercisesUnique('glutei', 'compound', 2, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('glutei', 'isolation', 2, 3, equipment,
+                { compound: gluteAccessoryReps, isolation: gluteAccessoryReps }, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('femorali', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+        }
+
+        // Core on every lower day (4-8 sets/week, Barbalho 2019)
+        exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
+
+        // Calves (lighter focus for toning)
+        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+
+        return exercises;
+    },
+
+    buildToningUpperWorkout(profile, baseSets, repRanges, restTimes, sessionDuration, variant = 'default') {
+        const exercises = [];
+        const equipment = profile.equipment || [];
+        const usedExercises = new Set();
+        const co = this._currentCycleOffset || 0;
+
+        if (variant === 'arms') {
+            // Arms & Core focused day
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 1, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
+        } else if (variant === 'full') {
+            // Balanced upper
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 1, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+        } else {
+            // Default: back & shoulders priority (posture + V-taper illusion)
+            exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+        }
+
+        // Face pulls always (shoulder health)
+        exercises.push({
+            exerciseId: 'face-pull',
+            name: 'Face Pull',
+            sets: 3,
+            reps: '15-20',
+            rest: 45,
+            notes: 'Postura e salute spalle'
+        });
+
+        return exercises;
+    },
+
+    // ========================================
     // PUSH/PULL/LEGS SPLIT
     // ========================================
 
-    generatePPL(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1) {
+    generatePPL(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1, goal = 'hypertrophy') {
         const program = {
             name: 'Push/Pull/Legs',
             days: []
@@ -719,9 +963,9 @@ const TrainingAlgorithm = {
     // FULL BODY SPLIT
     // ========================================
 
-    generateFullBody(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1) {
+    generateFullBody(profile, volumeConfig, repRanges, restTimes, days, sessionDuration, durationFactor = 1, goal = 'hypertrophy') {
         const program = {
-            name: 'Full Body',
+            name: goal === 'toning' ? 'Tonificazione Full Body' : 'Full Body',
             days: []
         };
 
