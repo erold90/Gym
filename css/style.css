@@ -176,6 +176,8 @@ body {
 .page {
     display: none;
     animation: fadeIn 0.3s ease;
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
 .page.active {
@@ -196,6 +198,16 @@ body {
     margin-bottom: 5px;
 }
 
+@media (max-width: 480px) {
+    .page-header {
+        margin-bottom: 15px;
+    }
+
+    .page-header h2 {
+        font-size: 1.4rem;
+    }
+}
+
 .greeting {
     color: var(--text-secondary);
     font-size: 1rem;
@@ -209,6 +221,14 @@ body {
     box-shadow: var(--shadow);
     border: 1px solid var(--border-color);
     margin-bottom: 20px;
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: 15px;
+        margin-bottom: 12px;
+    }
 }
 
 .card h3 {
@@ -1198,6 +1218,23 @@ body {
     border-radius: var(--radius);
     padding: 15px;
     border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    .progress-stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px 8px;
+        padding: 12px;
+    }
+
+    .progress-stat-value {
+        font-size: 1.1rem;
+    }
+
+    .progress-stat-label {
+        font-size: 0.6rem;
+    }
 }
 
 .progress-stat {
@@ -1223,6 +1260,12 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     margin-bottom: 15px;
+}
+
+@media (max-width: 480px) {
+    .progress-charts-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .chart-card-compact {

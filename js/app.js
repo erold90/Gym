@@ -3895,7 +3895,7 @@ const App = {
 
         const phase = cycleInfo.currentPhase;
         const isDeload = Storage.isDeloadActive();
-        const goalLabels = { strength: 'Forza', hypertrophy: 'Ipertrofia', recomp: 'Ricomposizione', endurance: 'Resistenza' };
+        const goalLabels = { strength: 'Forza', hypertrophy: 'Ipertrofia', recomp: 'Ricomposizione', endurance: 'Resistenza', toning: 'Tonificazione' };
         const goal = goalLabels[program.metadata?.goal] || 'Allenamento';
         const cycleNum = program.metadata?.cycleNumber || 1;
 
