@@ -3646,20 +3646,18 @@ const App = {
 
     saveMeasurement() {
         const weight = parseFloat(document.getElementById('measure-weight').value);
-        const bodyFat = parseFloat(document.getElementById('measure-bodyfat').value);
 
         if (!weight) {
-            this.showNotification('Inserisci almeno il peso', 'warning');
+            this.showNotification('Inserisci il peso', 'warning');
             return;
         }
 
         Storage.saveMeasurement({
             weight: weight,
-            bodyFat: bodyFat || null
+            bodyFat: null
         });
 
         document.getElementById('measure-weight').value = '';
-        document.getElementById('measure-bodyfat').value = '';
 
         this.loadMeasurementsHistory();
         this.initWeightChart();
@@ -3684,15 +3682,13 @@ const App = {
                     <tr>
                         <th>Data</th>
                         <th>Peso</th>
-                        <th>% Grasso</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${measurements.map(m => `
                         <tr>
-                            <td>${new Date(m.date).toLocaleDateString()}</td>
+                            <td>${new Date(m.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td>${m.weight} kg</td>
-                            <td>${m.bodyFat ? m.bodyFat + '%' : '-'}</td>
                         </tr>
                     `).join('')}
                 </tbody>

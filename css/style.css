@@ -1325,16 +1325,22 @@ body {
     display: flex;
     gap: 10px;
     align-items: center;
+    max-width: 100%;
 }
 
 .inline-form input {
     flex: 1;
+    min-width: 0;
     padding: 8px 12px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 0.9rem;
+}
+
+.inline-form .btn {
+    flex-shrink: 0;
 }
 
 .weight-chart-container {
