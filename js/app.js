@@ -3595,6 +3595,12 @@ const App = {
         });
     },
 
+    _weekLabel(weeksAgo) {
+        if (weeksAgo === 0) return 'Questa';
+        if (weeksAgo === 1) return 'Scorsa';
+        return `${weeksAgo} sett fa`;
+    },
+
     getWeeklyVolumes(numWeeks) {
         const weeks = [];
         const now = new Date();
@@ -3612,7 +3618,7 @@ const App = {
             const volume = workouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
 
             weeks.push({
-                label: `Sett ${numWeeks - i}`,
+                label: this._weekLabel(i),
                 volume: volume
             });
         }
@@ -3636,7 +3642,7 @@ const App = {
             const workouts = Storage.getWorkoutsInDateRange(startOfWeek, endOfWeek);
 
             weeks.push({
-                label: `Sett ${numWeeks - i}`,
+                label: this._weekLabel(i),
                 count: workouts.length
             });
         }
