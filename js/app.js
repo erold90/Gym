@@ -371,6 +371,11 @@ const App = {
             }
         });
 
+        // Simulate workout button
+        document.getElementById('simulate-workout-btn')?.addEventListener('click', () => {
+            this.startSimulatedWorkout();
+        });
+
         // Exercise modal
         document.getElementById('close-exercise-modal')?.addEventListener('click', () => {
             document.getElementById('exercise-modal').classList.remove('active');
@@ -2006,6 +2011,7 @@ const App = {
         }
 
         // Reset UI without saving
+        this._isSimulation = false;
         this.activeWorkout = null;
         this.currentExerciseIndex = 0;
         document.getElementById('workout-active').style.display = 'none';
@@ -2217,6 +2223,33 @@ const App = {
 
         // Navigate to workout page
         this.showPage('workout');
+    },
+
+    startSimulatedWorkout() {
+        const fakeWorkout = {
+            type: 'Simulazione',
+            warmup: null,
+            exercises: [
+                {
+                    exerciseId: 'bench-press',
+                    name: 'Panca Piana (TEST)',
+                    sets: 3,
+                    reps: '8-12',
+                    rest: 90
+                },
+                {
+                    exerciseId: 'lat-pulldown',
+                    name: 'Lat Machine (TEST)',
+                    sets: 3,
+                    reps: '10-12',
+                    rest: 60
+                }
+            ]
+        };
+
+        this._isSimulation = true;
+        this.startWorkout(fakeWorkout);
+        this.showNotification('🧪 Modalità simulazione — nessun dato verrà salvato', 'info');
     },
 
     displayPhaseBanner() {
@@ -2896,7 +2929,10 @@ const App = {
                 return;
             }
 
-            Storage.saveWorkout(workoutData);
+            // Non salvare in modalità simulazione
+            if (!this._isSimulation) {
+                Storage.saveWorkout(workoutData);
+            }
 
             // Generate progression summary for next session
             const profile = Storage.getProfile();
@@ -2941,6 +2977,8 @@ const App = {
         this.lastWorkoutExercises = this.activeWorkout?.exercises || [];
 
         // Reset state
+        const wasSimulation = this._isSimulation;
+        this._isSimulation = false;
         this.activeWorkout = null;
         this.currentExerciseIndex = 0;
 
@@ -2955,7 +2993,11 @@ const App = {
         this.loadDashboard();
 
         // Show completion notification with progression hints
-        this.showNotification(`Allenamento completato! Volume: ${this.formatNumber(totalVolume)} kg`, 'success');
+        if (wasSimulation) {
+            this.showNotification('🧪 Simulazione terminata — nessun dato salvato', 'info');
+        } else {
+            this.showNotification(`Allenamento completato! Volume: ${this.formatNumber(totalVolume)} kg`, 'success');
+        }
 
         // Always show workout completion summary
         if (this.lastWorkoutSummary) {
