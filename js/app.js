@@ -1994,7 +1994,9 @@ const App = {
         // Stop timers
         Timer.stopWorkoutTimer();
         Timer.stopRestTimer();
-        document.getElementById('rest-timer-modal').style.display = 'none';
+        this._activeRestTimerSetIdx = null;
+        const restModal1 = document.getElementById('rest-timer-modal');
+        if (restModal1) restModal1.style.display = 'none';
 
         // Rimuovi protezione refresh
         if (this._beforeUnloadHandler) {
@@ -2493,37 +2495,49 @@ const App = {
             <div class="sets-container-mobile">
                 ${exercise.setsData.map((set, idx) => `
                     <div class="set-row-mobile ${set.completed ? 'completed' : ''} ${set.isNewPR ? 'new-pr' : ''}" data-set="${idx}">
-                        <div class="set-number-mobile">${idx + 1}</div>
-                        <div class="set-inputs-mobile">
-                            <div class="input-group">
-                                <input type="number" inputmode="decimal" step="0.5"
-                                    value="${set.weight || (isBodyweight ? effectiveWeight : '')}"
-                                    placeholder="${isBodyweight ? effectiveWeight : 'kg'}"
-                                    onchange="App.updateSet(${idx}, 'weight', this.value)"
-                                    onfocus="this.select()">
-                                <span class="input-suffix">kg</span>
+                        <div class="set-row-top">
+                            <div class="set-number-mobile">${idx + 1}</div>
+                            <div class="set-inputs-mobile">
+                                <div class="input-group">
+                                    <input type="number" inputmode="decimal" step="0.5"
+                                        value="${set.weight || (isBodyweight ? effectiveWeight : '')}"
+                                        placeholder="${isBodyweight ? effectiveWeight : 'kg'}"
+                                        onchange="App.updateSet(${idx}, 'weight', this.value)"
+                                        onfocus="this.select()">
+                                    <span class="input-suffix">kg</span>
+                                </div>
+                                <span class="set-x">×</span>
+                                <div class="input-group">
+                                    <input type="number" inputmode="numeric"
+                                        value="${set.reps}" placeholder="reps"
+                                        onchange="App.updateSet(${idx}, 'reps', this.value)"
+                                        onfocus="this.select()">
+                                    <span class="input-suffix">reps</span>
+                                </div>
                             </div>
-                            <span class="set-x">×</span>
-                            <div class="input-group">
-                                <input type="number" inputmode="numeric"
-                                    value="${set.reps}" placeholder="reps"
-                                    onchange="App.updateSet(${idx}, 'reps', this.value)"
-                                    onfocus="this.select()">
-                                <span class="input-suffix">reps</span>
-                            </div>
+                            <button class="set-done-btn ${set.completed ? 'done' : ''}"
+                                onclick="App.completeSet(${idx})">
+                                ${set.completed ? '✓' : ''}${set.isNewPR ? '🏆' : ''}
+                            </button>
                         </div>
-                        <button class="set-done-btn ${set.completed ? 'done' : ''}"
-                            onclick="App.completeSet(${idx})">
-                            ${set.completed ? '✓' : ''}${set.isNewPR ? '🏆' : ''}
-                        </button>
                         ${set.completed ? `
-                        <div class="rir-selector" title="Quante rep potevi ancora fare?">
-                            <span class="rir-label">RIR:</span>
-                            <div class="rir-buttons">
-                                ${[0,1,2,3,4].map(rir => `
-                                    <button class="rir-btn ${set.rir === rir ? 'active' : ''}"
-                                        onclick="App.setRir(${idx}, ${rir})">${rir}${rir === 4 ? '+' : ''}</button>
-                                `).join('')}
+                        <div class="set-row-bottom">
+                            <div class="inline-rest-timer" id="inline-rest-timer-${idx}" style="display: none;">
+                                <span class="inline-rest-icon">⏱</span>
+                                <span class="inline-rest-display" id="inline-rest-display-${idx}">0:00</span>
+                                <div class="inline-rest-bar-wrap">
+                                    <div class="inline-rest-bar-fill" id="inline-rest-bar-${idx}"></div>
+                                </div>
+                                <button class="inline-rest-skip" onclick="App.skipInlineRest()">Salta</button>
+                            </div>
+                            <div class="rir-selector" title="Quante rep potevi ancora fare?">
+                                <span class="rir-label">RIR:</span>
+                                <div class="rir-buttons">
+                                    ${[0,1,2,3,4].map(rir => `
+                                        <button class="rir-btn ${set.rir === rir ? 'active' : ''}"
+                                            onclick="App.setRir(${idx}, ${rir})">${rir}${rir === 4 ? '+' : ''}</button>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
                         ` : ''}
@@ -2541,6 +2555,40 @@ const App = {
                 </button>
             </div>
         `;
+
+        // Re-attach inline rest timer if still running after re-render
+        if (this._activeRestTimerSetIdx != null && Timer.restTimer) {
+            const inlineTimer = document.getElementById(`inline-rest-timer-${this._activeRestTimerSetIdx}`);
+            const inlineDisplay = document.getElementById(`inline-rest-display-${this._activeRestTimerSetIdx}`);
+            const inlineBar = document.getElementById(`inline-rest-bar-${this._activeRestTimerSetIdx}`);
+
+            if (inlineTimer) {
+                inlineTimer.style.display = 'flex';
+                // Update display with current remaining time
+                const remaining = Timer.restTimeRemaining;
+                const total = Timer.restTimeTotal;
+                if (inlineDisplay) {
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    inlineDisplay.textContent = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : remaining;
+                }
+                if (inlineBar) {
+                    inlineBar.style.width = `${(remaining / total) * 100}%`;
+                }
+
+                // Re-bind callbacks to new DOM elements
+                Timer.callbacks.onRestTick = (rem, tot) => {
+                    const m = Math.floor(rem / 60);
+                    const s = rem % 60;
+                    inlineDisplay.textContent = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : rem;
+                    inlineBar.style.width = `${(rem / tot) * 100}%`;
+                };
+                Timer.callbacks.onRestComplete = () => {
+                    inlineTimer.style.display = 'none';
+                    this._activeRestTimerSetIdx = null;
+                };
+            }
+        }
     },
 
     // Bodyweight mode functions
@@ -2689,23 +2737,42 @@ const App = {
     },
 
     showRestTimer(seconds) {
-        const modal = document.getElementById('rest-timer-modal');
-        const display = document.getElementById('rest-timer-display');
-        const bar = document.getElementById('rest-timer-bar');
+        // Find the last completed set index to show inline timer
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        const lastCompletedIdx = exercise.setsData.reduce((last, s, i) => s.completed ? i : last, -1);
 
-        modal.style.display = 'flex';
+        const inlineTimer = document.getElementById(`inline-rest-timer-${lastCompletedIdx}`);
+        const inlineDisplay = document.getElementById(`inline-rest-display-${lastCompletedIdx}`);
+        const inlineBar = document.getElementById(`inline-rest-bar-${lastCompletedIdx}`);
 
-        Timer.startRestTimer(
-            seconds,
-            (remaining, total) => {
-                display.textContent = remaining;
-                const percent = (remaining / total) * 100;
-                bar.style.width = `${percent}%`;
-            },
-            () => {
-                modal.style.display = 'none';
-            }
-        );
+        if (inlineTimer) {
+            this._activeRestTimerSetIdx = lastCompletedIdx;
+            inlineTimer.style.display = 'flex';
+
+            Timer.startRestTimer(
+                seconds,
+                (remaining, total) => {
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    inlineDisplay.textContent = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : remaining;
+                    const percent = (remaining / total) * 100;
+                    inlineBar.style.width = `${percent}%`;
+                },
+                () => {
+                    inlineTimer.style.display = 'none';
+                    this._activeRestTimerSetIdx = null;
+                }
+            );
+        }
+    },
+
+    skipInlineRest() {
+        Timer.skipRest();
+        if (this._activeRestTimerSetIdx != null) {
+            const el = document.getElementById(`inline-rest-timer-${this._activeRestTimerSetIdx}`);
+            if (el) el.style.display = 'none';
+            this._activeRestTimerSetIdx = null;
+        }
     },
 
     previousExercise() {
@@ -2729,7 +2796,9 @@ const App = {
 
         // Stop rest timer but keep workout timer running
         Timer.stopRestTimer();
-        document.getElementById('rest-timer-modal').style.display = 'none';
+        this._activeRestTimerSetIdx = null;
+        const oldModal = document.getElementById('rest-timer-modal');
+        if (oldModal) oldModal.style.display = 'none';
 
         // Show cooldown section
         this.showCooldown();
@@ -2877,7 +2946,8 @@ const App = {
         // Update UI
         document.getElementById('workout-not-started').style.display = 'block';
         document.getElementById('workout-active').style.display = 'none';
-        document.getElementById('rest-timer-modal').style.display = 'none';
+        const restModal2 = document.getElementById('rest-timer-modal');
+        if (restModal2) restModal2.style.display = 'none';
         document.getElementById('cooldown-modal').style.display = 'none';
 
         // Update dashboard
