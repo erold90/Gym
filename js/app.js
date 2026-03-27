@@ -2298,7 +2298,7 @@ const App = {
     },
 
     displayWarmup(warmupType) {
-        const warmup = getWarmupByMuscle(warmupType) || WARMUPS_DB['full-body'];
+        const warmup = Warmups.getWarmupByMuscle(warmupType) || Warmups.WARMUPS_DB['full-body'];
         const container = document.getElementById('warmup-exercises');
 
         container.innerHTML = warmup.exercises.map(ex => `
@@ -2851,7 +2851,7 @@ const App = {
     showCooldown() {
         // Get cooldown based on workout type
         const workoutType = this.activeWorkout?.type || 'full-body';
-        const cooldown = getCooldownForWorkout(workoutType);
+        const cooldown = Warmups.getCooldownForWorkout(workoutType);
 
         // Render cooldown info
         const infoEl = document.getElementById('cooldown-info');
@@ -3442,6 +3442,7 @@ const App = {
         this.loadRirTrend();
         this.loadCycleHistory();
         this.populateStrengthExerciseSelect();
+        this.loadConditioningProgress();
     },
 
     updateProgressStats() {
@@ -3460,6 +3461,7 @@ const App = {
         this.initVolumeChart();
         this.initFrequencyChart();
         this.initWeightChart();
+        this.initConditioningChart();
     },
 
     initVolumeChart() {
@@ -3599,6 +3601,117 @@ const App = {
         if (weeksAgo === 0) return 'Questa';
         if (weeksAgo === 1) return 'Scorsa';
         return `${weeksAgo} sett fa`;
+    },
+
+    // ========================================
+    // CONDITIONING PROGRESS
+    // ========================================
+
+    loadConditioningProgress() {
+        const card = document.getElementById('conditioning-chart-card');
+        const emptyEl = document.getElementById('conditioning-empty');
+        if (!card) return;
+
+        const sessions = Storage.getConditioningSessions();
+        const hasData = sessions.length > 0;
+
+        card.classList.toggle('no-data', !hasData);
+        if (emptyEl) emptyEl.style.display = hasData ? 'none' : 'block';
+
+        if (hasData) {
+            this.initConditioningChart();
+        }
+    },
+
+    getWeeklyConditioningCounts(numWeeks) {
+        const weeks = [];
+        const now = new Date();
+        const sessions = Storage.getConditioningSessions();
+
+        for (let i = numWeeks - 1; i >= 0; i--) {
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay() - (i * 7) + 1);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            const weekSessions = sessions.filter(s => {
+                const d = new Date(s.date);
+                return d >= startOfWeek && d <= endOfWeek;
+            });
+
+            weeks.push({
+                label: this._weekLabel(i),
+                hiit: weekSessions.filter(s => s.type === 'HIIT').length,
+                liss: weekSessions.filter(s => s.type === 'LISS').length
+            });
+        }
+
+        return weeks;
+    },
+
+    initConditioningChart() {
+        const ctx = document.getElementById('conditioning-chart');
+        const card = document.getElementById('conditioning-chart-card');
+        if (!ctx || !card) return;
+
+        const weeks = this.getWeeklyConditioningCounts(4);
+        const hasData = weeks.some(w => w.hiit > 0 || w.liss > 0);
+
+        card.classList.toggle('no-data', !hasData);
+        if (!hasData) return;
+
+        if (this.charts.conditioning) {
+            this.charts.conditioning.destroy();
+        }
+
+        this.charts.conditioning = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: weeks.map(w => w.label),
+                datasets: [
+                    {
+                        label: 'HIIT',
+                        data: weeks.map(w => w.hiit),
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'LISS',
+                        data: weeks.map(w => w.liss),
+                        backgroundColor: 'rgba(6, 214, 160, 0.7)',
+                        borderColor: 'rgba(6, 214, 160, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: { color: '#a0a0b0', boxWidth: 12 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        ticks: { color: '#a0a0b0', stepSize: 1 },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: {
+                        stacked: true,
+                        ticks: { color: '#a0a0b0' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
     },
 
     getWeeklyVolumes(numWeeks) {

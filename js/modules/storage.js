@@ -998,7 +998,7 @@ const Storage = {
 
     exportAllData() {
         const data = {
-            version: '1.0',
+            version: '1.16.5',
             exportDate: new Date().toISOString(),
             profile: this.getProfile(),
             settings: this.getSettings(),

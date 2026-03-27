@@ -3,6 +3,8 @@
  * Specific warmup routines for each muscle group
  */
 
+const Warmups = (() => {
+
 const WARMUPS_DB = {
     // ========================================
     // UPPER BODY WARMUPS
@@ -1623,3 +1625,17 @@ function getCooldownForMuscles(muscles) {
 function getCooldownByMuscle(muscle) {
     return COOLDOWN_DB[muscle] || COOLDOWN_DB["full-body"];
 }
+
+// Public API
+return {
+    WARMUPS_DB,
+    COOLDOWN_DB,
+    getWarmupForWorkout,
+    getWarmupForMuscles,
+    getWarmupByMuscle,
+    getCooldownForWorkout,
+    getCooldownForMuscles,
+    getCooldownByMuscle
+};
+
+})();
