@@ -175,6 +175,175 @@ const TrainingAlgorithm = {
     },
 
     // ========================================
+    // SUPERSET & GIANT SET CONFIGURATION
+    // ========================================
+
+    // Coppie predefinite — solo stessa attrezzatura/metro quadro
+    SUPERSET_PAIRS: [
+        // Panca + bilanciere (ti alzi dalla panca, row a terra)
+        { exercises: ['bench-press', 'pendlay-row'], type: 'agonist-antagonist', station: 'bench-barbell', transition: 15 },
+        { exercises: ['bench-press', 'barbell-row'], type: 'agonist-antagonist', station: 'bench-barbell', transition: 15 },
+        // Stesso EZ bar + panca
+        { exercises: ['ez-bar-curl', 'skull-crusher'], type: 'agonist-antagonist', station: 'ez-bar-bench', transition: 10 },
+        { exercises: ['barbell-curl', 'skull-crusher'], type: 'agonist-antagonist', station: 'ez-bar-bench', transition: 10 },
+        // Panca + manubri (stessa panca, giri posizione)
+        { exercises: ['dumbbell-incline-press', 'dumbbell-row'], type: 'agonist-antagonist', station: 'bench-dumbbells', transition: 10 },
+        { exercises: ['dumbbell-bench-press', 'dumbbell-row'], type: 'agonist-antagonist', station: 'bench-dumbbells', transition: 10 },
+        { exercises: ['dumbbell-hip-thrust', 'glute-bridge'], type: 'compound-set', station: 'bench-floor', transition: 10 },
+        // Stessi manubri in mano (non li posi)
+        { exercises: ['lateral-raise', 'rear-delt-fly'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['dumbbell-curl', 'dumbbell-tricep-extension'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['dumbbell-curl', 'dumbbell-kickback'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['hammer-curl', 'dumbbell-kickback'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['dumbbell-shoulder-press', 'rear-delt-fly'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['goblet-squat', 'dumbbell-rdl'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['dumbbell-lunge', 'single-leg-rdl'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['dumbbell-lunge', 'dumbbell-rdl'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        { exercises: ['goblet-squat', 'single-leg-rdl'], type: 'agonist-antagonist', station: 'dumbbells', transition: 5 },
+        // Stesso cavo (cambi attacco/altezza)
+        { exercises: ['cable-curl', 'tricep-pushdown'], type: 'agonist-antagonist', station: 'cable', transition: 10 },
+        { exercises: ['cable-curl', 'rope-pushdown'], type: 'agonist-antagonist', station: 'cable', transition: 10 },
+        { exercises: ['cable-hammer-curl', 'rope-pushdown'], type: 'agonist-antagonist', station: 'cable', transition: 10 },
+        { exercises: ['cable-crossover', 'straight-arm-pulldown'], type: 'agonist-antagonist', station: 'cable', transition: 10 },
+        // A terra stessa zona (corpo libero)
+        { exercises: ['glute-bridge', 'donkey-kick'], type: 'compound-set', station: 'floor', transition: 5 },
+        { exercises: ['single-leg-glute-bridge', 'fire-hydrant'], type: 'compound-set', station: 'floor', transition: 5 },
+        { exercises: ['glute-bridge', 'fire-hydrant'], type: 'compound-set', station: 'floor', transition: 5 },
+        { exercises: ['bodyweight-calf-raise', 'crunch'], type: 'agonist-antagonist', station: 'floor', transition: 5 },
+        { exercises: ['bodyweight-calf-raise', 'reverse-crunch'], type: 'agonist-antagonist', station: 'floor', transition: 5 },
+    ],
+
+    // Giant set (3 esercizi) — solo per endurance
+    GIANT_SET_GROUPS: [
+        // Stessi manubri
+        { exercises: ['push-up', 'dumbbell-row', 'lateral-raise'], station: 'dumbbells-floor', transition: 15 },
+        { exercises: ['dumbbell-bench-press', 'rear-delt-fly', 'dumbbell-curl'], station: 'bench-dumbbells', transition: 15 },
+        { exercises: ['goblet-squat', 'dumbbell-rdl', 'walking-lunge'], station: 'dumbbells', transition: 15 },
+        // Stesso cavo
+        { exercises: ['rope-pushdown', 'cable-curl', 'face-pull'], station: 'cable', transition: 10 },
+        // A terra corpo libero
+        { exercises: ['glute-bridge', 'reverse-crunch', 'plank'], station: 'floor', transition: 10 },
+        { exercises: ['bodyweight-calf-raise', 'bodyweight-squat', 'mountain-climber'], station: 'floor', transition: 10 },
+        { exercises: ['donkey-kick', 'fire-hydrant', 'single-leg-glute-bridge'], station: 'floor', transition: 10 },
+    ],
+
+    // Regole per goal
+    SUPERSET_RULES: {
+        strength:    { maxPerDay: 2, allowCompound: false, useGiantSets: false },
+        hypertrophy: { maxPerDay: 4, allowCompound: true,  useGiantSets: false },
+        recomp:      { maxPerDay: 5, allowCompound: true,  useGiantSets: false },
+        toning:      { maxPerDay: 4, allowCompound: true,  useGiantSets: false },
+        endurance:   { maxPerDay: 4, allowCompound: true,  useGiantSets: true  },
+    },
+
+    // Esercizi MAI in superset (compound pesanti, alta richiesta tecnica/sistema nervoso)
+    SUPERSET_EXCLUDED: [
+        'squat', 'front-squat', 'deadlift', 'romanian-deadlift', 'stiff-leg-deadlift',
+        'hip-thrust', 'sumo-deadlift', 'overhead-press', 'push-press', 'good-morning',
+        'hack-squat', 'leg-press', 'smith-squat'
+    ],
+
+    /**
+     * Post-processing: applica superset/giant set a una lista di esercizi generata
+     * Non forza nulla — crea superset solo se entrambi gli esercizi sono presenti
+     */
+    applySupersets(exercises, goal) {
+        const rules = this.SUPERSET_RULES[goal] || this.SUPERSET_RULES.hypertrophy;
+        const useGiants = rules.useGiantSets;
+        const maxGroups = rules.maxPerDay;
+
+        // Indici disponibili (non esclusi)
+        const available = new Set();
+        exercises.forEach((ex, i) => {
+            if (!this.SUPERSET_EXCLUDED.includes(ex.exerciseId)) {
+                if (rules.allowCompound || ex.type !== 'compound') {
+                    available.add(i);
+                }
+            }
+        });
+
+        // Build lookup exerciseId -> index
+        const idToIndex = {};
+        exercises.forEach((ex, i) => {
+            if (available.has(i)) {
+                idToIndex[ex.exerciseId] = i;
+            }
+        });
+
+        const usedIndices = new Set();
+        let groupLetter = 0; // 0=A, 1=B, etc.
+        const groups = []; // { indices: [i, j], pair, isGiant }
+
+        // Try giant sets first (for endurance)
+        if (useGiants) {
+            for (const gs of this.GIANT_SET_GROUPS) {
+                if (groupLetter >= maxGroups) break;
+                const indices = gs.exercises.map(id => idToIndex[id]).filter(i => i !== undefined && !usedIndices.has(i));
+                if (indices.length === gs.exercises.length) {
+                    groups.push({ indices, transition: gs.transition, isGiant: true });
+                    indices.forEach(i => usedIndices.add(i));
+                    groupLetter++;
+                }
+            }
+        }
+
+        // Then try pairs
+        for (const pair of this.SUPERSET_PAIRS) {
+            if (groupLetter >= maxGroups) break;
+            const [id1, id2] = pair.exercises;
+            const i1 = idToIndex[id1];
+            const i2 = idToIndex[id2];
+            if (i1 !== undefined && i2 !== undefined && !usedIndices.has(i1) && !usedIndices.has(i2)) {
+                groups.push({ indices: [i1, i2], transition: pair.transition, isGiant: false });
+                usedIndices.add(i1);
+                usedIndices.add(i2);
+                groupLetter++;
+            }
+        }
+
+        if (groups.length === 0) return exercises;
+
+        // Assign superset fields
+        const letters = 'ABCDEFGH';
+        groups.forEach((g, gi) => {
+            const letter = letters[gi] || letters[0];
+            const supersetRest = Math.round(
+                Math.max(...g.indices.map(i => exercises[i].rest || 90)) * 0.8
+            );
+            g.indices.forEach((idx, order) => {
+                exercises[idx].supersetGroup = letter;
+                exercises[idx].supersetOrder = order + 1;
+                exercises[idx].supersetRest = supersetRest;
+                exercises[idx].transitionTime = g.transition;
+                exercises[idx].isGiantSet = g.isGiant;
+            });
+        });
+
+        // Reorder: singoli pesanti first, then superset groups, then remaining singles
+        const singles = [];
+        const supersetExercises = [];
+        const remainingSingles = [];
+
+        exercises.forEach((ex, i) => {
+            if (ex.supersetGroup) {
+                supersetExercises.push(ex);
+            } else if (this.SUPERSET_EXCLUDED.includes(ex.exerciseId)) {
+                singles.push(ex); // Heavy compound first
+            } else {
+                remainingSingles.push(ex);
+            }
+        });
+
+        // Sort superset exercises by group letter then order
+        supersetExercises.sort((a, b) => {
+            if (a.supersetGroup !== b.supersetGroup) return a.supersetGroup.localeCompare(b.supersetGroup);
+            return a.supersetOrder - b.supersetOrder;
+        });
+
+        return [...singles, ...supersetExercises, ...remainingSingles];
+    },
+
+    // ========================================
     // MAIN GENERATION FUNCTION
     // ========================================
 
@@ -221,6 +390,11 @@ const TrainingAlgorithm = {
                 day.exercises.pop();
                 estimated = this.estimateWorkoutDuration({ exercises: day.exercises });
             }
+        });
+
+        // Apply superset/giant set grouping (post-processing)
+        program.days.forEach(day => {
+            day.exercises = this.applySupersets(day.exercises, goal);
         });
 
         // Get tempo for goal
@@ -1176,13 +1350,37 @@ const TrainingAlgorithm = {
         // Add warmup time (7-10 minutes)
         totalSeconds += 8 * 60;
 
+        // Group superset exercises to calculate time savings
+        const supersetGroups = {};
+        const singles = [];
+
         workout.exercises.forEach(ex => {
+            if (ex.supersetGroup) {
+                if (!supersetGroups[ex.supersetGroup]) supersetGroups[ex.supersetGroup] = [];
+                supersetGroups[ex.supersetGroup].push(ex);
+            } else {
+                singles.push(ex);
+            }
+        });
+
+        // Singles: normal timing
+        singles.forEach(ex => {
             const sets = ex.sets || 3;
             const rest = ex.rest || 60;
-
-            // Estimate 45 seconds per set + rest between sets
             const setTime = 45;
             totalSeconds += sets * setTime + (sets - 1) * rest;
+        });
+
+        // Superset groups: transition between exercises, rest only between rounds
+        Object.values(supersetGroups).forEach(group => {
+            const sets = group[0].sets || 3;
+            const setTime = 45;
+            const transition = group[0].transitionTime || 10;
+            const groupRest = group[0].supersetRest || 60;
+
+            // Per round: (setTime + transition) per exercise, then full rest between rounds
+            const roundTime = group.length * setTime + (group.length - 1) * transition;
+            totalSeconds += sets * roundTime + (sets - 1) * groupRest;
         });
 
         return Math.round(totalSeconds / 60); // Return minutes

@@ -5320,3 +5320,206 @@ input[type="number"] {
     border-color: #f44336;
     color: #f44336;
 }
+
+/* ========================================
+   SUPERSET & GIANT SET
+   ======================================== */
+
+/* Badge superset nell'header esercizio */
+.superset-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.superset-badge-A { background: rgba(67, 97, 238, 0.25); color: #6b8cff; border: 1px solid rgba(67, 97, 238, 0.4); }
+.superset-badge-B { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.35); }
+.superset-badge-C { background: rgba(250, 204, 21, 0.2); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.35); }
+.superset-badge-D { background: rgba(244, 114, 182, 0.2); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.35); }
+
+/* Prep card: avviso prima di iniziare il superset */
+.superset-prep-card {
+    background: var(--bg-tertiary, #252540);
+    border: 1px solid rgba(67, 97, 238, 0.3);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    animation: fadeInUp 0.3s ease;
+}
+
+.superset-prep-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.superset-prep-exercises {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.superset-prep-exercise {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+}
+
+.superset-prep-order {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.superset-prep-order.order-A { background: rgba(67, 97, 238, 0.3); color: #6b8cff; }
+.superset-prep-order.order-B { background: rgba(74, 222, 128, 0.25); color: #4ade80; }
+.superset-prep-order.order-C { background: rgba(250, 204, 21, 0.25); color: #facc15; }
+.superset-prep-order.order-D { background: rgba(244, 114, 182, 0.25); color: #f472b6; }
+
+.superset-prep-info {
+    flex: 1;
+}
+
+.superset-prep-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary, #fff);
+}
+
+.superset-prep-weight {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #a0a0b0);
+    margin-top: 2px;
+}
+
+.superset-prep-btn {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent, #4361ee);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.superset-prep-btn:active {
+    opacity: 0.8;
+}
+
+/* Transition countdown tra esercizi nel superset */
+.superset-transition {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    text-align: center;
+    animation: fadeInUp 0.2s ease;
+}
+
+.superset-transition-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #a0a0b0);
+    margin-bottom: 0.25rem;
+}
+
+.superset-transition-next {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+    margin-bottom: 0.75rem;
+}
+
+.superset-transition-timer {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent, #4361ee);
+    font-variant-numeric: tabular-nums;
+}
+
+.superset-transition-skip {
+    margin-top: 0.75rem;
+    padding: 0.4rem 1.2rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary, #a0a0b0);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+/* Round indicator per superset */
+.superset-round-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #a0a0b0);
+}
+
+.superset-round-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.superset-round-dot.active {
+    background: var(--accent, #4361ee);
+}
+
+.superset-round-dot.completed {
+    background: var(--success, #4ade80);
+}
+
+/* Preview day: grouping visuale */
+.preview-superset-group {
+    border-left: 3px solid rgba(67, 97, 238, 0.4);
+    padding-left: 0.5rem;
+    margin: 0.25rem 0;
+}
+
+.preview-superset-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary, #a0a0b0);
+    padding: 2px 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+    .superset-prep-card {
+        padding: 1rem;
+    }
+    .superset-transition-timer {
+        font-size: 2rem;
+    }
+}

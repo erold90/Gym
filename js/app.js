@@ -1984,31 +1984,52 @@ const App = {
                 <h3>${day.focus || day.type || day.name}</h3>
                 ${cycleInfo ? `<p class="preview-phase-info">${isDeload ? 'Deload' : cycleInfo.currentPhase?.phaseName} - Sett. ${cycleInfo.currentWeek}/${cycleInfo.duration} - RIR ${isDeload ? '4+' : cycleInfo.currentPhase?.rirTarget?.min + '-' + cycleInfo.currentPhase?.rirTarget?.max}</p>` : ''}
                 <div class="preview-exercises">
-                    ${(day.exercises || []).map((ex, i) => {
-                        const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
-                        const gifUrl = typeof getExerciseGif === 'function' ? getExerciseGif(ex.exerciseId) : null;
-                        const sets = isDeload ? Math.max(2, Math.round(ex.sets * volumeMultiplier)) : ex.sets;
+                    ${(() => {
+                        const exercises = day.exercises || [];
+                        let html = '';
+                        let currentGroup = null;
 
-                        // Get last performance for progression hint
-                        const lastPerf = Storage.getLastPerformance(ex.exerciseId);
-                        let hint = '';
-                        if (lastPerf) {
-                            const bestWeight = lastPerf.weight;
-                            hint = `<span class="preview-hint">Ultimo: ${bestWeight}kg x ${lastPerf.reps}</span>`;
-                        }
+                        exercises.forEach((ex, i) => {
+                            const exercise = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
+                            const gifUrl = typeof getExerciseGif === 'function' ? getExerciseGif(ex.exerciseId) : null;
+                            const sets = isDeload ? Math.max(2, Math.round(ex.sets * volumeMultiplier)) : ex.sets;
 
-                        return `
-                            <div class="preview-exercise-row">
-                                <span class="preview-ex-num">${i + 1}</span>
-                                ${gifUrl ? `<img src="${gifUrl}" class="preview-ex-gif" alt="${ex.name}" loading="lazy" onerror="this.style.display='none'">` : '<div class="preview-ex-gif-placeholder"></div>'}
-                                <div class="preview-ex-info">
-                                    <div class="preview-ex-name">${ex.name}</div>
-                                    <div class="preview-ex-details">${sets} x ${ex.reps} · ${ex.rest}s pausa</div>
-                                    ${hint}
+                            const lastPerf = Storage.getLastPerformance(ex.exerciseId);
+                            let hint = '';
+                            if (lastPerf) {
+                                hint = `<span class="preview-hint">Ultimo: ${lastPerf.weight}kg x ${lastPerf.reps}</span>`;
+                            }
+
+                            // Superset group start
+                            if (ex.supersetGroup && ex.supersetGroup !== currentGroup) {
+                                if (currentGroup) html += '</div>'; // Close previous group
+                                currentGroup = ex.supersetGroup;
+                                const label = ex.isGiantSet ? 'Giant Set' : 'Superset';
+                                html += `<div class="preview-superset-group">
+                                    <div class="preview-superset-label">
+                                        <span class="superset-badge superset-badge-${ex.supersetGroup}" style="font-size:0.6rem;padding:1px 6px;">${label} ${ex.supersetGroup}</span>
+                                    </div>`;
+                            } else if (!ex.supersetGroup && currentGroup) {
+                                html += '</div>';
+                                currentGroup = null;
+                            }
+
+                            html += `
+                                <div class="preview-exercise-row">
+                                    <span class="preview-ex-num">${i + 1}</span>
+                                    ${gifUrl ? `<img src="${gifUrl}" class="preview-ex-gif" alt="${ex.name}" loading="lazy" onerror="this.style.display='none'">` : '<div class="preview-ex-gif-placeholder"></div>'}
+                                    <div class="preview-ex-info">
+                                        <div class="preview-ex-name">${ex.name}${ex.supersetGroup ? ` <span class="superset-badge superset-badge-${ex.supersetGroup}" style="font-size:0.55rem;padding:1px 4px;">${ex.supersetGroup}${ex.supersetOrder}</span>` : ''}</div>
+                                        <div class="preview-ex-details">${sets} x ${ex.reps} · ${ex.supersetGroup ? ex.transitionTime + 's trans' : ex.rest + 's pausa'}</div>
+                                        ${hint}
+                                    </div>
                                 </div>
-                            </div>
-                        `;
-                    }).join('')}
+                            `;
+                        });
+
+                        if (currentGroup) html += '</div>';
+                        return html;
+                    })()}
                 </div>
             </div>
         `;
@@ -2234,6 +2255,17 @@ const App = {
         };
         this.currentExerciseIndex = 0;
         this.currentSetIndex = 0;
+
+        // Build superset group map for quick lookup
+        this._supersetGroupMap = {};
+        this._supersetPrepShown = {};
+        this._supersetTransitionActive = false;
+        this.activeWorkout.exercises.forEach((ex, i) => {
+            if (ex.supersetGroup) {
+                if (!this._supersetGroupMap[ex.supersetGroup]) this._supersetGroupMap[ex.supersetGroup] = [];
+                this._supersetGroupMap[ex.supersetGroup].push(i);
+            }
+        });
 
         // Show workout UI
         document.getElementById('workout-not-started').style.display = 'none';
@@ -2520,11 +2552,76 @@ const App = {
             </div>
         ` : '';
 
+        // Superset badge HTML
+        const supersetBadgeHTML = exercise.supersetGroup ? `
+            <span class="superset-badge superset-badge-${exercise.supersetGroup}">
+                ${exercise.isGiantSet ? 'Giant' : 'Super'} ${exercise.supersetGroup}${exercise.supersetOrder}
+            </span>
+        ` : '';
+
+        // Superset round indicator HTML
+        let supersetRoundHTML = '';
+        if (exercise.supersetGroup && this._supersetGroupMap[exercise.supersetGroup]) {
+            const groupIndices = this._supersetGroupMap[exercise.supersetGroup];
+            const totalRounds = exercise.targetSets;
+            // Current round = completed sets of first exercise in group
+            const firstEx = this.activeWorkout.exercises[groupIndices[0]];
+            const currentRound = firstEx.setsData.filter(s => s.completed).length;
+            supersetRoundHTML = `
+                <div class="superset-round-indicator">
+                    <span>Round</span>
+                    ${Array.from({length: totalRounds}, (_, r) => `
+                        <span class="superset-round-dot ${r < currentRound ? 'completed' : r === currentRound ? 'active' : ''}"></span>
+                    `).join('')}
+                    <span>${currentRound}/${totalRounds}</span>
+                </div>
+            `;
+        }
+
+        // Superset prep card: show on first visit to a group
+        if (exercise.supersetGroup && !this._supersetPrepShown[exercise.supersetGroup] && exercise.supersetOrder === 1) {
+            this._supersetPrepShown[exercise.supersetGroup] = true;
+            const groupIndices = this._supersetGroupMap[exercise.supersetGroup];
+            const groupExercises = groupIndices.map(i => this.activeWorkout.exercises[i]);
+
+            container.innerHTML = `
+                <div class="superset-prep-card">
+                    <div class="superset-prep-header">
+                        <span class="superset-badge superset-badge-${exercise.supersetGroup}">
+                            ${exercise.isGiantSet ? 'Giant Set' : 'Superset'} ${exercise.supersetGroup}
+                        </span>
+                        Prepara la postazione
+                    </div>
+                    <div class="superset-prep-exercises">
+                        ${groupExercises.map((ex, order) => {
+                            const lastPerf = Storage.getLastPerformance(ex.exerciseId);
+                            const weightHint = lastPerf ? `${lastPerf.weight}kg (ultima volta)` : 'Nessun dato precedente';
+                            return `
+                                <div class="superset-prep-exercise">
+                                    <div class="superset-prep-order order-${exercise.supersetGroup}">${order + 1}</div>
+                                    <div class="superset-prep-info">
+                                        <div class="superset-prep-name">${ex.name}</div>
+                                        <div class="superset-prep-weight">${weightHint} · ${ex.sets}x${ex.targetReps} · pausa ${ex.transitionTime}s tra esercizi</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:1rem;text-align:center;">
+                        Riposo completo (${exercise.supersetRest}s) solo dopo aver completato tutti gli esercizi del round
+                    </div>
+                    <button class="superset-prep-btn" onclick="App.displayCurrentExercise()">Sono pronto</button>
+                </div>
+            `;
+            return; // Don't show exercise yet, wait for "Sono pronto"
+        }
+
         container.innerHTML = `
             <div class="exercise-header-mobile current-exercise-header" style="display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:15px;">
                 <div class="current-exercise-title" style="flex:1;">
                     <div class="exercise-progress-badge">
                         ${this.currentExerciseIndex + 1}/${this.activeWorkout.exercises.length}
+                        ${supersetBadgeHTML}
                     </div>
                     <h3 class="exercise-title-mobile">${exercise.name}</h3>
                     <div class="exercise-muscles-mobile">
@@ -2561,6 +2658,7 @@ const App = {
                     Serie ridotte: ${exercise.originalSets} → ${exercise.targetSets} (deload -50%)
                 </div>
             ` : ''}
+            ${supersetRoundHTML}
             <div class="sets-progress-bar">
                 <div class="sets-progress-fill" style="width: ${(completedSets / exercise.targetSets) * 100}%"></div>
                 <span class="sets-progress-text">${completedSets}/${exercise.targetSets} completate</span>
@@ -2797,12 +2895,31 @@ const App = {
             }
         }
 
-        // Start rest timer if completed, but NOT on the last set of the exercise
+        // Start rest timer or superset transition
         if (set.completed) {
             const completedCount = exercise.setsData.filter(s => s.completed).length;
             const isLastSet = completedCount >= exercise.targetSets;
 
-            if (!isLastSet) {
+            if (exercise.supersetGroup && this._supersetGroupMap[exercise.supersetGroup]) {
+                // SUPERSET FLOW
+                const groupIndices = this._supersetGroupMap[exercise.supersetGroup];
+                const myPositionInGroup = groupIndices.indexOf(this.currentExerciseIndex);
+                const isLastInGroup = myPositionInGroup === groupIndices.length - 1;
+
+                if (!isLastInGroup) {
+                    // Transition to next exercise in group
+                    const nextIdx = groupIndices[myPositionInGroup + 1];
+                    const nextEx = this.activeWorkout.exercises[nextIdx];
+                    this.showSupersetTransition(nextIdx, exercise.transitionTime || 10, nextEx.name, false);
+                } else if (!isLastSet) {
+                    // Last exercise in group but more rounds → full rest then back to first
+                    const firstIdx = groupIndices[0];
+                    const firstEx = this.activeWorkout.exercises[firstIdx];
+                    this.showSupersetTransition(firstIdx, exercise.supersetRest || 60, firstEx.name, true);
+                }
+                // If isLastSet and isLastInGroup: group done, no timer
+            } else if (!isLastSet) {
+                // Normal flow
                 const restTime = exercise.rest || 60;
                 this.showRestTimer(restTime);
             }
@@ -2846,6 +2963,67 @@ const App = {
             if (el) el.style.display = 'none';
             this._activeRestTimerSetIdx = null;
         }
+    },
+
+    showSupersetTransition(targetExerciseIndex, seconds, nextExName, isNewRound) {
+        this._supersetTransitionActive = true;
+        const container = document.getElementById('current-exercise');
+        if (!container) return;
+
+        const label = isNewRound ? 'Riposo round completato' : 'Passa a';
+
+        // Show compact transition countdown inline
+        const transitionDiv = document.createElement('div');
+        transitionDiv.className = 'superset-transition';
+        transitionDiv.innerHTML = `
+            <div class="superset-transition-label">${label}</div>
+            <div class="superset-transition-next">${nextExName}</div>
+            <div class="superset-transition-timer" id="superset-transition-countdown">${seconds}</div>
+            <button class="superset-transition-skip" onclick="App.skipSupersetTransition()">Salta</button>
+        `;
+        container.appendChild(transitionDiv);
+
+        // Scroll to transition
+        transitionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        let remaining = seconds;
+        const countdownEl = transitionDiv.querySelector('#superset-transition-countdown');
+
+        this._supersetTransitionTimer = setInterval(() => {
+            remaining--;
+            if (countdownEl) {
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                countdownEl.textContent = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : remaining;
+            }
+            if (remaining <= 0) {
+                this._completeSupersetTransition(targetExerciseIndex);
+            }
+        }, 1000);
+
+        this._supersetTransitionTarget = targetExerciseIndex;
+    },
+
+    skipSupersetTransition() {
+        if (this._supersetTransitionTarget != null) {
+            this._completeSupersetTransition(this._supersetTransitionTarget);
+        }
+    },
+
+    _completeSupersetTransition(targetExerciseIndex) {
+        if (this._supersetTransitionTimer) {
+            clearInterval(this._supersetTransitionTimer);
+            this._supersetTransitionTimer = null;
+        }
+        this._supersetTransitionActive = false;
+        this._supersetTransitionTarget = null;
+
+        // Navigate to target exercise
+        this.currentExerciseIndex = targetExerciseIndex;
+        this.displayCurrentExercise();
+
+        // Play short beep
+        Timer.playCompletionSound();
     },
 
     previousExercise() {
