@@ -5,17 +5,17 @@
 - **Repo**: github.com/erold90/Gym
 - **Deploy**: erold90.github.io/Gym (GitHub Pages, auto-merge)
 - **Branch**: `claude/main-IDVRj` (HEAD, deploy diretto — no main branch)
-- **Versione**: v1.16.4 (2026-03-25)
+- **Versione**: v1.18.0 (2026-03-27)
 - **Utenti**: Daniele + moglie (obiettivo Tonificazione)
 
 ## Struttura File
 
 ```
 index.html (1212 righe) — SPA singola pagina, 7 sezioni + 7 modals
-sw.js (132 righe) — Service Worker, CACHE_VERSION = 'v1.16.4'
-css/style.css (~5900 righe) — Design system dark + responsive
-js/app.js (4877 righe) — Logica principale, 40+ funzioni
-js/modules/algorithm.js (1513 righe) — Generazione schede + periodizzazione
+sw.js (132 righe) — Service Worker, CACHE_VERSION = 'v1.18.0'
+css/style.css (~5525 righe) — Design system dark + responsive
+js/app.js (5215 righe) — Logica principale, 40+ funzioni
+js/modules/algorithm.js (1711 righe) — Generazione schede + periodizzazione + superset
 js/modules/storage.js (1191 righe) — Persistenza localStorage (10 chiavi)
 js/modules/timer.js (211 righe) — Rest timer + workout timer + Web Audio
 js/modules/exerciseMedia.js (2233 righe) — GIF e dettagli ~180 esercizi (funzioni GLOBALI)
@@ -164,6 +164,36 @@ Bottone in Impostazioni > Debug & Test. Flag `_isSimulation` previene salvataggi
 - 4 giorni → Upper/Lower
 - 5 giorni → PPL o Upper/Lower
 - 6 giorni → PPL
+
+## Superset & Giant Set (v1.18.0)
+
+### Struttura
+- 25 coppie superset predefinite (stessa attrezzatura/metro quadro)
+- 7 giant set (3 esercizi, solo endurance)
+- `applySupersets()` post-processing in `generateProgram()`
+- Stazioni: bench-barbell, ez-bar-bench, bench-dumbbells, dumbbells, cable, floor
+
+### Regole per goal
+| Goal | Max/giorno | Compound in SS | Giant Set |
+|------|-----------|---------------|-----------|
+| strength | 2 | No | No |
+| hypertrophy | 4 | Sì | No |
+| recomp | 5 | Sì | No |
+| toning | 4 | Sì | No |
+| endurance | 4 | Sì | Sì |
+
+### Esclusi (mai in superset)
+squat, front-squat, deadlift, romanian-deadlift, stiff-leg-deadlift, hip-thrust, sumo-deadlift, overhead-press, push-press, good-morning, hack-squat, leg-press, smith-squat
+
+### Workout Flow
+1. Prep card: mostra esercizi del gruppo + peso suggerito da ultima sessione
+2. Transition countdown (5-15s) tra esercizi nello stesso round
+3. Riposo completo (supersetRest = 80% del rest più alto) solo tra round
+4. Round indicator con pallini completato/attivo/da fare
+5. Badge colorati A/B/C/D per gruppo
+
+### Campi esercizio (aggiunti da applySupersets)
+`supersetGroup` (A/B/C...), `supersetOrder` (1/2/3), `supersetRest`, `transitionTime`, `isGiantSet`
 
 ## Stima Durata Workout
 
