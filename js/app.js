@@ -4438,9 +4438,13 @@ const App = {
         if (done >= target) {
             titleEl.textContent = '✅ Cardio completato';
         } else if (suggestion && suggestion.enabled) {
-            const preferredType = suggestion.preferredType || 'HIIT';
-            const typeIcon = preferredType === 'HIIT' ? '🔥' : '🚶';
-            titleEl.textContent = `${typeIcon} ${preferredType} consigliato`;
+            const pType = suggestion.preferredType || 'HIIT';
+            if (pType === 'mixed') {
+                titleEl.textContent = done % 2 === 0 ? '🔥 HIIT consigliato' : '🚶 LISS consigliato';
+            } else {
+                const typeIcon = pType === 'HIIT' ? '🔥' : '🚶';
+                titleEl.textContent = `${typeIcon} ${pType} consigliato`;
+            }
         } else {
             titleEl.textContent = '🏃 Conditioning';
         }
