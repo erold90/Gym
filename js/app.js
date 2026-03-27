@@ -3609,9 +3609,18 @@ const App = {
 
     loadConditioningProgress() {
         const card = document.getElementById('conditioning-chart-card');
-        const emptyEl = document.getElementById('conditioning-empty');
         if (!card) return;
 
+        // Hide for goals where cardio isn't relevant
+        const profile = Storage.getProfile();
+        const cardioGoals = ['recomp', 'endurance', 'toning'];
+        if (!cardioGoals.includes(profile.goal)) {
+            card.style.display = 'none';
+            return;
+        }
+
+        card.style.display = '';
+        const emptyEl = document.getElementById('conditioning-empty');
         const sessions = Storage.getConditioningSessions();
         const hasData = sessions.length > 0;
 
