@@ -4409,8 +4409,9 @@ const App = {
         const profile = Storage.getProfile();
         const program = Storage.getActiveProgram();
 
-        // Hide if no program or goal is strength (no cardio needed)
-        if (!program || profile.goal === 'strength') {
+        // Hide if no program or goal doesn't benefit from cardio
+        const cardioGoals = ['recomp', 'endurance', 'toning'];
+        if (!program || !cardioGoals.includes(profile.goal)) {
             card.style.display = 'none';
             return;
         }
