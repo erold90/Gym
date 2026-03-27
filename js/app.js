@@ -4432,12 +4432,16 @@ const App = {
         const config = this.getConditioningConfig(profile.goal);
         const target = config?.frequency || 1;
 
-        // Update title based on suggestion
-        if (suggestion && suggestion.recommended) {
-            const typeIcon = suggestion.type === 'hiit' ? '🔥' : '🚶';
-            titleEl.textContent = `${typeIcon} ${suggestion.type === 'hiit' ? 'HIIT' : 'LISS'} consigliato`;
-        } else {
+        // Update title based on weekly progress
+        const done = weekStats.length;
+        if (done >= target) {
             titleEl.textContent = '✅ Cardio completato';
+        } else if (suggestion && suggestion.enabled) {
+            const preferredType = suggestion.preferredType || 'HIIT';
+            const typeIcon = preferredType === 'HIIT' ? '🔥' : '🚶';
+            titleEl.textContent = `${typeIcon} ${preferredType} consigliato`;
+        } else {
+            titleEl.textContent = '🏃 Conditioning';
         }
 
         // Update subtitle with weekly count
