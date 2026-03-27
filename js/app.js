@@ -474,6 +474,7 @@ const App = {
     // ========================================
 
     loadDashboard() {
+        this.syncCycleWeekWithCalendar();
         this.updateGreeting();
         this.updateStats();
         this.updateWeekDays();
@@ -684,6 +685,34 @@ const App = {
             this.showNotification('✅ Deload terminato! Volume normale', 'success');
         }
         this.updateCycleCard();
+    },
+
+    syncCycleWeekWithCalendar() {
+        const program = Storage.getActiveProgram();
+        if (!program?.metadata?.cycle) return;
+
+        const cycle = program.metadata.cycle;
+        const cycleStart = new Date(cycle.startDate);
+        const now = new Date();
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+        const calendarWeek = Math.min(
+            Math.floor((now - cycleStart) / msPerWeek) + 1,
+            cycle.duration
+        );
+
+        if (calendarWeek > cycle.currentWeek) {
+            const skipped = calendarWeek - cycle.currentWeek;
+            cycle.currentWeek = calendarWeek;
+            Storage.setActiveProgram(program);
+
+            const phase = cycle.phases.find(p => p.week === calendarWeek);
+            const phaseName = phase?.phaseName || '';
+            if (skipped === 1) {
+                this.showNotification(`📅 Settimana ${calendarWeek} - ${phaseName}`, 'info');
+            } else {
+                this.showNotification(`📅 Avanzato a settimana ${calendarWeek}/${cycle.duration} - ${phaseName}`, 'info');
+            }
+        }
     },
 
     advanceCycleWeek() {

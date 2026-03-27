@@ -595,8 +595,10 @@ const Storage = {
     },
 
     /**
-     * Check if it's time to suggest advancing the week
-     * Based on completing the expected number of workouts
+     * Check if it's time to suggest advancing the week.
+     * Uses real calendar time: if 7+ days passed since cycle start
+     * for the current week, suggest advancement regardless of workout count.
+     * Also triggers if workout count is met (original logic).
      */
     shouldAdvanceWeek() {
         const program = this.getActiveProgram();
@@ -604,12 +606,19 @@ const Storage = {
 
         const cycle = program.metadata.cycle;
         const daysPerWeek = program.metadata.daysPerWeek || 4;
-
-        // Get workouts since cycle started
         const cycleStart = new Date(cycle.startDate);
-        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
+        const now = new Date();
 
-        // Calculate expected workouts for current week
+        // Calendar-based: how many weeks have actually passed
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+        const calendarWeek = Math.floor((now - cycleStart) / msPerWeek) + 1;
+
+        if (calendarWeek > cycle.currentWeek) {
+            return true;
+        }
+
+        // Workout-count-based (original): all expected workouts completed
+        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
         const expectedWorkouts = cycle.currentWeek * daysPerWeek;
 
         return workouts.length >= expectedWorkouts;
