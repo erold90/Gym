@@ -2601,7 +2601,7 @@ const App = {
                                     <div class="superset-prep-order order-${exercise.supersetGroup}">${order + 1}</div>
                                     <div class="superset-prep-info">
                                         <div class="superset-prep-name">${ex.name}</div>
-                                        <div class="superset-prep-weight">${weightHint} · ${ex.sets}x${ex.targetReps} · pausa ${ex.transitionTime}s tra esercizi</div>
+                                        <div class="superset-prep-weight">${weightHint} · ${ex.targetSets || ex.sets}x${ex.targetReps}${ex.transitionTime ? ` · pausa ${ex.transitionTime}s tra esercizi` : ''}</div>
                                     </div>
                                 </div>
                             `;
@@ -2760,6 +2760,11 @@ const App = {
                 };
             }
         }
+
+        // Re-attach superset transition if active (survives re-render from setRir, etc.)
+        if (this._supersetTransitionActive && this._supersetTransitionState) {
+            this._attachSupersetTransition();
+        }
     },
 
     // Bodyweight mode functions
@@ -2835,6 +2840,7 @@ const App = {
 
     completeSet(setIndex) {
         if (!this.activeWorkout) return;
+        if (this._supersetTransitionActive) return;
 
         const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
         const set = exercise.setsData[setIndex];
@@ -2966,42 +2972,75 @@ const App = {
     },
 
     showSupersetTransition(targetExerciseIndex, seconds, nextExName, isNewRound) {
+        // Cancel any existing transition first
+        if (this._supersetTransitionTimer) {
+            clearInterval(this._supersetTransitionTimer);
+            this._supersetTransitionTimer = null;
+        }
         this._supersetTransitionActive = true;
+        this._supersetTransitionTarget = targetExerciseIndex;
+        this._supersetTransitionState = {
+            targetExerciseIndex,
+            totalSeconds: seconds,
+            nextExName,
+            isNewRound,
+            startTime: Date.now()
+        };
+        this._attachSupersetTransition();
+    },
+
+    _attachSupersetTransition() {
+        const state = this._supersetTransitionState;
+        if (!state) return;
+
         const container = document.getElementById('current-exercise');
         if (!container) return;
 
-        const label = isNewRound ? 'Riposo round completato' : 'Passa a';
+        // Remove any existing transition div
+        const existing = container.querySelector('.superset-transition');
+        if (existing) existing.remove();
 
-        // Show compact transition countdown inline
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+        const remaining = Math.max(0, state.totalSeconds - elapsed);
+
+        if (remaining <= 0) {
+            this._completeSupersetTransition(state.targetExerciseIndex);
+            return;
+        }
+
+        const label = state.isNewRound ? 'Riposo round completato' : 'Passa a';
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        const display = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : remaining;
+
         const transitionDiv = document.createElement('div');
         transitionDiv.className = 'superset-transition';
         transitionDiv.innerHTML = `
             <div class="superset-transition-label">${label}</div>
-            <div class="superset-transition-next">${nextExName}</div>
-            <div class="superset-transition-timer" id="superset-transition-countdown">${seconds}</div>
+            <div class="superset-transition-next">${state.nextExName}</div>
+            <div class="superset-transition-timer" id="superset-transition-countdown">${display}</div>
             <button class="superset-transition-skip" onclick="App.skipSupersetTransition()">Salta</button>
         `;
         container.appendChild(transitionDiv);
-
-        // Scroll to transition
         transitionDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        let remaining = seconds;
-        const countdownEl = transitionDiv.querySelector('#superset-transition-countdown');
-
+        // Clear previous interval and start new one (Date.now-based for accuracy)
+        if (this._supersetTransitionTimer) {
+            clearInterval(this._supersetTransitionTimer);
+        }
         this._supersetTransitionTimer = setInterval(() => {
-            remaining--;
+            const el = Math.floor((Date.now() - state.startTime) / 1000);
+            const rem = Math.max(0, state.totalSeconds - el);
+            const countdownEl = document.getElementById('superset-transition-countdown');
             if (countdownEl) {
-                const m = Math.floor(remaining / 60);
-                const s = remaining % 60;
-                countdownEl.textContent = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : remaining;
+                const mm = Math.floor(rem / 60);
+                const ss = rem % 60;
+                countdownEl.textContent = mm > 0 ? `${mm}:${ss.toString().padStart(2, '0')}` : rem;
             }
-            if (remaining <= 0) {
-                this._completeSupersetTransition(targetExerciseIndex);
+            if (rem <= 0) {
+                this._completeSupersetTransition(state.targetExerciseIndex);
             }
         }, 1000);
-
-        this._supersetTransitionTarget = targetExerciseIndex;
     },
 
     skipSupersetTransition() {
@@ -3017,6 +3056,7 @@ const App = {
         }
         this._supersetTransitionActive = false;
         this._supersetTransitionTarget = null;
+        this._supersetTransitionState = null;
 
         // Navigate to target exercise
         this.currentExerciseIndex = targetExerciseIndex;
@@ -3027,6 +3067,7 @@ const App = {
     },
 
     previousExercise() {
+        if (this._supersetTransitionActive) return;
         if (this.currentExerciseIndex > 0) {
             this.currentExerciseIndex--;
             this.displayCurrentExercise();
@@ -3034,6 +3075,7 @@ const App = {
     },
 
     nextExercise() {
+        if (this._supersetTransitionActive) return;
         if (this.currentExerciseIndex < this.activeWorkout.exercises.length - 1) {
             this.currentExerciseIndex++;
             this.displayCurrentExercise();
