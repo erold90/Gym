@@ -149,11 +149,13 @@ const TrainingAlgorithm = {
             isolation: ['tricep-pushdown', 'skull-crusher', 'rope-pushdown', 'overhead-cable-extension', 'dumbbell-kickback']
         },
         quadricipiti: {
-            compound: ['squat', 'front-squat', 'leg-press', 'hack-squat', 'bulgarian-split-squat', 'dumbbell-lunge'],
+            // Alternating free weight / machine to avoid redundancy when selecting 2
+            compound: ['squat', 'leg-press', 'front-squat', 'hack-squat', 'bulgarian-split-squat', 'dumbbell-lunge'],
             isolation: ['leg-extension']
         },
         femorali: {
-            compound: ['romanian-deadlift', 'stiff-leg-deadlift', 'deadlift', 'good-morning'],
+            // Alternating hip-hinge patterns to avoid RDL + SLDL back-to-back
+            compound: ['romanian-deadlift', 'good-morning', 'stiff-leg-deadlift', 'deadlift'],
             isolation: ['leg-curl-lying', 'leg-curl-seated', 'nordic-curl']
         },
         glutei: {
@@ -310,6 +312,11 @@ const TrainingAlgorithm = {
             const supersetRest = Math.round(
                 Math.max(...g.indices.map(i => exercises[i].rest || 90)) * 0.8
             );
+
+            // Equalize sets across grouped exercises (superset requires same rounds)
+            const maxSets = Math.max(...g.indices.map(i => exercises[i].sets));
+            g.indices.forEach(idx => { exercises[idx].sets = maxSets; });
+
             g.indices.forEach((idx, order) => {
                 exercises[idx].supersetGroup = letter;
                 exercises[idx].supersetOrder = order + 1;
@@ -801,13 +808,13 @@ const TrainingAlgorithm = {
         if (variant === 'strength') {
             // Heavy compound focus
             exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(4, baseSets), equipment, repRanges, restTimes, usedExercises, co));
-            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('spalle', 'compound', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else if (variant === 'hypertrophy' || variant === 'pump') {
             // Higher rep, more isolation
             exercises.push(...this.selectExercisesUnique('petto', 'compound', 1, Math.min(4, baseSets), equipment, repRanges, restTimes, usedExercises, co));
-            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+            exercises.push(...this.selectExercisesUnique('petto', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('schiena', 'compound', 2, baseSets, equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 2, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         } else {
