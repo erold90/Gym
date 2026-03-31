@@ -104,6 +104,16 @@ const Storage = {
         return workouts.find(w => w.id === id);
     },
 
+    updateWorkout(id, updatedData) {
+        const workouts = this.getWorkouts();
+        const idx = workouts.findIndex(w => w.id === id);
+        if (idx === -1) return null;
+        Object.assign(workouts[idx], updatedData);
+        localStorage.setItem(this.KEYS.WORKOUTS, JSON.stringify(workouts));
+        this.updatePersonalRecords(workouts[idx]);
+        return workouts[idx];
+    },
+
     deleteWorkout(id) {
         let workouts = this.getWorkouts();
         workouts = workouts.filter(w => w.id !== id);

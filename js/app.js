@@ -3608,6 +3608,7 @@ const App = {
                     </div>
                     <div style="display:flex;gap:8px;margin-top:16px;">
                         <button class="btn btn-primary" onclick="App.closeWorkoutDetail()" style="flex:1;">Chiudi</button>
+                        <button class="btn btn-secondary" onclick="App.closeWorkoutDetail(); App.editWorkout(${workout.id});" style="flex:1;">Modifica</button>
                         <button class="btn btn-danger btn-sm" onclick="App.deleteWorkoutSession(${workout.id}); App.closeWorkoutDetail();">Elimina</button>
                     </div>
                 </div>
@@ -3620,6 +3621,170 @@ const App = {
     closeWorkoutDetail() {
         const modal = document.getElementById('workout-detail-modal');
         if (modal) modal.remove();
+    },
+
+    // ========================================
+    // EDIT WORKOUT
+    // ========================================
+
+    editWorkout(workoutId) {
+        const workout = Storage.getWorkoutById(workoutId);
+        if (!workout) return;
+        this._editingWorkout = JSON.parse(JSON.stringify(workout));
+        this._renderWorkoutEdit();
+    },
+
+    _renderWorkoutEdit() {
+        const workout = this._editingWorkout;
+        if (!workout) return;
+
+        const existing = document.getElementById('workout-edit-modal');
+        if (existing) existing.remove();
+
+        const exercisesHTML = workout.exercises.map((ex, exIdx) => {
+            const setsHTML = ex.sets.map((s, sIdx) => `
+                <div class="workout-edit-set">
+                    <input type="number" class="edit-input edit-weight" data-ex="${exIdx}" data-set="${sIdx}"
+                        value="${s.weight || ''}" placeholder="kg" inputmode="decimal" step="0.5">
+                    <span class="edit-x">&times;</span>
+                    <input type="number" class="edit-input edit-reps" data-ex="${exIdx}" data-set="${sIdx}"
+                        value="${s.reps || ''}" placeholder="reps" inputmode="numeric">
+                    <button class="edit-set-remove" onclick="App._removeEditSet(${exIdx}, ${sIdx})">&times;</button>
+                </div>
+            `).join('');
+
+            return `
+                <div class="workout-edit-exercise">
+                    <div class="workout-edit-ex-header">
+                        <span class="workout-edit-ex-name">${ex.name}</span>
+                        <button class="edit-ex-remove" onclick="App._removeEditExercise(${exIdx})">Rimuovi</button>
+                    </div>
+                    <div class="workout-edit-sets">${setsHTML}</div>
+                    <button class="workout-edit-add-set" onclick="App._addEditSet(${exIdx})">+ Serie</button>
+                </div>
+            `;
+        }).join('');
+
+        const html = `
+            <div class="progression-summary-modal" id="workout-edit-modal">
+                <div class="progression-summary-content" style="max-height:85vh;overflow-y:auto;">
+                    <h3>Modifica Allenamento</h3>
+                    <p style="color:var(--text-secondary);margin-bottom:12px;">${this.formatDate(new Date(workout.date))}</p>
+                    <div id="workout-edit-exercises">${exercisesHTML}</div>
+                    <div class="workout-edit-add-exercise">
+                        <input type="text" id="edit-add-exercise-search" class="edit-input"
+                            placeholder="Cerca esercizio da aggiungere..." style="width:100%;margin-top:12px;"
+                            oninput="App._searchExerciseForEdit(this.value)">
+                        <div id="edit-exercise-results"></div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:16px;">
+                        <button class="btn btn-primary" onclick="App.saveWorkoutEdit()" style="flex:1;">Salva</button>
+                        <button class="btn btn-secondary" onclick="App.closeWorkoutEdit()" style="flex:1;">Annulla</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    },
+
+    _syncEditFromDOM() {
+        if (!this._editingWorkout) return;
+        document.querySelectorAll('.edit-weight').forEach(input => {
+            const ex = parseInt(input.dataset.ex);
+            const set = parseInt(input.dataset.set);
+            if (this._editingWorkout.exercises[ex]?.sets[set]) {
+                this._editingWorkout.exercises[ex].sets[set].weight = input.value;
+            }
+        });
+        document.querySelectorAll('.edit-reps').forEach(input => {
+            const ex = parseInt(input.dataset.ex);
+            const set = parseInt(input.dataset.set);
+            if (this._editingWorkout.exercises[ex]?.sets[set]) {
+                this._editingWorkout.exercises[ex].sets[set].reps = input.value;
+            }
+        });
+    },
+
+    _addEditSet(exIdx) {
+        this._syncEditFromDOM();
+        this._editingWorkout.exercises[exIdx].sets.push({ weight: '', reps: '', completed: true });
+        this._renderWorkoutEdit();
+    },
+
+    _removeEditSet(exIdx, setIdx) {
+        this._syncEditFromDOM();
+        this._editingWorkout.exercises[exIdx].sets.splice(setIdx, 1);
+        this._renderWorkoutEdit();
+    },
+
+    _removeEditExercise(exIdx) {
+        this._syncEditFromDOM();
+        this._editingWorkout.exercises.splice(exIdx, 1);
+        this._renderWorkoutEdit();
+    },
+
+    _searchExerciseForEdit(query) {
+        const container = document.getElementById('edit-exercise-results');
+        if (!container) return;
+        if (!query || query.length < 2) { container.innerHTML = ''; return; }
+
+        const results = getAllExercises().filter(ex =>
+            ex.name.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 5);
+
+        container.innerHTML = results.map(ex => `
+            <div class="edit-search-result" onclick="App._addExerciseToEdit('${ex.id}', '${ex.name.replace(/'/g, "\\'")}')">
+                ${ex.name}
+            </div>
+        `).join('');
+    },
+
+    _addExerciseToEdit(exerciseId, name) {
+        this._syncEditFromDOM();
+        this._editingWorkout.exercises.push({
+            exerciseId,
+            name,
+            sets: [{ weight: '', reps: '', completed: true }]
+        });
+        document.getElementById('edit-add-exercise-search').value = '';
+        document.getElementById('edit-exercise-results').innerHTML = '';
+        this._renderWorkoutEdit();
+    },
+
+    saveWorkoutEdit() {
+        this._syncEditFromDOM();
+        const workout = this._editingWorkout;
+
+        // Mark sets with weight+reps as completed, recalculate stats
+        let totalVolume = 0;
+        let totalSets = 0;
+        workout.exercises.forEach(ex => {
+            ex.sets.forEach(s => {
+                s.weight = parseFloat(s.weight) || 0;
+                s.reps = parseInt(s.reps) || 0;
+                s.completed = s.weight > 0 && s.reps > 0;
+                if (s.completed) {
+                    totalVolume += s.weight * s.reps;
+                    totalSets++;
+                }
+            });
+        });
+        workout.totalVolume = Math.round(totalVolume);
+        workout.totalSets = totalSets;
+
+        Storage.updateWorkout(workout.id, workout);
+        this.closeWorkoutEdit();
+        this._editingWorkout = null;
+        this.showNotification('Allenamento aggiornato', 'success');
+        this.loadWorkoutHistory();
+        this.loadDashboard();
+    },
+
+    closeWorkoutEdit() {
+        const modal = document.getElementById('workout-edit-modal');
+        if (modal) modal.remove();
+        this._editingWorkout = null;
     },
 
     // ========================================

@@ -4709,6 +4709,108 @@ input[type="number"] {
     font-style: italic;
 }
 
+/* ========================================
+   EDIT WORKOUT
+   ======================================== */
+
+.workout-edit-exercise {
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.workout-edit-ex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.workout-edit-ex-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.edit-ex-remove {
+    background: none;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.workout-edit-set {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.edit-input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.9rem;
+}
+
+.workout-edit-set .edit-input {
+    width: 70px;
+    text-align: center;
+}
+
+.edit-x {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.edit-set-remove {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 4px;
+    opacity: 0.6;
+}
+
+.edit-set-remove:hover { opacity: 1; }
+
+.workout-edit-add-set {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.workout-edit-add-set:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.edit-search-result {
+    padding: 8px 10px;
+    background: var(--bg-hover);
+    border-radius: 6px;
+    margin-top: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.edit-search-result:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
 /* Clickable workout history items */
 .workout-history-item.clickable {
     cursor: pointer;
