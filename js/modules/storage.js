@@ -330,12 +330,14 @@ const Storage = {
             }
 
             // Add ONLY best set of this session to history (not every single set)
-            prs[exerciseId].history.push({
-                date: workout.date,
-                weight: bestSet.weight,
-                reps: bestSet.reps,
-                e1rm: bestE1rm
-            });
+            // Replace existing entry for same date (edit scenario) instead of duplicating
+            const existingIdx = prs[exerciseId].history.findIndex(h => h.date === workout.date);
+            const historyEntry = { date: workout.date, weight: bestSet.weight, reps: bestSet.reps, e1rm: bestE1rm };
+            if (existingIdx !== -1) {
+                prs[exerciseId].history[existingIdx] = historyEntry;
+            } else {
+                prs[exerciseId].history.push(historyEntry);
+            }
 
             // Keep only last 50 sessions per exercise
             if (prs[exerciseId].history.length > 50) {
