@@ -1242,6 +1242,2818 @@ const EXERCISE_DETAILS = {
                 secondary: "Retto addominale"
             }
         }
+    },
+
+    // ==========================================
+    // PETTO - Esercizi aggiuntivi
+    // ==========================================
+    "decline-bench-press": {
+        execution: {
+            steps: [
+                "Imposta la panca in declinazione e blocca i piedi",
+                "Afferra il bilanciere con presa leggermente più larga delle spalle",
+                "Stacca dal rack e porta sopra la parte bassa del petto",
+                "Abbassa il bilanciere alla parte bassa del petto",
+                "Spingi verso l'alto fino a braccia tese"
+            ],
+            tips: [
+                "Enfatizza la parte bassa del petto",
+                "Usa sempre un aiutante per sicurezza",
+                "Angolo di declinazione di 15-30°"
+            ],
+            commonMistakes: [
+                "Angolo troppo ripido che causa afflusso di sangue alla testa",
+                "Non avere un assistente con carichi pesanti",
+                "Far rimbalzare il bilanciere sul petto"
+            ],
+            breathing: "Inspira in discesa, espira in salita",
+            muscles: {
+                primary: "Grande pettorale (fasci sternali inferiori)",
+                secondary: "Tricipite, Deltoide anteriore"
+            }
+        }
+    },
+    "dumbbell-incline-press": {
+        execution: {
+            steps: [
+                "Imposta la panca a 30-45°",
+                "Porta i manubri sulle cosce, usa le ginocchia per lanciarli in posizione",
+                "Posiziona i manubri ai lati del petto alto",
+                "Spingi verso l'alto convergendo leggermente",
+                "Abbassa controllando fino a sentire stretch nel petto"
+            ],
+            tips: [
+                "30° ottimale per petto alto, 45° coinvolge più spalle",
+                "Maggior range di movimento rispetto al bilanciere",
+                "Ottimo per correggere squilibri tra i lati"
+            ],
+            commonMistakes: [
+                "Angolo troppo alto che trasforma in shoulder press",
+                "Gomiti troppo aperti che stressano le spalle",
+                "Sbattere i manubri insieme in alto"
+            ],
+            breathing: "Inspira abbassando, espira spingendo",
+            muscles: {
+                primary: "Grande pettorale (fasci clavicolari)",
+                secondary: "Deltoide anteriore, Tricipite"
+            }
+        }
+    },
+    "dumbbell-decline-press": {
+        execution: {
+            steps: [
+                "Imposta la panca in declinazione, blocca i piedi",
+                "Porta i manubri in posizione ai lati del petto",
+                "Spingi verso l'alto facendo convergere i manubri",
+                "Abbassa controllando fino all'altezza del petto basso",
+                "Mantieni le scapole retratte per tutto il movimento"
+            ],
+            tips: [
+                "Enfatizza la parte inferiore del petto",
+                "I manubri permettono maggiore ROM rispetto al bilanciere",
+                "Mantieni i polsi dritti"
+            ],
+            commonMistakes: [
+                "Perdere il controllo dei manubri per la posizione declinata",
+                "Angolo di declinazione eccessivo",
+                "Non retrarre le scapole"
+            ],
+            breathing: "Inspira in discesa, espira spingendo",
+            muscles: {
+                primary: "Grande pettorale (parte inferiore)",
+                secondary: "Tricipite"
+            }
+        }
+    },
+    "dumbbell-incline-fly": {
+        execution: {
+            steps: [
+                "Sdraiati su panca inclinata a 30-45° con i manubri sopra il petto",
+                "Mantieni una leggera flessione dei gomiti",
+                "Abbassa i manubri lateralmente in un arco ampio",
+                "Scendi fino a sentire stretch nel petto alto",
+                "Contrai il petto per riportare i manubri su"
+            ],
+            tips: [
+                "Isolamento eccellente per il petto alto",
+                "La flessione dei gomiti resta costante",
+                "Usa un peso moderato per controllare il movimento"
+            ],
+            commonMistakes: [
+                "Piegare troppo i gomiti trasformandolo in una press",
+                "Scendere troppo stressando le spalle",
+                "Usare troppo peso perdendo la forma"
+            ],
+            breathing: "Inspira aprendo, espira chiudendo",
+            muscles: {
+                primary: "Grande pettorale (fasci clavicolari)",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "dumbbell-pullover": {
+        execution: {
+            steps: [
+                "Sdraiati sulla panca con la testa vicino al bordo",
+                "Tieni un manubrio con entrambe le mani sopra il petto",
+                "Braccia quasi completamente distese",
+                "Abbassa il manubrio dietro la testa in un arco",
+                "Scendi fino a sentire stretch nel petto e nei dorsali",
+                "Riporta il manubrio sopra il petto contraendo"
+            ],
+            tips: [
+                "Ottimo per espandere la cassa toracica",
+                "Mantieni la flessione dei gomiti costante",
+                "Puoi eseguirlo anche di traverso sulla panca"
+            ],
+            commonMistakes: [
+                "Piegare troppo i gomiti durante il movimento",
+                "Arcuare eccessivamente la schiena",
+                "Usare troppo peso perdendo il controllo"
+            ],
+            breathing: "Inspira abbassando il manubrio, espira riportandolo su",
+            muscles: {
+                primary: "Grande pettorale, Grande dorsale",
+                secondary: "Tricipite (capo lungo), Dentato anteriore"
+            }
+        }
+    },
+    "chest-press-machine": {
+        execution: {
+            steps: [
+                "Regola il sedile in modo che le maniglie siano all'altezza del petto",
+                "Siediti con la schiena ben appoggiata",
+                "Afferra le maniglie con presa neutra o prona",
+                "Spingi in avanti estendendo le braccia",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo per principianti o come finisher",
+                "Movimento guidato e sicuro",
+                "Permette di concentrarsi sulla contrazione senza preoccuparsi dell'equilibrio"
+            ],
+            commonMistakes: [
+                "Staccare la schiena dal sedile",
+                "Non completare il range di movimento",
+                "Usare slancio del corpo"
+            ],
+            breathing: "Espira spingendo, inspira tornando",
+            muscles: {
+                primary: "Grande pettorale",
+                secondary: "Tricipite, Deltoide anteriore"
+            }
+        }
+    },
+    "incline-chest-press-machine": {
+        execution: {
+            steps: [
+                "Regola il sedile per l'angolazione inclinata",
+                "Siediti con la schiena appoggiata",
+                "Afferra le maniglie all'altezza del petto alto",
+                "Spingi verso l'alto e in avanti",
+                "Torna controllando senza far sbattere i pesi"
+            ],
+            tips: [
+                "Focus sulla parte alta del petto",
+                "Movimento guidato, ottimo per principianti",
+                "Mantieni le scapole retratte"
+            ],
+            commonMistakes: [
+                "Staccare le spalle dallo schienale",
+                "Bloccare i gomiti in estensione completa",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Espira spingendo, inspira tornando",
+            muscles: {
+                primary: "Grande pettorale (parte superiore)",
+                secondary: "Tricipite, Deltoide anteriore"
+            }
+        }
+    },
+    "pec-deck": {
+        execution: {
+            steps: [
+                "Siediti con la schiena appoggiata e i gomiti sui cuscinetti",
+                "Regola l'ampiezza in modo da sentire un leggero stretch",
+                "Chiudi le braccia davanti a te in un arco",
+                "Contrai forte i pettorali quando le braccia si incontrano",
+                "Torna controllando alla posizione di partenza"
+            ],
+            tips: [
+                "Concentrati sulla contrazione del petto, non sul movimento delle braccia",
+                "Mantieni i gomiti all'altezza delle spalle",
+                "Ottimo esercizio di isolamento per il petto"
+            ],
+            commonMistakes: [
+                "Staccare la schiena dal sedile",
+                "Usare troppo peso perdendo il range di movimento",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira chiudendo, inspira aprendo",
+            muscles: {
+                primary: "Grande pettorale",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "smith-bench-press": {
+        execution: {
+            steps: [
+                "Posiziona la panca sotto la Smith Machine",
+                "Sdraiati e afferra la barra con presa più larga delle spalle",
+                "Ruota la barra per sganciarla",
+                "Abbassa la barra al petto in modo controllato",
+                "Spingi verso l'alto fino a braccia distese",
+                "Riaggancia la barra ruotando i polsi"
+            ],
+            tips: [
+                "Movimento guidato, ottimo per spingere al limite senza assistente",
+                "Posiziona la panca in modo che la barra segua un percorso naturale",
+                "Buona opzione per chi si allena da solo"
+            ],
+            commonMistakes: [
+                "Posizione della panca non allineata con il percorso della barra",
+                "Non bloccare la barra correttamente dopo il set",
+                "Usare la guida come scusa per non controllare il movimento"
+            ],
+            breathing: "Inspira in discesa, espira in salita",
+            muscles: {
+                primary: "Grande pettorale",
+                secondary: "Tricipite, Deltoide anteriore"
+            }
+        }
+    },
+    "cable-fly-low": {
+        execution: {
+            steps: [
+                "Posiziona i cavi in basso",
+                "Afferra le maniglie e fai un passo avanti",
+                "Inclina leggermente il busto in avanti",
+                "Con le braccia quasi tese, porta le maniglie verso l'alto e davanti",
+                "Le mani si incontrano davanti al petto alto",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Focus sulla parte alta del petto",
+                "Mantieni la flessione dei gomiti costante",
+                "Contrai il petto quando le mani si incontrano"
+            ],
+            commonMistakes: [
+                "Piegare troppo i gomiti",
+                "Non mantenere tensione costante",
+                "Usare troppo peso e perdere la forma"
+            ],
+            breathing: "Espira portando le maniglie insieme, inspira tornando",
+            muscles: {
+                primary: "Grande pettorale (parte clavicolare)",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "cable-fly-mid": {
+        execution: {
+            steps: [
+                "Posiziona i cavi all'altezza del petto",
+                "Afferra le maniglie e fai un passo avanti",
+                "Braccia quasi tese ai lati",
+                "Porta le maniglie davanti a te in un arco",
+                "Contrai il petto quando le mani si incontrano",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Lavora uniformemente tutto il petto",
+                "Tensione costante durante tutto il range",
+                "Varia leggermente l'angolo per stimoli diversi"
+            ],
+            commonMistakes: [
+                "Usare troppo peso perdendo il controllo",
+                "Non mantenere la flessione dei gomiti costante",
+                "Usare momentum del corpo"
+            ],
+            breathing: "Espira chiudendo, inspira aprendo",
+            muscles: {
+                primary: "Grande pettorale (parte sternale)",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "diamond-push-up": {
+        execution: {
+            steps: [
+                "Posizionati in plank con le mani vicine sotto il petto",
+                "Le dita formano un diamante (indici e pollici che si toccano)",
+                "Mantieni il corpo in linea retta",
+                "Abbassati piegando i gomiti vicino al corpo",
+                "Scendi fino a sfiorare le mani con il petto",
+                "Spingi verso l'alto fino a braccia tese"
+            ],
+            tips: [
+                "Enfatizza i tricipiti e la parte interna del petto",
+                "I gomiti restano vicini al corpo",
+                "Se troppo difficile, esegui con le ginocchia a terra"
+            ],
+            commonMistakes: [
+                "Allargare i gomiti durante il movimento",
+                "Non completare il range di movimento",
+                "Far cadere i fianchi"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Tricipite, Grande pettorale (parte interna)",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "wide-push-up": {
+        execution: {
+            steps: [
+                "Posizionati in plank con le mani molto più larghe delle spalle",
+                "Mantieni il corpo in linea retta",
+                "Abbassati piegando i gomiti verso l'esterno",
+                "Scendi fino a sfiorare il pavimento con il petto",
+                "Spingi verso l'alto fino a braccia tese"
+            ],
+            tips: [
+                "Maggiore enfasi sul petto rispetto ai push-up normali",
+                "Minore coinvolgimento dei tricipiti",
+                "Ottimo per variare lo stimolo"
+            ],
+            commonMistakes: [
+                "Mani troppo larghe che limitano il ROM",
+                "Gomiti a 90° che stressano le spalle",
+                "Non completare il range di movimento"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Grande pettorale",
+                secondary: "Deltoide anteriore, Tricipite"
+            }
+        }
+    },
+    "decline-push-up": {
+        execution: {
+            steps: [
+                "Posiziona i piedi su un rialzo (panca, step, sedia)",
+                "Mani a terra leggermente più larghe delle spalle",
+                "Mantieni il corpo in linea retta dai talloni alla testa",
+                "Abbassati piegando i gomiti",
+                "Scendi fino a sfiorare il pavimento con il petto",
+                "Spingi verso l'alto"
+            ],
+            tips: [
+                "Più alto il rialzo, più lavora la parte alta del petto",
+                "Aumenta significativamente il carico rispetto ai push-up normali",
+                "Ottima variante a corpo libero per il petto alto"
+            ],
+            commonMistakes: [
+                "Rialzo troppo alto che trasforma in pike push-up",
+                "Far cadere i fianchi verso il basso",
+                "Non controllare la discesa"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Grande pettorale (parte superiore)",
+                secondary: "Tricipite, Deltoide anteriore"
+            }
+        }
+    },
+
+    // ==========================================
+    // SCHIENA - Esercizi aggiuntivi
+    // ==========================================
+    "pendlay-row": {
+        execution: {
+            steps: [
+                "Bilanciere a terra, piedi alla larghezza delle spalle",
+                "Piegati fino ad avere il busto parallelo al pavimento",
+                "Afferra il bilanciere con presa prona più larga delle spalle",
+                "Tira esplosivamente il bilanciere verso lo sterno",
+                "Contrai le scapole in alto",
+                "Riporta il bilanciere a terra con controllo ad ogni ripetizione"
+            ],
+            tips: [
+                "Il bilanciere parte da terra ad ogni rep (a differenza del bent-over row)",
+                "Movimento più esplosivo rispetto al rematore classico",
+                "Ottimo per sviluppare potenza nella tirata"
+            ],
+            commonMistakes: [
+                "Alzare il busto durante la tirata",
+                "Non riportare il bilanciere a terra tra le rep",
+                "Usare troppo momentum del corpo"
+            ],
+            breathing: "Espira tirando, inspira riportando a terra",
+            muscles: {
+                primary: "Grande dorsale, Romboidi, Trapezio",
+                secondary: "Bicipiti, Erettori spinali"
+            }
+        }
+    },
+    "t-bar-row": {
+        execution: {
+            steps: [
+                "Posizionati a cavalcioni del bilanciere fissato da un lato",
+                "Afferra la maniglia con presa stretta",
+                "Busto inclinato a 45-60°, ginocchia leggermente flesse",
+                "Tira la maniglia verso il petto/sterno",
+                "Contrai le scapole in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Ottimo per lo spessore della schiena",
+                "La presa stretta enfatizza la parte centrale della schiena",
+                "Mantieni il core contratto per proteggere la lombare"
+            ],
+            commonMistakes: [
+                "Arrotondare la schiena",
+                "Usare troppo slancio del busto",
+                "Non contrarre le scapole in alto"
+            ],
+            breathing: "Espira tirando, inspira abbassando",
+            muscles: {
+                primary: "Grande dorsale, Romboidi, Trapezio medio",
+                secondary: "Bicipiti, Erettori spinali"
+            }
+        }
+    },
+    "dumbbell-row-two-arm": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano",
+                "Piegati in avanti con la schiena dritta, ginocchia flesse",
+                "Busto quasi parallelo al pavimento",
+                "Tira entrambi i manubri verso i fianchi",
+                "Contrai le scapole insieme in alto",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "Simile al barbell row ma con maggiore libertà di movimento",
+                "Puoi ruotare i polsi durante il movimento",
+                "Mantieni il core contratto per stabilità"
+            ],
+            commonMistakes: [
+                "Alzare il busto durante la tirata",
+                "Arrotondare la schiena",
+                "Non contrarre le scapole"
+            ],
+            breathing: "Espira tirando, inspira abbassando",
+            muscles: {
+                primary: "Grande dorsale, Romboidi, Trapezio",
+                secondary: "Bicipiti, Erettori spinali"
+            }
+        }
+    },
+    "dumbbell-shrug": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano ai lati del corpo",
+                "Braccia completamente distese",
+                "Solleva le spalle verso le orecchie il più possibile",
+                "Mantieni la contrazione in alto per 1-2 secondi",
+                "Abbassa controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Non ruotare le spalle, il movimento è solo verticale",
+                "Mantieni le braccia dritte durante tutto il movimento",
+                "Usa una presa salda per non perdere la presa"
+            ],
+            commonMistakes: [
+                "Ruotare le spalle (avanti e indietro)",
+                "Usare troppo peso e non raggiungere la contrazione completa",
+                "Piegare i gomiti durante il movimento"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Trapezio superiore",
+                secondary: "Elevatore della scapola"
+            }
+        }
+    },
+    "lat-pulldown-close": {
+        execution: {
+            steps: [
+                "Siediti alla lat machine con le cosce bloccate",
+                "Afferra la maniglia triangolare con presa stretta neutra",
+                "Inclina leggermente il busto indietro",
+                "Tira la maniglia verso il petto",
+                "Contrai le scapole e i dorsali in basso",
+                "Torna con controllo a braccia distese"
+            ],
+            tips: [
+                "La presa stretta enfatizza la parte bassa dei dorsali",
+                "Porta il petto verso la maniglia",
+                "Maggior coinvolgimento dei bicipiti rispetto alla presa larga"
+            ],
+            commonMistakes: [
+                "Inclinarsi troppo indietro",
+                "Non completare il ROM in alto",
+                "Tirare con le braccia invece che con la schiena"
+            ],
+            breathing: "Espira tirando, inspira tornando su",
+            muscles: {
+                primary: "Grande dorsale (parte inferiore)",
+                secondary: "Bicipiti, Romboidi"
+            }
+        }
+    },
+    "machine-row": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con il petto contro il cuscinetto",
+                "Afferra le maniglie con le braccia distese",
+                "Tira le maniglie verso di te",
+                "Contrai le scapole insieme",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Movimento guidato e sicuro",
+                "Ottimo per principianti o come finisher",
+                "Concentrati sulla contrazione della schiena"
+            ],
+            commonMistakes: [
+                "Staccare il petto dal cuscinetto",
+                "Non contrarre le scapole in posizione contratta",
+                "Usare slancio del corpo"
+            ],
+            breathing: "Espira tirando, inspira tornando",
+            muscles: {
+                primary: "Grande dorsale, Romboidi",
+                secondary: "Bicipiti, Trapezio"
+            }
+        }
+    },
+    "assisted-pull-up": {
+        execution: {
+            steps: [
+                "Seleziona il contrappeso sulla macchina (più peso = più assistenza)",
+                "Sali sulla piattaforma e afferra la sbarra con presa prona",
+                "Appoggia le ginocchia o i piedi sul cuscinetto",
+                "Tirati verso l'alto fino a portare il mento sopra la sbarra",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "Ottimo per progredire verso le trazioni libere",
+                "Riduci gradualmente l'assistenza man mano che migliori",
+                "Concentrati sulla tecnica corretta"
+            ],
+            commonMistakes: [
+                "Usare troppa assistenza senza progredire",
+                "Non completare il range di movimento",
+                "Non attivare le scapole all'inizio del movimento"
+            ],
+            breathing: "Espira salendo, inspira scendendo",
+            muscles: {
+                primary: "Grande dorsale, Bicipiti",
+                secondary: "Trapezio, Romboidi"
+            }
+        }
+    },
+    "hyperextension": {
+        execution: {
+            steps: [
+                "Posizionati sulla panca romana con le cosce sui cuscinetti",
+                "I piedi bloccati sotto i supporti",
+                "Incrocia le braccia al petto o dietro la testa",
+                "Abbassati piegando alla vita in modo controllato",
+                "Scendi fino a circa 90° o quanto la flessibilità permette",
+                "Risali contraendo i lombari e i glutei"
+            ],
+            tips: [
+                "Non iperestendere la schiena oltre la linea del corpo",
+                "Puoi aggiungere peso tenendo un disco al petto",
+                "Ottimo per rinforzare i lombari"
+            ],
+            commonMistakes: [
+                "Iperestendere la schiena oltre il parallelo",
+                "Usare momentum per risalire",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Inspira scendendo, espira risalendo",
+            muscles: {
+                primary: "Erettori spinali",
+                secondary: "Glutei, Femorali"
+            }
+        }
+    },
+    "straight-arm-pulldown": {
+        execution: {
+            steps: [
+                "In piedi di fronte al cavo alto con barra dritta o corda",
+                "Braccia distese davanti a te, leggermente inclinato in avanti",
+                "Mantieni le braccia tese con leggera flessione dei gomiti",
+                "Spingi la barra verso il basso fino alle cosce",
+                "Contrai i dorsali in basso",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo per isolare i dorsali senza coinvolgimento dei bicipiti",
+                "Mantieni le braccia tese durante tutto il movimento",
+                "Immagina di spingere con i gomiti"
+            ],
+            commonMistakes: [
+                "Piegare i gomiti durante il movimento",
+                "Usare troppo peso perdendo l'isolamento",
+                "Stare troppo lontano o troppo vicino al cavo"
+            ],
+            breathing: "Espira spingendo verso il basso, inspira tornando su",
+            muscles: {
+                primary: "Grande dorsale",
+                secondary: "Tricipite (capo lungo), Romboidi"
+            }
+        }
+    },
+    "chin-up": {
+        execution: {
+            steps: [
+                "Afferra la sbarra con presa supina (palmi verso di te) alla larghezza delle spalle",
+                "Parti da braccia completamente distese",
+                "Attiva le scapole tirandole verso il basso",
+                "Tirati verso l'alto portando il mento sopra la sbarra",
+                "Contrai bicipiti e dorsali in alto",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "Maggiore coinvolgimento dei bicipiti rispetto alle trazioni prone",
+                "Generalmente più facile delle pull-up per i principianti",
+                "Ottimo per sviluppare i bicipiti e i dorsali contemporaneamente"
+            ],
+            commonMistakes: [
+                "Non completare il ROM in basso",
+                "Oscillare il corpo per slancio",
+                "Non attivare le scapole"
+            ],
+            breathing: "Espira salendo, inspira scendendo",
+            muscles: {
+                primary: "Grande dorsale, Bicipiti",
+                secondary: "Brachiale, Trapezio"
+            }
+        }
+    },
+    "neutral-grip-pull-up": {
+        execution: {
+            steps: [
+                "Afferra le maniglie parallele con presa neutra (palmi uno di fronte all'altro)",
+                "Parti da braccia completamente distese",
+                "Attiva le scapole e tirati verso l'alto",
+                "Porta il mento sopra le maniglie",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "Posizione più naturale e meno stressante per i polsi",
+                "Buon compromesso tra pull-up e chin-up",
+                "Enfatizza il brachiale oltre ai dorsali"
+            ],
+            commonMistakes: [
+                "Oscillare il corpo",
+                "Non completare il range di movimento",
+                "Non attivare le scapole all'inizio"
+            ],
+            breathing: "Espira salendo, inspira scendendo",
+            muscles: {
+                primary: "Grande dorsale, Brachiale",
+                secondary: "Bicipiti, Romboidi"
+            }
+        }
+    },
+    "inverted-row": {
+        execution: {
+            steps: [
+                "Posizionati sotto una sbarra bassa o uno Smith Machine",
+                "Afferra la sbarra con presa alla larghezza delle spalle",
+                "Il corpo in linea retta, talloni a terra",
+                "Tirati verso l'alto portando il petto alla sbarra",
+                "Contrai le scapole insieme in alto",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "Ottima propedeutica per le trazioni",
+                "Più i piedi sono avanti, più è difficile",
+                "Puoi piegare le ginocchia per renderlo più facile"
+            ],
+            commonMistakes: [
+                "Far cadere i fianchi",
+                "Non portare il petto alla sbarra",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira tirando, inspira abbassando",
+            muscles: {
+                primary: "Grande dorsale, Romboidi, Trapezio",
+                secondary: "Bicipiti, Core"
+            }
+        }
+    },
+    "superman": {
+        execution: {
+            steps: [
+                "Sdraiato a pancia in giù con braccia distese davanti a te",
+                "Gambe distese dietro di te",
+                "Solleva contemporaneamente braccia e gambe da terra",
+                "Contrai i lombari e i glutei",
+                "Mantieni la posizione per 2-3 secondi",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Non serve sollevare molto in alto, concentrati sulla contrazione",
+                "Ottimo per rinforzare la catena posteriore",
+                "Puoi alternare braccia e gambe opposte per variazione"
+            ],
+            commonMistakes: [
+                "Sollevare troppo causando iperestensione",
+                "Trattenere il respiro",
+                "Movimento troppo veloce senza contrazione"
+            ],
+            breathing: "Inspira nella posizione di partenza, espira sollevando",
+            muscles: {
+                primary: "Erettori spinali, Glutei",
+                secondary: "Femorali, Deltoidi posteriori"
+            }
+        }
+    },
+
+    // ==========================================
+    // SPALLE - Esercizi aggiuntivi
+    // ==========================================
+    "push-press": {
+        execution: {
+            steps: [
+                "Bilanciere sulle clavicole/deltoidi con presa alla larghezza delle spalle",
+                "Piedi alla larghezza delle anche",
+                "Fai un leggero piegamento delle ginocchia (dip)",
+                "Estendi esplosivamente le gambe per dare impulso al bilanciere",
+                "Usa lo slancio per spingere il bilanciere sopra la testa",
+                "Blocca le braccia in alto",
+                "Abbassa il bilanciere alle clavicole con controllo"
+            ],
+            tips: [
+                "Permette di usare carichi maggiori dell'overhead press",
+                "Il dip delle ginocchia deve essere rapido e poco profondo",
+                "Ottimo per sviluppare potenza overhead"
+            ],
+            commonMistakes: [
+                "Piegare troppo le ginocchia (diventa un thruster)",
+                "Non coordinare la spinta delle gambe con le braccia",
+                "Arcuare la schiena durante la spinta"
+            ],
+            breathing: "Inspira durante il dip, espira durante la spinta",
+            muscles: {
+                primary: "Deltoide, Tricipite",
+                secondary: "Quadricipiti, Core, Trapezio"
+            }
+        }
+    },
+    "barbell-front-raise": {
+        execution: {
+            steps: [
+                "In piedi con il bilanciere davanti alle cosce, presa alla larghezza delle spalle",
+                "Braccia distese con leggera flessione dei gomiti",
+                "Solleva il bilanciere davanti a te fino all'altezza delle spalle",
+                "Mantieni brevemente la contrazione in alto",
+                "Abbassa controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Isola il deltoide anteriore",
+                "Usa un peso moderato per mantenere la forma",
+                "Non oscillare il corpo per aiutarti"
+            ],
+            commonMistakes: [
+                "Usare slancio del corpo",
+                "Sollevare oltre l'altezza delle spalle",
+                "Arcuare la schiena"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide anteriore",
+                secondary: "Trapezio superiore"
+            }
+        }
+    },
+    "upright-row": {
+        execution: {
+            steps: [
+                "In piedi con il bilanciere davanti alle cosce",
+                "Presa alla larghezza delle spalle o più stretta",
+                "Tira il bilanciere verso l'alto lungo il corpo",
+                "Guida con i gomiti che salgono verso l'alto e l'esterno",
+                "Solleva fino a che i gomiti sono all'altezza delle spalle",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Presa larga enfatizza le spalle, presa stretta il trapezio",
+                "Non sollevare oltre l'altezza delle spalle per proteggere l'articolazione",
+                "Se causa dolore alla spalla, evita l'esercizio"
+            ],
+            commonMistakes: [
+                "Sollevare i gomiti troppo in alto (impingement)",
+                "Usare troppo peso e oscillare",
+                "Presa troppo stretta che stressa i polsi"
+            ],
+            breathing: "Espira tirando su, inspira abbassando",
+            muscles: {
+                primary: "Deltoide laterale, Trapezio",
+                secondary: "Bicipiti"
+            }
+        }
+    },
+    "arnold-press": {
+        execution: {
+            steps: [
+                "Seduto con i manubri davanti al viso, palmi verso di te",
+                "Mentre spingi i manubri verso l'alto, ruota i polsi",
+                "A metà movimento i palmi iniziano a ruotare verso l'esterno",
+                "In alto i palmi sono rivolti in avanti (come un overhead press)",
+                "Abbassa invertendo la rotazione",
+                "Torna alla posizione di partenza con i palmi verso di te"
+            ],
+            tips: [
+                "Inventato da Arnold Schwarzenegger",
+                "Coinvolge tutti e tre i capi del deltoide grazie alla rotazione",
+                "Movimento fluido e continuo, non a scatti"
+            ],
+            commonMistakes: [
+                "Rotazione troppo veloce o a scatti",
+                "Non completare la rotazione",
+                "Arcuare la schiena"
+            ],
+            breathing: "Espira spingendo verso l'alto, inspira abbassando",
+            muscles: {
+                primary: "Deltoide (tutti i capi)",
+                secondary: "Tricipite, Trapezio"
+            }
+        }
+    },
+    "front-raise": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano davanti alle cosce",
+                "Palmi rivolti verso il corpo",
+                "Solleva un manubrio davanti a te fino all'altezza delle spalle",
+                "Braccio quasi completamente disteso",
+                "Abbassa controllando e ripeti con l'altro braccio",
+                "Puoi eseguirli anche simultaneamente"
+            ],
+            tips: [
+                "Isola il deltoide anteriore",
+                "Usa un peso leggero per non compensare con il corpo",
+                "Non oscillare il busto"
+            ],
+            commonMistakes: [
+                "Usare slancio del corpo",
+                "Sollevare troppo in alto",
+                "Arcuare la schiena"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide anteriore",
+                secondary: "Trapezio superiore"
+            }
+        }
+    },
+    "rear-delt-fly": {
+        execution: {
+            steps: [
+                "Piegato in avanti con il busto quasi parallelo al pavimento",
+                "Un manubrio per mano, braccia pendenti sotto il petto",
+                "Leggera flessione dei gomiti",
+                "Solleva i manubri lateralmente fino all'altezza delle spalle",
+                "Contrai le scapole insieme in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Focus sul deltoide posteriore e i romboidi",
+                "Usa un peso leggero e concentrati sulla contrazione",
+                "Puoi eseguirle anche su panca inclinata"
+            ],
+            commonMistakes: [
+                "Alzare il busto durante il movimento",
+                "Usare troppo peso perdendo l'isolamento",
+                "Non contrarre le scapole"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide posteriore",
+                secondary: "Romboidi, Trapezio"
+            }
+        }
+    },
+    "dumbbell-shrug-shoulders": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano ai lati",
+                "Braccia completamente distese",
+                "Solleva le spalle verso le orecchie",
+                "Mantieni la contrazione in alto per 1-2 secondi",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Movimento solo verticale, non ruotare le spalle",
+                "Usa un peso che permetta contrazione completa",
+                "Ottimo per costruire il trapezio superiore"
+            ],
+            commonMistakes: [
+                "Ruotare le spalle avanti e indietro",
+                "Piegare i gomiti",
+                "Non raggiungere la contrazione completa"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Trapezio superiore",
+                secondary: "Elevatore della scapola"
+            }
+        }
+    },
+    "shoulder-press-machine": {
+        execution: {
+            steps: [
+                "Siediti con la schiena ben appoggiata allo schienale",
+                "Regola il sedile per avere le maniglie all'altezza delle spalle",
+                "Afferra le maniglie con presa neutra o prona",
+                "Spingi verso l'alto estendendo le braccia",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Movimento guidato, ottimo per principianti",
+                "Permette di spingersi al limite in sicurezza",
+                "Mantieni la schiena appoggiata allo schienale"
+            ],
+            commonMistakes: [
+                "Staccare la schiena dallo schienale",
+                "Non completare il range di movimento",
+                "Bloccare i gomiti in estensione completa"
+            ],
+            breathing: "Espira spingendo, inspira abbassando",
+            muscles: {
+                primary: "Deltoide anteriore e laterale",
+                secondary: "Tricipite"
+            }
+        }
+    },
+    "lateral-raise-machine": {
+        execution: {
+            steps: [
+                "Siediti con le braccia appoggiate ai cuscinetti",
+                "Regola il sedile per allineare le spalle con il fulcro della macchina",
+                "Solleva lateralmente i cuscinetti fino all'altezza delle spalle",
+                "Mantieni brevemente la contrazione",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Isolamento perfetto del deltoide laterale",
+                "Elimina il cheating possibile con i manubri",
+                "Concentrati sulla contrazione del muscolo"
+            ],
+            commonMistakes: [
+                "Usare troppo peso e non raggiungere l'altezza delle spalle",
+                "Alzare le spalle verso le orecchie",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide laterale",
+                secondary: "Trapezio superiore"
+            }
+        }
+    },
+    "reverse-pec-deck": {
+        execution: {
+            steps: [
+                "Siediti alla pec deck al contrario, petto contro lo schienale",
+                "Afferra le maniglie con le braccia davanti a te",
+                "Apri le braccia all'indietro in un arco",
+                "Contrai le scapole e il deltoide posteriore",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo per il deltoide posteriore senza stressare la schiena",
+                "Mantieni una leggera flessione dei gomiti",
+                "Concentrati sulla contrazione delle scapole"
+            ],
+            commonMistakes: [
+                "Staccare il petto dallo schienale",
+                "Usare troppo peso perdendo il ROM",
+                "Non contrarre le scapole"
+            ],
+            breathing: "Espira aprendo, inspira tornando",
+            muscles: {
+                primary: "Deltoide posteriore",
+                secondary: "Romboidi, Trapezio"
+            }
+        }
+    },
+    "cable-lateral-raise": {
+        execution: {
+            steps: [
+                "In piedi di fianco al cavo basso",
+                "Afferra la maniglia con la mano più lontana",
+                "Il cavo passa davanti al corpo",
+                "Solleva lateralmente fino all'altezza della spalla",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Tensione costante durante tutto il range di movimento",
+                "Ottimo per il deltoide laterale con stimolo diverso dai manubri",
+                "Puoi variare la posizione del cavo per angoli diversi"
+            ],
+            commonMistakes: [
+                "Sollevare troppo in alto",
+                "Usare slancio del corpo",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide laterale",
+                secondary: "Trapezio superiore"
+            }
+        }
+    },
+    "cable-front-raise": {
+        execution: {
+            steps: [
+                "In piedi con il cavo basso dietro di te",
+                "Afferra la maniglia con una mano",
+                "Braccio quasi disteso lungo il corpo",
+                "Solleva il braccio davanti a te fino all'altezza della spalla",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Tensione costante anche nella fase iniziale",
+                "Ottimo per il deltoide anteriore",
+                "Usa un peso leggero per mantenere l'isolamento"
+            ],
+            commonMistakes: [
+                "Oscillare il corpo",
+                "Sollevare troppo in alto",
+                "Perdere la tensione nella fase bassa"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Deltoide anteriore",
+                secondary: "Trapezio superiore"
+            }
+        }
+    },
+    "cable-rear-delt": {
+        execution: {
+            steps: [
+                "Posiziona i cavi all'altezza delle spalle",
+                "Incrocia le braccia e afferra il cavo opposto con ogni mano",
+                "Fai un passo indietro per creare tensione",
+                "Tira le maniglie all'indietro e verso l'esterno",
+                "Contrai le scapole insieme",
+                "Torna controllando"
+            ],
+            tips: [
+                "Ottimo per il deltoide posteriore",
+                "Mantieni i gomiti alti e le braccia parallele al pavimento",
+                "Puoi anche eseguirlo con un singolo cavo"
+            ],
+            commonMistakes: [
+                "Abbassare i gomiti durante il movimento",
+                "Usare troppo peso perdendo la forma",
+                "Non contrarre le scapole"
+            ],
+            breathing: "Espira tirando, inspira tornando",
+            muscles: {
+                primary: "Deltoide posteriore",
+                secondary: "Romboidi, Trapezio"
+            }
+        }
+    },
+    "pike-push-up": {
+        execution: {
+            steps: [
+                "Posizionati in una V rovesciata con le mani e i piedi a terra",
+                "I fianchi in alto, le gambe quasi dritte",
+                "Mani leggermente più larghe delle spalle",
+                "Abbassati piegando i gomiti portando la testa verso il pavimento",
+                "Spingi verso l'alto tornando alla posizione di partenza"
+            ],
+            tips: [
+                "Ottima propedeutica per l'handstand push-up",
+                "Più i piedi sono vicini alle mani, più è difficile",
+                "Puoi rialzare i piedi per aumentare la difficoltà"
+            ],
+            commonMistakes: [
+                "Abbassare i fianchi trasformandolo in un push-up",
+                "Non completare il range di movimento",
+                "Gomiti che si allargano troppo"
+            ],
+            breathing: "Inspira scendendo, espira spingendo",
+            muscles: {
+                primary: "Deltoide anteriore, Tricipite",
+                secondary: "Trapezio, Core"
+            }
+        }
+    },
+    "handstand-push-up": {
+        execution: {
+            steps: [
+                "Mettiti in verticale contro un muro con le mani a terra",
+                "Mani leggermente più larghe delle spalle",
+                "Abbassati piegando i gomiti portando la testa verso il pavimento",
+                "Tocca leggermente il pavimento con la testa",
+                "Spingi verso l'alto fino a braccia tese"
+            ],
+            tips: [
+                "Esercizio avanzato, richiede buona forza base",
+                "Il muro fornisce supporto e sicurezza",
+                "Progressione: pike push-up → piedi rialzati → handstand"
+            ],
+            commonMistakes: [
+                "Perdere l'equilibrio e cadere",
+                "Non avere sufficiente forza di base",
+                "Gomiti che si allargano troppo"
+            ],
+            breathing: "Inspira scendendo, espira spingendo",
+            muscles: {
+                primary: "Deltoide, Tricipite",
+                secondary: "Trapezio, Core"
+            }
+        }
+    },
+
+    // ==========================================
+    // BICIPITI - Esercizi aggiuntivi
+    // ==========================================
+    "ez-bar-curl": {
+        execution: {
+            steps: [
+                "In piedi con la barra EZ, presa supina sulle curve della barra",
+                "Braccia distese, gomiti ai fianchi",
+                "Curla la barra verso le spalle",
+                "Contrai i bicipiti in alto",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "La barra EZ riduce lo stress sui polsi rispetto al bilanciere dritto",
+                "Mantieni i gomiti fermi ai fianchi",
+                "Ottima alternativa al curl con bilanciere"
+            ],
+            commonMistakes: [
+                "Oscillare il corpo per slancio",
+                "Muovere i gomiti in avanti",
+                "Non completare il range di movimento"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale, Brachioradiale"
+            }
+        }
+    },
+    "preacher-curl": {
+        execution: {
+            steps: [
+                "Siediti alla panca Scott con le braccia appoggiate sul cuscinetto",
+                "Afferra il bilanciere o la barra EZ con presa supina",
+                "La parte superiore delle braccia ben appoggiata",
+                "Curla la barra verso le spalle",
+                "Contrai in alto",
+                "Abbassa controllando fino a braccia quasi completamente distese"
+            ],
+            tips: [
+                "Elimina completamente il cheating",
+                "Ottimo isolamento del bicipite",
+                "Non distendere completamente le braccia in basso per proteggere i tendini"
+            ],
+            commonMistakes: [
+                "Staccare le braccia dal cuscinetto",
+                "Scendere troppo velocemente",
+                "Iperestendere i gomiti in basso"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale"
+            }
+        }
+    },
+    "dumbbell-curl": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano, palmi in avanti",
+                "Braccia distese ai lati, gomiti ai fianchi",
+                "Curla un manubrio verso la spalla",
+                "Contrai il bicipite in alto",
+                "Abbassa controllando e ripeti con l'altro braccio",
+                "Puoi eseguirli alternati o simultanei"
+            ],
+            tips: [
+                "La supinazione (rotazione del palmo) aumenta l'attivazione del bicipite",
+                "Puoi partire con presa neutra e ruotare durante il curl",
+                "Mantieni i gomiti fermi"
+            ],
+            commonMistakes: [
+                "Oscillare il corpo per aiutarsi",
+                "Muovere i gomiti in avanti",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale, Brachioradiale"
+            }
+        }
+    },
+    "incline-curl": {
+        execution: {
+            steps: [
+                "Imposta la panca a 45-60°",
+                "Sdraiati con un manubrio per mano, braccia pendenti ai lati",
+                "Curla i manubri verso le spalle",
+                "Contrai i bicipiti in alto",
+                "Abbassa controllando fino a braccia distese"
+            ],
+            tips: [
+                "La posizione inclinata mette maggiore stretch sul bicipite",
+                "Ottimo per il capo lungo del bicipite",
+                "Usa un peso inferiore rispetto ai curl in piedi"
+            ],
+            commonMistakes: [
+                "Muovere i gomiti in avanti durante il curl",
+                "Staccare la schiena dalla panca",
+                "Usare troppo peso"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale (capo lungo)",
+                secondary: "Brachiale"
+            }
+        }
+    },
+    "concentration-curl": {
+        execution: {
+            steps: [
+                "Seduto su una panca, gambe divaricate",
+                "Appoggia il gomito sulla coscia interna",
+                "Tieni un manubrio con il braccio disteso",
+                "Curla il manubrio verso la spalla",
+                "Contrai il bicipite al massimo in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Massimo isolamento del bicipite",
+                "Il gomito fermo sulla coscia impedisce il cheating",
+                "Ottimo come esercizio di finitura"
+            ],
+            commonMistakes: [
+                "Staccare il gomito dalla coscia",
+                "Muovere il busto per aiutarsi",
+                "Usare troppo peso perdendo l'isolamento"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale"
+            }
+        }
+    },
+    "spider-curl": {
+        execution: {
+            steps: [
+                "Appoggiati a pancia in giù su una panca inclinata a 45°",
+                "Braccia pendenti verso il basso con i manubri",
+                "Curla i manubri verso le spalle",
+                "Contrai i bicipiti in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Ottimo per il picco del bicipite",
+                "La gravità agisce al massimo nella contrazione",
+                "Elimina completamente il cheating del corpo"
+            ],
+            commonMistakes: [
+                "Muovere i gomiti durante il curl",
+                "Non raggiungere la contrazione completa",
+                "Usare troppo peso"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale (capo corto)",
+                secondary: "Brachiale"
+            }
+        }
+    },
+    "cable-curl": {
+        execution: {
+            steps: [
+                "In piedi davanti al cavo basso con barra o maniglia",
+                "Afferra con presa supina",
+                "Braccia distese, gomiti ai fianchi",
+                "Curla verso le spalle",
+                "Contrai in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Tensione costante durante tutto il range di movimento",
+                "Ottima variante al curl con bilanciere",
+                "Puoi usare diverse maniglie per variare lo stimolo"
+            ],
+            commonMistakes: [
+                "Oscillare il corpo",
+                "Muovere i gomiti",
+                "Stare troppo vicino o troppo lontano dal cavo"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale"
+            }
+        }
+    },
+    "cable-hammer-curl": {
+        execution: {
+            steps: [
+                "In piedi davanti al cavo basso con attacco a corda",
+                "Afferra le estremità della corda con presa neutra",
+                "Braccia distese, gomiti ai fianchi",
+                "Curla la corda verso le spalle mantenendo i pollici in alto",
+                "Contrai in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Lavora il brachiale e il brachioradiale oltre al bicipite",
+                "Tensione costante grazie al cavo",
+                "Ottimo per lo sviluppo complessivo del braccio"
+            ],
+            commonMistakes: [
+                "Ruotare i polsi durante il movimento",
+                "Oscillare il corpo",
+                "Non completare il ROM"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Brachiale, Bicipite",
+                secondary: "Brachioradiale"
+            }
+        }
+    },
+    "bicep-curl-machine": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con le braccia appoggiate sul cuscinetto",
+                "Regola il sedile per allineare i gomiti con il fulcro",
+                "Afferra le maniglie con presa supina",
+                "Curla le maniglie verso le spalle",
+                "Contrai in alto",
+                "Torna controllando"
+            ],
+            tips: [
+                "Movimento guidato e isolato",
+                "Ottimo per principianti o come finisher",
+                "Elimina il cheating del corpo"
+            ],
+            commonMistakes: [
+                "Sedile non regolato correttamente",
+                "Staccare le braccia dal cuscinetto",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Bicipite brachiale",
+                secondary: "Brachiale"
+            }
+        }
+    },
+
+    // ==========================================
+    // TRICIPITI - Esercizi aggiuntivi
+    // ==========================================
+    "close-grip-bench": {
+        execution: {
+            steps: [
+                "Sdraiati sulla panca con presa alla larghezza delle spalle o più stretta",
+                "Stacca il bilanciere dal rack",
+                "Abbassa il bilanciere al petto mantenendo i gomiti vicini al corpo",
+                "I gomiti non si allargano ma puntano verso i piedi",
+                "Spingi verso l'alto estendendo le braccia"
+            ],
+            tips: [
+                "Presa non troppo stretta per non stressare i polsi",
+                "I gomiti restano vicini al busto durante tutto il movimento",
+                "Ottimo esercizio compound per i tricipiti"
+            ],
+            commonMistakes: [
+                "Presa troppo stretta che causa dolore ai polsi",
+                "Allargare i gomiti (diventa una bench press normale)",
+                "Non bloccare i polsi dritti"
+            ],
+            breathing: "Inspira in discesa, espira spingendo",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Grande pettorale, Deltoide anteriore"
+            }
+        }
+    },
+    "dumbbell-tricep-extension": {
+        execution: {
+            steps: [
+                "Seduto o in piedi, tieni un manubrio con entrambe le mani sopra la testa",
+                "Braccia distese, gomiti vicini alla testa",
+                "Abbassa il manubrio dietro la testa piegando i gomiti",
+                "I gomiti puntano verso il soffitto e restano fermi",
+                "Estendi le braccia tornando alla posizione di partenza"
+            ],
+            tips: [
+                "Ottimo stretch del capo lungo del tricipite",
+                "Puoi eseguirlo anche con un solo manubrio per braccio",
+                "Mantieni i gomiti vicini alla testa"
+            ],
+            commonMistakes: [
+                "Allargare i gomiti durante il movimento",
+                "Arcuare la schiena",
+                "Muovere le spalle invece dei soli gomiti"
+            ],
+            breathing: "Inspira abbassando, espira estendendo",
+            muscles: {
+                primary: "Tricipite brachiale (capo lungo)",
+                secondary: "Anconeo"
+            }
+        }
+    },
+    "dumbbell-kickback": {
+        execution: {
+            steps: [
+                "Piegato in avanti con una mano e un ginocchio sulla panca",
+                "Tieni un manubrio con l'altra mano, gomito a 90°",
+                "Il braccio superiore è parallelo al busto",
+                "Estendi il braccio all'indietro raddrizzando il gomito",
+                "Contrai il tricipite in alto",
+                "Torna alla posizione con il gomito piegato"
+            ],
+            tips: [
+                "Il gomito deve restare fermo, solo l'avambraccio si muove",
+                "Contrai il tricipite per 1 secondo a braccio disteso",
+                "Usa un peso moderato per l'isolamento"
+            ],
+            commonMistakes: [
+                "Muovere il braccio superiore durante l'estensione",
+                "Non distendere completamente il braccio",
+                "Usare troppo peso perdendo la forma"
+            ],
+            breathing: "Espira estendendo, inspira piegando",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Anconeo"
+            }
+        }
+    },
+    "tate-press": {
+        execution: {
+            steps: [
+                "Sdraiato sulla panca con un manubrio per mano",
+                "Braccia distese sopra il petto, palmi verso i piedi",
+                "Piega i gomiti portando i manubri verso il petto",
+                "I gomiti si aprono verso l'esterno",
+                "I manubri toccano quasi il petto",
+                "Estendi le braccia tornando alla posizione di partenza"
+            ],
+            tips: [
+                "Movimento particolare ma molto efficace per i tricipiti",
+                "Combina elementi del fly e della French press",
+                "Usa un peso moderato per padroneggiare la tecnica"
+            ],
+            commonMistakes: [
+                "Confondere il movimento con una fly",
+                "Non controllare la fase eccentrica",
+                "Gomiti che si muovono troppo"
+            ],
+            breathing: "Inspira abbassando, espira estendendo",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Grande pettorale"
+            }
+        }
+    },
+    "rope-pushdown": {
+        execution: {
+            steps: [
+                "In piedi al cavo alto con attacco a corda",
+                "Afferra le estremità della corda con presa neutra",
+                "Gomiti ai fianchi e fermi",
+                "Spingi verso il basso estendendo i gomiti",
+                "In basso, separa le estremità della corda verso l'esterno",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Separare le mani in basso aumenta la contrazione del tricipite",
+                "I gomiti devono restare incollati ai fianchi",
+                "Ottima variante del pushdown con barra"
+            ],
+            commonMistakes: [
+                "Muovere i gomiti durante il movimento",
+                "Non separare le mani in basso",
+                "Inclinarsi troppo in avanti"
+            ],
+            breathing: "Espira spingendo, inspira tornando",
+            muscles: {
+                primary: "Tricipite brachiale (capo laterale)",
+                secondary: "Anconeo"
+            }
+        }
+    },
+    "overhead-cable-extension": {
+        execution: {
+            steps: [
+                "Di spalle al cavo, afferra la corda o la barra dietro la testa",
+                "Fai un passo avanti per creare tensione",
+                "Gomiti puntati in avanti, vicini alla testa",
+                "Estendi le braccia sopra la testa",
+                "Contrai i tricipiti in alto",
+                "Torna controllando alla posizione di partenza"
+            ],
+            tips: [
+                "Ottimo stretch del capo lungo del tricipite",
+                "Mantieni i gomiti fermi e vicini alla testa",
+                "Tensione costante grazie al cavo"
+            ],
+            commonMistakes: [
+                "Allargare i gomiti",
+                "Arcuare la schiena",
+                "Non completare l'estensione"
+            ],
+            breathing: "Espira estendendo, inspira piegando",
+            muscles: {
+                primary: "Tricipite brachiale (capo lungo)",
+                secondary: "Anconeo"
+            }
+        }
+    },
+    "bench-dips": {
+        execution: {
+            steps: [
+                "Seduto sul bordo di una panca, mani ai lati dei fianchi",
+                "Scorri in avanti con i glutei fuori dalla panca",
+                "Gambe distese in avanti (o piegate per versione più facile)",
+                "Abbassati piegando i gomiti dietro di te",
+                "Scendi fino a gomiti a 90°",
+                "Spingi verso l'alto estendendo le braccia"
+            ],
+            tips: [
+                "Gambe più distanti = più difficile",
+                "Puoi rialzare i piedi su un'altra panca per più intensità",
+                "Mantieni la schiena vicina alla panca"
+            ],
+            commonMistakes: [
+                "Gomiti che si allargano verso l'esterno",
+                "Scendere troppo causando stress alle spalle",
+                "Allontanarsi troppo dalla panca"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Deltoide anteriore, Grande pettorale"
+            }
+        }
+    },
+    "close-grip-push-up": {
+        execution: {
+            steps: [
+                "In posizione di plank con le mani vicine (larghezza spalle o meno)",
+                "Corpo in linea retta dalla testa ai talloni",
+                "Abbassati piegando i gomiti vicino al corpo",
+                "Scendi fino a sfiorare il pavimento",
+                "Spingi verso l'alto"
+            ],
+            tips: [
+                "Enfatizza i tricipiti rispetto ai push-up normali",
+                "Mantieni i gomiti vicini al corpo",
+                "Più le mani sono vicine, più lavorano i tricipiti"
+            ],
+            commonMistakes: [
+                "Allargare i gomiti",
+                "Far cadere i fianchi",
+                "Non completare il range di movimento"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Grande pettorale, Deltoide anteriore"
+            }
+        }
+    },
+    "tricep-dip-machine": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con le mani sulle maniglie ai lati",
+                "Regola il peso desiderato",
+                "Spingi verso il basso estendendo i gomiti",
+                "Contrai i tricipiti in basso",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Movimento guidato e sicuro",
+                "Ottimo per chi non riesce ancora a fare dips liberi",
+                "Concentrati sulla contrazione del tricipite"
+            ],
+            commonMistakes: [
+                "Far sbattere i pesi tra le ripetizioni",
+                "Non completare il range di movimento",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Espira spingendo, inspira tornando",
+            muscles: {
+                primary: "Tricipite brachiale",
+                secondary: "Deltoide anteriore"
+            }
+        }
+    },
+    "cable-kickback": {
+        execution: {
+            steps: [
+                "Al cavo basso, applica la cavigliera alla caviglia",
+                "In piedi di fronte alla macchina, leggermente inclinato in avanti",
+                "Tieniti alla macchina per stabilità",
+                "Spingi la gamba all'indietro mantenendola dritta",
+                "Contrai il gluteo in alto",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo isolamento per i glutei",
+                "Non arcuare la schiena durante il movimento",
+                "Mantieni il core contratto per stabilità"
+            ],
+            commonMistakes: [
+                "Arcuare la schiena per compensare",
+                "Usare lo slancio della gamba",
+                "Non contrarre il gluteo in estensione"
+            ],
+            breathing: "Espira spingendo indietro, inspira tornando",
+            muscles: {
+                primary: "Grande gluteo",
+                secondary: "Femorali"
+            }
+        }
+    },
+
+    // ==========================================
+    // QUADRICIPITI - Esercizi aggiuntivi
+    // ==========================================
+    "front-squat": {
+        execution: {
+            steps: [
+                "Posiziona il bilanciere sulle clavicole/deltoidi anteriori",
+                "Gomiti alti, braccia parallele al pavimento (presa clean o incrociata)",
+                "Piedi alla larghezza delle spalle, punte leggermente fuori",
+                "Scendi mantenendo il busto più verticale possibile",
+                "Le ginocchia avanzano in linea con le punte dei piedi",
+                "Spingi attraverso tutto il piede per risalire"
+            ],
+            tips: [
+                "Richiede buona mobilità di polsi, caviglie e torace",
+                "Mantieni i gomiti altissimi per non far cadere il bilanciere",
+                "Enfatizza molto i quadricipiti rispetto al back squat"
+            ],
+            commonMistakes: [
+                "Gomiti che cadono verso il basso",
+                "Arrotondare la parte alta della schiena",
+                "Scarsa mobilità alle caviglie che limita la profondità"
+            ],
+            breathing: "Inspira prima di scendere, espira risalendo",
+            muscles: {
+                primary: "Quadricipiti",
+                secondary: "Glutei, Core"
+            }
+        }
+    },
+    "bulgarian-split-squat-bb": {
+        execution: {
+            steps: [
+                "Bilanciere sulle spalle come nello squat",
+                "Posiziona un piede dietro su una panca",
+                "Il piede anteriore abbastanza avanti",
+                "Scendi piegando il ginocchio anteriore",
+                "Scendi fino a coscia anteriore parallela al pavimento",
+                "Spingi attraverso il piede anteriore per risalire"
+            ],
+            tips: [
+                "Versione più avanzata rispetto ai manubri",
+                "Richiede ottimo equilibrio",
+                "Il bilanciere permette carichi maggiori"
+            ],
+            commonMistakes: [
+                "Perdere l'equilibrio con il bilanciere",
+                "Ginocchio anteriore che collassa verso l'interno",
+                "Mettere troppo peso sul piede posteriore"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Femorali, Core"
+            }
+        }
+    },
+    "goblet-squat": {
+        execution: {
+            steps: [
+                "Tieni un manubrio o kettlebell al petto con entrambe le mani",
+                "Piedi leggermente più larghi delle spalle, punte fuori",
+                "Scendi in squat profondo mantenendo il peso al petto",
+                "I gomiti passano tra le ginocchia in basso",
+                "Mantieni il busto eretto",
+                "Spingi attraverso i talloni per risalire"
+            ],
+            tips: [
+                "Ottimo per imparare il movimento dello squat",
+                "Il peso frontale aiuta a mantenere il busto verticale",
+                "Eccellente per la mobilità delle anche"
+            ],
+            commonMistakes: [
+                "Piegarsi troppo in avanti",
+                "Sollevare i talloni",
+                "Non scendere abbastanza in profondità"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Core, Avambracci"
+            }
+        }
+    },
+    "dumbbell-lunge": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano ai lati",
+                "Fai un passo avanti con una gamba",
+                "Abbassati piegando entrambe le ginocchia a 90°",
+                "Il ginocchio posteriore sfiora il pavimento",
+                "Spingi attraverso il piede anteriore per tornare in posizione",
+                "Alterna le gambe o esegui tutte le rep con una gamba"
+            ],
+            tips: [
+                "Mantieni il busto eretto durante tutto il movimento",
+                "Il passo deve essere abbastanza lungo",
+                "Non far sbattere il ginocchio posteriore a terra"
+            ],
+            commonMistakes: [
+                "Passo troppo corto che stressa il ginocchio anteriore",
+                "Piegarsi in avanti con il busto",
+                "Ginocchio anteriore che supera la punta del piede"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Femorali"
+            }
+        }
+    },
+    "step-up": {
+        execution: {
+            steps: [
+                "In piedi davanti a una panca o rialzo, manubri ai lati",
+                "Appoggia un piede sulla panca",
+                "Spingi attraverso il piede in alto per salire",
+                "Non spingerti con il piede a terra",
+                "Sali fino a gamba completamente estesa",
+                "Scendi controllando con la stessa gamba"
+            ],
+            tips: [
+                "Tutta la forza deve venire dalla gamba in alto",
+                "Più alto il rialzo, più è difficile e più coinvolge i glutei",
+                "Mantieni il busto eretto"
+            ],
+            commonMistakes: [
+                "Spingersi con il piede a terra per aiutarsi",
+                "Inclinarsi in avanti",
+                "Rialzo troppo alto per le proprie capacità"
+            ],
+            breathing: "Espira salendo, inspira scendendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Femorali"
+            }
+        }
+    },
+    "hack-squat": {
+        execution: {
+            steps: [
+                "Posizionati sulla macchina con la schiena contro il pad",
+                "Spalle sotto i cuscinetti, piedi sulla piattaforma",
+                "Sblocca i fermi di sicurezza",
+                "Scendi piegando le ginocchia",
+                "Scendi fino a cosce parallele o più giù",
+                "Spingi attraverso i piedi per risalire"
+            ],
+            tips: [
+                "Movimento guidato per squat in sicurezza",
+                "Piedi più in basso = più quadricipiti",
+                "Piedi più in alto = più glutei e femorali"
+            ],
+            commonMistakes: [
+                "Non completare il range di movimento",
+                "Bloccare le ginocchia in alto",
+                "Sollevare i talloni dalla piattaforma"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti",
+                secondary: "Glutei"
+            }
+        }
+    },
+    "smith-squat": {
+        execution: {
+            steps: [
+                "Posizionati sotto la Smith Machine con il bilanciere sulle spalle",
+                "Piedi leggermente avanti rispetto al corpo",
+                "Ruota la barra per sganciarla",
+                "Scendi in squat piegando le ginocchia",
+                "Scendi fino a cosce parallele",
+                "Spingi verso l'alto e riaggancia"
+            ],
+            tips: [
+                "Movimento guidato, buono per principianti",
+                "Permette di concentrarsi sulle gambe senza preoccuparsi dell'equilibrio",
+                "Puoi posizionare i piedi più avanti per diverso stimolo"
+            ],
+            commonMistakes: [
+                "Piedi troppo sotto il corpo (stress sulle ginocchia)",
+                "Non scendere abbastanza",
+                "Non bloccare la barra correttamente dopo il set"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti",
+                secondary: "Glutei"
+            }
+        }
+    },
+    "bodyweight-squat": {
+        execution: {
+            steps: [
+                "In piedi con i piedi alla larghezza delle spalle",
+                "Braccia davanti a te o incrociate al petto",
+                "Scendi piegando le ginocchia come per sederti",
+                "Mantieni il petto alto e la schiena dritta",
+                "Scendi fino a cosce parallele o più giù",
+                "Spingi attraverso i talloni per risalire"
+            ],
+            tips: [
+                "Ottimo per riscaldamento, circuiti o principianti",
+                "Concentrati sulla tecnica prima di aggiungere peso",
+                "Le braccia avanti aiutano l'equilibrio"
+            ],
+            commonMistakes: [
+                "Ginocchia che collassano verso l'interno",
+                "Sollevare i talloni",
+                "Piegarsi troppo in avanti"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Femorali, Core"
+            }
+        }
+    },
+    "jump-squat": {
+        execution: {
+            steps: [
+                "In piedi con i piedi alla larghezza delle spalle",
+                "Scendi in squat piegando le ginocchia",
+                "Da posizione bassa, esplodi verso l'alto con un salto",
+                "Usa le braccia per aiutarti nello slancio",
+                "Atterra morbidamente sulle punte e poi i talloni",
+                "Ammortizza atterrando in posizione di squat e ripeti"
+            ],
+            tips: [
+                "Atterra sempre morbidamente per proteggere le articolazioni",
+                "Ottimo per la potenza esplosiva delle gambe",
+                "Puoi eseguirlo anche con manubri leggeri"
+            ],
+            commonMistakes: [
+                "Atterrare rigidamente sulle ginocchia tese",
+                "Non ammortizzare l'atterraggio",
+                "Ginocchia che collassano verso l'interno"
+            ],
+            breathing: "Espira durante il salto, inspira atterrando",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Polpacci, Femorali"
+            }
+        }
+    },
+    "walking-lunge": {
+        execution: {
+            steps: [
+                "In piedi con o senza manubri ai lati",
+                "Fai un passo lungo in avanti",
+                "Abbassati piegando entrambe le ginocchia a 90°",
+                "Spingi attraverso il piede anteriore per portarti in avanti",
+                "Il piede posteriore avanza per il passo successivo",
+                "Continua camminando in avanti alternando le gambe"
+            ],
+            tips: [
+                "Mantieni il busto eretto durante il cammino",
+                "Passi lunghi e controllati",
+                "Ottimo per coordinazione e resistenza delle gambe"
+            ],
+            commonMistakes: [
+                "Passi troppo corti",
+                "Perdere l'equilibrio laterale",
+                "Piegarsi troppo in avanti"
+            ],
+            breathing: "Inspira nel passo, espira spingendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Femorali, Core"
+            }
+        }
+    },
+    "pistol-squat": {
+        execution: {
+            steps: [
+                "In piedi su una gamba sola",
+                "L'altra gamba tesa davanti a te",
+                "Braccia in avanti per l'equilibrio",
+                "Scendi lentamente su una gamba sola",
+                "Scendi il più in basso possibile",
+                "Spingi attraverso il piede per risalire senza aiutarti"
+            ],
+            tips: [
+                "Esercizio molto avanzato che richiede forza, mobilità e equilibrio",
+                "Progressione: inizia tenendoti a un supporto",
+                "Puoi fare la versione su una panca come progressione"
+            ],
+            commonMistakes: [
+                "Ginocchio che collassa verso l'interno",
+                "Cadere indietro nella fase bassa",
+                "Non avere sufficiente mobilità alla caviglia"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Quadricipiti, Glutei",
+                secondary: "Core, Adduttori"
+            }
+        }
+    },
+
+    // ==========================================
+    // FEMORALI - Esercizi aggiuntivi
+    // ==========================================
+    "stiff-leg-deadlift": {
+        execution: {
+            steps: [
+                "In piedi con il bilanciere, piedi alla larghezza delle anche",
+                "Gambe completamente tese (o con minima flessione)",
+                "Abbassa il bilanciere lungo le gambe piegandoti alla vita",
+                "Mantieni la schiena dritta durante tutto il movimento",
+                "Scendi quanto la flessibilità permette",
+                "Risali contraendo i femorali e i glutei"
+            ],
+            tips: [
+                "Maggiore stretch dei femorali rispetto allo stacco rumeno",
+                "Gambe più tese che nello stacco rumeno",
+                "Usa un peso inferiore rispetto allo stacco convenzionale"
+            ],
+            commonMistakes: [
+                "Arrotondare la schiena",
+                "Tenere il bilanciere lontano dalle gambe",
+                "Forzare la discesa oltre la propria flessibilità"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Femorali",
+                secondary: "Glutei, Erettori spinali"
+            }
+        }
+    },
+    "good-morning": {
+        execution: {
+            steps: [
+                "Bilanciere sulle spalle come nello squat",
+                "Piedi alla larghezza delle anche, ginocchia leggermente flesse",
+                "Piegati in avanti alla vita mantenendo la schiena dritta",
+                "Abbassati fino a busto quasi parallelo al pavimento",
+                "Contrai femorali e glutei per tornare in posizione eretta"
+            ],
+            tips: [
+                "Inizia con poco peso per padroneggiare la tecnica",
+                "Ottimo per rinforzare la catena posteriore",
+                "La flessione delle ginocchia resta costante"
+            ],
+            commonMistakes: [
+                "Arrotondare la schiena",
+                "Scendere troppo in basso",
+                "Usare troppo peso prima di avere la tecnica"
+            ],
+            breathing: "Inspira piegandoti, espira risalendo",
+            muscles: {
+                primary: "Femorali, Erettori spinali",
+                secondary: "Glutei"
+            }
+        }
+    },
+    "dumbbell-rdl": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio per mano davanti alle cosce",
+                "Piedi alla larghezza delle anche, ginocchia leggermente flesse",
+                "Abbassa i manubri lungo le gambe spingendo i fianchi indietro",
+                "Mantieni la schiena dritta",
+                "Scendi fino a sentire lo stretch nei femorali",
+                "Risali contraendo glutei e femorali"
+            ],
+            tips: [
+                "Permette maggiore range di movimento rispetto al bilanciere",
+                "I manubri si muovono ai lati delle gambe",
+                "Ottima alternativa per chi ha problemi con il bilanciere"
+            ],
+            commonMistakes: [
+                "Arrotondare la schiena",
+                "Piegare troppo le ginocchia",
+                "Non sentire lo stretch nei femorali"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Femorali, Glutei",
+                secondary: "Erettori spinali"
+            }
+        }
+    },
+    "single-leg-rdl": {
+        execution: {
+            steps: [
+                "In piedi su una gamba sola con un manubrio nella mano opposta",
+                "L'altra gamba leggermente sollevata dietro di te",
+                "Piegati alla vita abbassando il manubrio verso il pavimento",
+                "La gamba posteriore si alza per controbilanciare",
+                "Mantieni la schiena dritta",
+                "Risali contraendo glutei e femorali"
+            ],
+            tips: [
+                "Ottimo per equilibrio e forza unilaterale",
+                "Il manubrio nella mano opposta alla gamba d'appoggio",
+                "Tieniti a un supporto se necessario per imparare"
+            ],
+            commonMistakes: [
+                "Perdere l'equilibrio",
+                "Arrotondare la schiena",
+                "Ruotare i fianchi durante il movimento"
+            ],
+            breathing: "Inspira scendendo, espira salendo",
+            muscles: {
+                primary: "Femorali, Glutei",
+                secondary: "Core, Erettori spinali"
+            }
+        }
+    },
+    "leg-curl-seated": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con la schiena appoggiata",
+                "Posiziona le gambe sopra il cuscinetto, caviglie davanti al rullo",
+                "Regola il cuscinetto sulle cosce per bloccarle",
+                "Curla le gambe portando i talloni sotto la seduta",
+                "Contrai i femorali in posizione contratta",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Variante comoda che non stressa la schiena",
+                "Concentrati sulla contrazione dei femorali",
+                "Puoi puntare le dita per diversa attivazione"
+            ],
+            commonMistakes: [
+                "Usare troppo peso e non completare il ROM",
+                "Movimento troppo veloce",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira curlando, inspira estendendo",
+            muscles: {
+                primary: "Femorali",
+                secondary: "Gastrocnemio"
+            }
+        }
+    },
+    "nordic-curl": {
+        execution: {
+            steps: [
+                "In ginocchio con i piedi bloccati sotto un supporto",
+                "Corpo eretto dalla testa alle ginocchia",
+                "Abbassati lentamente in avanti usando solo i femorali",
+                "Resisti alla gravità il più a lungo possibile",
+                "Quando non riesci più a controllare, usa le mani per attutire",
+                "Aiutati con le mani per risalire nella fase iniziale"
+            ],
+            tips: [
+                "Esercizio molto avanzato, inizia con assistenza",
+                "Concentrati sulla fase eccentrica (discesa controllata)",
+                "Eccellente per la prevenzione infortuni ai femorali"
+            ],
+            commonMistakes: [
+                "Piegarsi alla vita invece di mantenere il corpo dritto",
+                "Scendere troppo velocemente senza controllo",
+                "Non usare progressioni adeguate"
+            ],
+            breathing: "Inspira scendendo, espira risalendo",
+            muscles: {
+                primary: "Femorali",
+                secondary: "Glutei, Core"
+            }
+        }
+    },
+    "glute-ham-raise": {
+        execution: {
+            steps: [
+                "Posizionati sulla GHD con i piedi bloccati, ginocchia sul cuscinetto",
+                "Corpo in posizione orizzontale",
+                "Abbassati in avanti estendendo le ginocchia",
+                "Usa femorali e glutei per risalire curlando il corpo",
+                "Torna alla posizione orizzontale contraendo la catena posteriore"
+            ],
+            tips: [
+                "Eccellente per la catena posteriore completa",
+                "Combina estensione dell'anca e flessione del ginocchio",
+                "Puoi usare assistenza con un elastico"
+            ],
+            commonMistakes: [
+                "Usare troppo slancio",
+                "Non controllare la discesa",
+                "Non avere sufficiente forza per il movimento completo"
+            ],
+            breathing: "Inspira scendendo, espira risalendo",
+            muscles: {
+                primary: "Femorali, Glutei",
+                secondary: "Erettori spinali"
+            }
+        }
+    },
+
+    // ==========================================
+    // GLUTEI - Esercizi aggiuntivi
+    // ==========================================
+    "sumo-deadlift": {
+        execution: {
+            steps: [
+                "Piedi molto larghi, punte ruotate verso l'esterno (45°+)",
+                "Afferra il bilanciere con presa stretta tra le gambe",
+                "Abbassa i fianchi, petto in fuori, schiena dritta",
+                "Spingi il pavimento con i piedi sollevando il bilanciere",
+                "Estendi anche e ginocchia contemporaneamente",
+                "Contrai i glutei in alto"
+            ],
+            tips: [
+                "Più enfasi su glutei, adduttori e quadricipiti rispetto allo stacco convenzionale",
+                "Richiede buona mobilità delle anche",
+                "Il bilanciere viaggia su un percorso più corto"
+            ],
+            commonMistakes: [
+                "Le ginocchia collassano verso l'interno",
+                "I fianchi salgono troppo velocemente",
+                "Arrotondare la schiena"
+            ],
+            breathing: "Inspira prima di sollevare, espira in alto",
+            muscles: {
+                primary: "Glutei, Quadricipiti, Adduttori",
+                secondary: "Femorali, Erettori spinali"
+            }
+        }
+    },
+    "dumbbell-hip-thrust": {
+        execution: {
+            steps: [
+                "Schiena contro una panca, un manubrio sui fianchi",
+                "Piedi a terra, ginocchia piegate a 90°",
+                "Spingi attraverso i talloni sollevando i fianchi",
+                "Contrai i glutei in alto",
+                "Abbassa controllando quasi a terra"
+            ],
+            tips: [
+                "Buona alternativa al bilanciere per principianti",
+                "Più facile da posizionare rispetto al bilanciere",
+                "Concentrati sulla contrazione dei glutei"
+            ],
+            commonMistakes: [
+                "Iperestendere la schiena",
+                "Non contrarre abbastanza i glutei in alto",
+                "Il manubrio che scivola"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Grande gluteo",
+                secondary: "Femorali"
+            }
+        }
+    },
+    "glute-kickback-machine": {
+        execution: {
+            steps: [
+                "Posizionati alla macchina con il petto sul cuscinetto",
+                "Un piede sulla piattaforma, l'altro contro il pad posteriore",
+                "Spingi la gamba all'indietro estendendo l'anca",
+                "Contrai il gluteo in alto",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Ottimo isolamento del gluteo",
+                "Non arcuare la schiena",
+                "Concentrati sulla contrazione, non sul peso"
+            ],
+            commonMistakes: [
+                "Arcuare la schiena per compensare",
+                "Usare troppo peso perdendo l'isolamento",
+                "Non completare il range di movimento"
+            ],
+            breathing: "Espira spingendo, inspira tornando",
+            muscles: {
+                primary: "Grande gluteo",
+                secondary: "Femorali"
+            }
+        }
+    },
+    "hip-abduction": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con le gambe all'interno dei cuscinetti",
+                "Schiena appoggiata allo schienale",
+                "Apri le gambe spingendo contro i cuscinetti",
+                "Contrai i glutei e gli abduttori in posizione aperta",
+                "Torna controllando alla posizione chiusa"
+            ],
+            tips: [
+                "Lavora il gluteo medio e il piccolo gluteo",
+                "Puoi inclinarti leggermente in avanti per diverso stimolo",
+                "Ottimo per la stabilità dell'anca"
+            ],
+            commonMistakes: [
+                "Usare troppo peso con ROM limitato",
+                "Far sbattere i pesi tra le rep",
+                "Non controllare la fase eccentrica (chiusura)"
+            ],
+            breathing: "Espira aprendo, inspira chiudendo",
+            muscles: {
+                primary: "Gluteo medio, Gluteo piccolo",
+                secondary: "Tensore della fascia lata"
+            }
+        }
+    },
+    "single-leg-glute-bridge": {
+        execution: {
+            steps: [
+                "Sdraiato supino, una gamba piegata con piede a terra",
+                "L'altra gamba distesa in aria o piegata al petto",
+                "Spingi attraverso il tallone della gamba a terra",
+                "Solleva i fianchi contraendo il gluteo",
+                "Mantieni il bacino livellato, non ruotare",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Versione più intensa del glute bridge classico",
+                "Ottimo per correggere squilibri tra i lati",
+                "Mantieni il core contratto per non ruotare"
+            ],
+            commonMistakes: [
+                "Ruotare il bacino verso un lato",
+                "Non contrarre il gluteo in alto",
+                "Iperestendere la schiena"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Grande gluteo",
+                secondary: "Core, Femorali"
+            }
+        }
+    },
+    "donkey-kick": {
+        execution: {
+            steps: [
+                "A quattro zampe, mani sotto le spalle, ginocchia sotto i fianchi",
+                "Mantieni il ginocchio piegato a 90°",
+                "Spingi un piede verso il soffitto",
+                "Contrai il gluteo in alto",
+                "Il movimento viene dall'anca, non dalla schiena",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Non arcuare la schiena durante il movimento",
+                "Concentrati sulla contrazione del gluteo",
+                "Puoi aggiungere una cavigliera con peso per più resistenza"
+            ],
+            commonMistakes: [
+                "Arcuare la schiena per alzare di più la gamba",
+                "Usare lo slancio invece della contrazione",
+                "Non contrarre il gluteo in alto"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Grande gluteo",
+                secondary: "Femorali, Core"
+            }
+        }
+    },
+    "fire-hydrant": {
+        execution: {
+            steps: [
+                "A quattro zampe, mani sotto le spalle, ginocchia sotto i fianchi",
+                "Mantieni il ginocchio piegato a 90°",
+                "Solleva lateralmente la gamba mantenendo l'angolo del ginocchio",
+                "Solleva fino all'altezza dell'anca",
+                "Contrai il gluteo laterale in alto",
+                "Torna controllando"
+            ],
+            tips: [
+                "Lavora specificamente il gluteo medio",
+                "Non ruotare il busto durante il movimento",
+                "Puoi usare una banda elastica per più resistenza"
+            ],
+            commonMistakes: [
+                "Ruotare il busto per aiutare il sollevamento",
+                "Non sollevare abbastanza in alto",
+                "Usare lo slancio invece della contrazione"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Gluteo medio",
+                secondary: "Gluteo piccolo, Core"
+            }
+        }
+    },
+
+    // ==========================================
+    // POLPACCI - Esercizi aggiuntivi
+    // ==========================================
+    "leg-press-calf-raise": {
+        execution: {
+            steps: [
+                "Siediti alla leg press con solo le punte dei piedi sulla piattaforma",
+                "Sblocca la piattaforma",
+                "Estendi le caviglie spingendo con le punte",
+                "Contrai i polpacci in alto",
+                "Abbassa controllando lasciando cadere i talloni",
+                "Mantieni le ginocchia quasi completamente estese"
+            ],
+            tips: [
+                "Permette di usare carichi molto pesanti in sicurezza",
+                "Range di movimento completo è fondamentale",
+                "Ottima alternativa alla macchina per calf raise"
+            ],
+            commonMistakes: [
+                "Range di movimento troppo limitato",
+                "Piegare le ginocchia durante il movimento",
+                "Far rimbalzare il peso in basso"
+            ],
+            breathing: "Espira spingendo, inspira abbassando",
+            muscles: {
+                primary: "Gastrocnemio, Soleo",
+                secondary: "Nessuno"
+            }
+        }
+    },
+    "bodyweight-calf-raise": {
+        execution: {
+            steps: [
+                "In piedi su un gradino o rialzo con le punte dei piedi",
+                "Talloni nel vuoto",
+                "Abbassa i talloni sotto il livello del gradino per stretch",
+                "Sollèvati sulle punte contraendo i polpacci",
+                "Mantieni la contrazione in alto per un secondo",
+                "Abbassa controllando fino a stretch completo"
+            ],
+            tips: [
+                "Range di movimento completo è la chiave",
+                "Scendi sotto il parallelo per massimo stretch",
+                "Tieniti a un supporto per l'equilibrio se necessario"
+            ],
+            commonMistakes: [
+                "Range di movimento troppo limitato",
+                "Movimento troppo veloce senza controllo",
+                "Non scendere abbastanza in basso per lo stretch"
+            ],
+            breathing: "Espira sollevandoti, inspira abbassandoti",
+            muscles: {
+                primary: "Gastrocnemio",
+                secondary: "Soleo"
+            }
+        }
+    },
+    "single-leg-calf-raise": {
+        execution: {
+            steps: [
+                "In piedi su un gradino su una gamba sola",
+                "L'altra gamba sollevata o appoggiata dietro la caviglia",
+                "Abbassa il tallone per stretch completo",
+                "Sollèvati sulla punta contraendo il polpaccio",
+                "Mantieni in alto per un secondo",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Raddoppia l'intensità rispetto alla versione bilaterale",
+                "Tieniti a un supporto per l'equilibrio",
+                "Ottimo per correggere squilibri tra i polpacci"
+            ],
+            commonMistakes: [
+                "Perdere l'equilibrio",
+                "ROM limitato",
+                "Usare lo slancio"
+            ],
+            breathing: "Espira sollevandoti, inspira abbassandoti",
+            muscles: {
+                primary: "Gastrocnemio",
+                secondary: "Soleo"
+            }
+        }
+    },
+
+    // ==========================================
+    // ADDOME - Esercizi aggiuntivi
+    // ==========================================
+    "reverse-crunch": {
+        execution: {
+            steps: [
+                "Sdraiato supino con le mani ai lati o sotto i glutei",
+                "Ginocchia piegate a 90°, piedi sollevati",
+                "Solleva il bacino da terra portando le ginocchia verso il petto",
+                "Arrotonda la parte bassa della schiena sollevandola",
+                "Abbassa controllando senza toccare i piedi a terra"
+            ],
+            tips: [
+                "Enfatizza la parte bassa degli addominali",
+                "Il movimento viene dal bacino, non dalle gambe",
+                "Mantieni il collo rilassato"
+            ],
+            commonMistakes: [
+                "Usare lo slancio delle gambe",
+                "Non sollevare il bacino (solo le ginocchia si muovono)",
+                "Movimento troppo veloce"
+            ],
+            breathing: "Espira sollevando il bacino, inspira abbassando",
+            muscles: {
+                primary: "Retto addominale (parte inferiore)",
+                secondary: "Obliqui"
+            }
+        }
+    },
+    "side-plank": {
+        execution: {
+            steps: [
+                "Sdraiati su un fianco con il gomito sotto la spalla",
+                "Piedi sovrapposti o uno davanti all'altro",
+                "Solleva i fianchi formando una linea retta",
+                "Mantieni la posizione per il tempo desiderato",
+                "Il braccio libero lungo il corpo o verso il soffitto"
+            ],
+            tips: [
+                "Lavora specificamente gli obliqui e la stabilità laterale",
+                "Mantieni i fianchi alti, non lasciarli cadere",
+                "Puoi aggiungere movimento (dip dei fianchi) per più difficoltà"
+            ],
+            commonMistakes: [
+                "Fianchi che cadono verso il pavimento",
+                "Ruotare il busto in avanti o indietro",
+                "Trattenere il respiro"
+            ],
+            breathing: "Respira normalmente durante il mantenimento",
+            muscles: {
+                primary: "Obliqui",
+                secondary: "Retto addominale, Gluteo medio"
+            }
+        }
+    },
+    "mountain-climber": {
+        execution: {
+            steps: [
+                "In posizione di plank alto (braccia tese)",
+                "Porta rapidamente un ginocchio al petto",
+                "Riporta il piede indietro e contemporaneamente porta l'altro ginocchio al petto",
+                "Alterna le gambe in modo rapido e ritmico",
+                "Mantieni i fianchi bassi e il core contratto"
+            ],
+            tips: [
+                "Ottimo anche come cardio ad alta intensità",
+                "Mantieni la schiena dritta, non sollevare i glutei",
+                "Puoi variare la velocità per diversa intensità"
+            ],
+            commonMistakes: [
+                "Sollevare i glutei in alto",
+                "Perdere la posizione di plank",
+                "Movimento troppo lento per l'effetto cardio"
+            ],
+            breathing: "Respira ritmicamente durante il movimento",
+            muscles: {
+                primary: "Retto addominale, Flessori dell'anca",
+                secondary: "Spalle, Quadricipiti"
+            }
+        }
+    },
+    "leg-raise": {
+        execution: {
+            steps: [
+                "Sdraiato supino con le mani sotto i glutei o ai lati",
+                "Gambe distese e unite",
+                "Solleva le gambe tese verso il soffitto",
+                "Fermati quando le gambe sono perpendicolari al pavimento",
+                "Abbassa controllando senza toccare il pavimento"
+            ],
+            tips: [
+                "Mantieni la zona lombare premuta a terra",
+                "Se troppo difficile, piega leggermente le ginocchia",
+                "Non oscillare le gambe, movimento controllato"
+            ],
+            commonMistakes: [
+                "Staccare la zona lombare dal pavimento",
+                "Usare lo slancio delle gambe",
+                "Non controllare la discesa"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Retto addominale (parte inferiore)",
+                secondary: "Flessori dell'anca"
+            }
+        }
+    },
+    "bicycle-crunch": {
+        execution: {
+            steps: [
+                "Sdraiato supino con le mani dietro la testa",
+                "Solleva le spalle da terra",
+                "Porta il gomito destro verso il ginocchio sinistro ruotando il busto",
+                "Contemporaneamente distendi la gamba destra",
+                "Alterna portando il gomito sinistro al ginocchio destro",
+                "Continua alternando in modo fluido"
+            ],
+            tips: [
+                "Lavora sia il retto addominale che gli obliqui",
+                "La rotazione deve venire dal busto, non dalle braccia",
+                "Mantieni la parte bassa della schiena a terra"
+            ],
+            commonMistakes: [
+                "Tirare la testa con le mani",
+                "Muovere solo le braccia senza ruotare il busto",
+                "Movimento troppo veloce perdendo la contrazione"
+            ],
+            breathing: "Espira ad ogni rotazione",
+            muscles: {
+                primary: "Retto addominale, Obliqui",
+                secondary: "Flessori dell'anca"
+            }
+        }
+    },
+    "dead-bug": {
+        execution: {
+            steps: [
+                "Sdraiato supino con braccia distese verso il soffitto",
+                "Ginocchia piegate a 90° con le anche a 90°",
+                "Premi la zona lombare a terra",
+                "Estendi simultaneamente il braccio destro e la gamba sinistra",
+                "Torna alla posizione iniziale",
+                "Ripeti con il lato opposto"
+            ],
+            tips: [
+                "Ottimo per la stabilità del core",
+                "La zona lombare deve restare a terra durante tutto il movimento",
+                "Movimento lento e controllato"
+            ],
+            commonMistakes: [
+                "Staccare la zona lombare dal pavimento",
+                "Muoversi troppo velocemente",
+                "Non coordinare braccio e gamba opposti"
+            ],
+            breathing: "Espira estendendo, inspira tornando",
+            muscles: {
+                primary: "Retto addominale, Trasverso",
+                secondary: "Core stabilizzatori"
+            }
+        }
+    },
+    "v-up": {
+        execution: {
+            steps: [
+                "Sdraiato supino con braccia distese sopra la testa",
+                "Gambe distese a terra",
+                "Solleva contemporaneamente gambe e busto",
+                "Cerca di toccare le punte dei piedi con le mani",
+                "Il corpo forma una V",
+                "Abbassa controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Movimento esplosivo ma controllato",
+                "Se troppo difficile, inizia con le ginocchia piegate",
+                "Concentrati sulla contrazione addominale"
+            ],
+            commonMistakes: [
+                "Usare slancio invece della contrazione",
+                "Non sollevare abbastanza per formare la V",
+                "Arrotondare eccessivamente la schiena"
+            ],
+            breathing: "Espira salendo, inspira scendendo",
+            muscles: {
+                primary: "Retto addominale",
+                secondary: "Flessori dell'anca"
+            }
+        }
+    },
+    "ab-wheel-rollout": {
+        execution: {
+            steps: [
+                "In ginocchio con la ruota per addominali sotto le spalle",
+                "Core contratto, schiena dritta",
+                "Rotola la ruota in avanti distendendo il corpo",
+                "Vai il più lontano possibile mantenendo la schiena dritta",
+                "Usa gli addominali per riportare la ruota alla posizione iniziale"
+            ],
+            tips: [
+                "Esercizio avanzato, inizia con un range ridotto",
+                "Non arcuare MAI la schiena",
+                "Progressione: in ginocchio → in piedi"
+            ],
+            commonMistakes: [
+                "Arcuare la schiena durante l'estensione",
+                "Andare troppo avanti senza sufficiente forza",
+                "Non contrarre il core durante tutto il movimento"
+            ],
+            breathing: "Inspira rotolando in avanti, espira tornando",
+            muscles: {
+                primary: "Retto addominale",
+                secondary: "Spalle, Dorsali, Core"
+            }
+        }
+    },
+    "cable-crunch": {
+        execution: {
+            steps: [
+                "In ginocchio davanti al cavo alto con attacco a corda",
+                "Tieni la corda ai lati della testa",
+                "Fletti il busto verso il basso contraendo gli addominali",
+                "Porta le costole verso il bacino",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Permette di aggiungere resistenza progressiva al crunch",
+                "Il movimento viene dall'addome, non dalle anche",
+                "Mantieni i fianchi fermi"
+            ],
+            commonMistakes: [
+                "Sedersi sui talloni (flessione delle anche, non addome)",
+                "Tirare con le braccia invece del core",
+                "Non controllare la fase eccentrica"
+            ],
+            breathing: "Espira flettendo, inspira tornando",
+            muscles: {
+                primary: "Retto addominale",
+                secondary: "Obliqui"
+            }
+        }
+    },
+    "cable-woodchop": {
+        execution: {
+            steps: [
+                "In piedi di fianco al cavo alto",
+                "Afferra la maniglia con entrambe le mani",
+                "Piedi alla larghezza delle spalle, ginocchia leggermente flesse",
+                "Ruota il busto tirando il cavo dall'alto verso il basso in diagonale",
+                "Il movimento finisce all'altezza dell'anca opposta",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "La rotazione viene dal core, le braccia guidano solo",
+                "Ottimo per gli obliqui e i movimenti rotazionali",
+                "Puoi anche eseguirlo dal basso verso l'alto"
+            ],
+            commonMistakes: [
+                "Usare le braccia invece del core per il movimento",
+                "Non ruotare i piedi durante la rotazione",
+                "Movimento troppo veloce senza controllo"
+            ],
+            breathing: "Espira durante la rotazione, inspira tornando",
+            muscles: {
+                primary: "Obliqui",
+                secondary: "Retto addominale, Spalle"
+            }
+        }
+    },
+    "ab-crunch-machine": {
+        execution: {
+            steps: [
+                "Siediti alla macchina con i piedi sotto i rulli",
+                "Afferra le maniglie sopra le spalle",
+                "Fletti il busto in avanti contraendo gli addominali",
+                "Contrai in posizione di massima flessione",
+                "Torna controllando alla posizione iniziale"
+            ],
+            tips: [
+                "Movimento guidato e isolato",
+                "Permette di aggiungere peso progressivamente",
+                "Concentrati sulla contrazione addominale"
+            ],
+            commonMistakes: [
+                "Usare le braccia per tirare invece dell'addome",
+                "Movimento troppo veloce",
+                "Far sbattere i pesi tra le rep"
+            ],
+            breathing: "Espira flettendo, inspira tornando",
+            muscles: {
+                primary: "Retto addominale",
+                secondary: "Obliqui"
+            }
+        }
+    },
+
+    // ==========================================
+    // AVAMBRACCI
+    // ==========================================
+    "wrist-curl": {
+        execution: {
+            steps: [
+                "Seduto con gli avambracci appoggiati sulle cosce, palmi verso l'alto",
+                "Tieni i manubri con le mani oltre le ginocchia",
+                "Lascia cadere i polsi verso il basso per lo stretch",
+                "Curla i polsi verso l'alto contraendo gli avambracci",
+                "Contrai in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Movimento piccolo e controllato",
+                "Concentrati sulla contrazione dei flessori del polso",
+                "Puoi usare anche un bilanciere"
+            ],
+            commonMistakes: [
+                "Muovere gli avambracci dalle cosce",
+                "Range di movimento troppo limitato",
+                "Usare troppo peso"
+            ],
+            breathing: "Espira curlando, inspira abbassando",
+            muscles: {
+                primary: "Flessori del polso",
+                secondary: "Avambraccio"
+            }
+        }
+    },
+    "reverse-wrist-curl": {
+        execution: {
+            steps: [
+                "Seduto con gli avambracci appoggiati sulle cosce, palmi verso il basso",
+                "Tieni i manubri con le mani oltre le ginocchia",
+                "Lascia cadere i polsi verso il basso",
+                "Solleva i polsi verso l'alto estendendo",
+                "Contrai in alto",
+                "Abbassa controllando"
+            ],
+            tips: [
+                "Lavora gli estensori del polso",
+                "Usa un peso più leggero rispetto ai wrist curl normali",
+                "Ottimo per prevenire infortuni al polso"
+            ],
+            commonMistakes: [
+                "Usare troppo peso",
+                "Muovere gli avambracci",
+                "Range di movimento limitato"
+            ],
+            breathing: "Espira sollevando, inspira abbassando",
+            muscles: {
+                primary: "Estensori del polso",
+                secondary: "Avambraccio"
+            }
+        }
+    },
+    "farmer-walk": {
+        execution: {
+            steps: [
+                "In piedi con un manubrio pesante per mano ai lati",
+                "Spalle indietro e in basso, petto in fuori",
+                "Core contratto, postura eretta",
+                "Cammina con passi corti e controllati",
+                "Mantieni la presa salda durante tutto il percorso",
+                "Continua per la distanza o il tempo indicato"
+            ],
+            tips: [
+                "Ottimo per grip, core e stabilità complessiva",
+                "Usa i pesi più pesanti che riesci a tenere",
+                "Cammina dritto con passi corti"
+            ],
+            commonMistakes: [
+                "Inclinarsi da un lato",
+                "Passi troppo lunghi che causano oscillazione",
+                "Sollevare le spalle verso le orecchie"
+            ],
+            breathing: "Respira normalmente e costantemente durante la camminata",
+            muscles: {
+                primary: "Avambracci (presa), Trapezio",
+                secondary: "Core, Spalle, Gambe"
+            }
+        }
+    },
+    "dead-hang": {
+        execution: {
+            steps: [
+                "Afferra la sbarra con presa prona alla larghezza delle spalle",
+                "Lasciati pendere con braccia completamente distese",
+                "Mantieni le spalle attive (non lasciarle salire alle orecchie)",
+                "Rimani appeso il più a lungo possibile",
+                "Scendi quando la presa cede"
+            ],
+            tips: [
+                "Ottimo per il grip e la decompressione della colonna vertebrale",
+                "Puoi usare presa diversa (supina, neutra) per variare",
+                "Prova ad aggiungere tempo ogni sessione"
+            ],
+            commonMistakes: [
+                "Spalle completamente passive (rischio lussazione)",
+                "Oscillare il corpo",
+                "Non trattenere abbastanza a lungo per un effetto allenante"
+            ],
+            breathing: "Respira normalmente durante l'esercizio",
+            muscles: {
+                primary: "Avambracci (presa)",
+                secondary: "Grande dorsale, Spalle"
+            }
+        }
     }
 };
 
