@@ -1701,6 +1701,251 @@ const WARMUP_DETAILS = {
                 "Senti lo stretch nei bicipiti e nelle spalle anteriori"
             ]
         }
+    },
+    "Arm Circles Progressivi": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Arm-Circles_Shoulders.gif",
+        execution: {
+            steps: ["In piedi con le braccia distese ai lati", "Inizia con piccoli cerchi in avanti", "Aumenta progressivamente il diametro", "Inverti la direzione dopo 15 secondi"],
+            tips: ["Parti con cerchi piccoli e aumenta gradualmente", "Ottimo per scaldare la cuffia dei rotatori"]
+        }
+    },
+    "Shoulder Dislocates": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Shoulder-Dislocate.gif",
+        execution: {
+            steps: ["Afferra un bastone o elastico con presa larga", "Braccia distese davanti a te", "Porta il bastone sopra la testa e dietro la schiena", "Torna controllando alla posizione iniziale"],
+            tips: ["Usa una presa abbastanza larga da non forzare", "Movimento lento e controllato"]
+        }
+    },
+    "External Rotation": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/03/Dumbbell-Lying-External-Shoulder-Rotation.gif",
+        execution: {
+            steps: ["Gomito a 90° aderente al fianco", "Ruota l'avambraccio verso l'esterno", "Mantieni il gomito fermo", "Torna controllando"],
+            tips: ["Usa un peso leggero o un elastico", "Fondamentale per la salute della cuffia dei rotatori"]
+        }
+    },
+    "Y-T-W Raises": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Prone-Y-Raise.gif",
+        execution: {
+            steps: ["Prono su panca inclinata o in piedi piegato in avanti", "Y: braccia sopra la testa a 45°", "T: braccia laterali a 90°", "W: gomiti piegati, braccia a W"],
+            tips: ["Senza peso o con peso molto leggero", "Ottimo per attivare trapezio e cuffia dei rotatori"]
+        }
+    },
+    "Empty Can Exercise": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Empty-Can-Exercise.gif",
+        execution: {
+            steps: ["In piedi, braccia ai lati", "Solleva le braccia a 45° con pollici verso il basso", "Come se svuotassi una lattina", "Abbassa controllando"],
+            tips: ["Peso leggero o senza peso", "Attiva il sovraspinato della cuffia dei rotatori"]
+        }
+    },
+    "Scapular Pull-Ups": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Scapular-Pull-Up.gif",
+        execution: {
+            steps: ["Appeso alla sbarra, braccia distese", "Senza piegare i gomiti, tira le scapole verso il basso", "Solleva il corpo di pochi cm", "Rilascia controllando"],
+            tips: ["Movimento piccolo ma controllato", "Attiva i dorsali e la stabilità scapolare"]
+        }
+    },
+    "Band Face Pull": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Band-Face-Pull.gif",
+        execution: {
+            steps: ["Fissa l'elastico all'altezza del viso", "Tira verso il viso separando le mani", "Gomiti alti, ruota le mani verso l'esterno", "Contrai scapole e deltoidi posteriori"],
+            tips: ["Ottimo per postura e salute delle spalle", "Mantieni i gomiti sopra le spalle"]
+        }
+    },
+    "Thoracic Extension": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/08/Thoracic-Extension-on-Foam-Roller.gif",
+        execution: {
+            steps: ["Sdraiato su un foam roller posizionato alla parte alta della schiena", "Mani dietro la testa", "Estendi la schiena sopra il rullo", "Torna alla posizione iniziale"],
+            tips: ["Non estendere la zona lombare", "Concentrati sulla parte toracica"]
+        }
+    },
+    "Wrist Circles": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Wrist-Circles.gif",
+        execution: {
+            steps: ["Intreccia le dita delle mani", "Ruota i polsi in cerchio", "Fai cerchi in entrambe le direzioni", "10-15 cerchi per direzione"],
+            tips: ["Movimento fluido e controllato", "Ottimo prima di esercizi di presa"]
+        }
+    },
+    "Light Band Curls": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Resistance-Band-Bicep-Curl.gif",
+        execution: {
+            steps: ["In piedi sull'elastico, impugnalo con entrambe le mani", "Curl classico con resistenza leggera", "Contrai i bicipiti in alto", "Abbassa controllando"],
+            tips: ["Usa resistenza leggera, serve solo per attivare", "15-20 ripetizioni veloci"]
+        }
+    },
+    "Light Band Pushdowns": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Resistance-Band-Pushdown.gif",
+        execution: {
+            steps: ["Fissa l'elastico in alto", "Impugna con entrambe le mani, gomiti al fianco", "Estendi le braccia verso il basso", "Torna controllando"],
+            tips: ["Resistenza leggera per attivazione", "Mantieni i gomiti fermi al fianco"]
+        }
+    },
+    "Tricep Stretch Dinamico": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
+        execution: {
+            steps: ["Porta un braccio sopra la testa", "Piega il gomito portando la mano dietro la nuca", "Con l'altra mano spingi leggermente il gomito", "Alterna i lati in modo dinamico"],
+            tips: ["Movimento fluido, non statico", "Non forzare troppo il gomito"]
+        }
+    },
+    "Diamond Push-Ups (ginocchia)": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
+        execution: {
+            steps: ["Ginocchia a terra, mani unite a diamante sotto il petto", "Abbassa il petto verso le mani", "Spingi tornando su", "Mantieni il core attivo"],
+            tips: ["Le ginocchia facilitano il movimento", "Focus sui tricipiti"]
+        }
+    },
+    "Push-Ups (ginocchia se necessario)": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+        execution: {
+            steps: ["Posizione plank, mani alla larghezza delle spalle", "Abbassa il petto verso il pavimento", "Spingi tornando alla posizione iniziale", "Ginocchia a terra se necessario"],
+            tips: ["Mantieni il core attivo", "Corpo in linea retta dalla testa ai piedi"]
+        }
+    },
+    "Superman Hold": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/superman-exercise.gif",
+        execution: {
+            steps: ["Sdraiato a pancia in giù, braccia distese davanti", "Solleva braccia, petto e gambe da terra", "Contrai glutei e schiena", "Mantieni la posizione"],
+            tips: ["Non iperestendere il collo", "Ottimo per erettori spinali e glutei"]
+        }
+    },
+    "Camminata sul Posto": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/March-in-Place.gif",
+        execution: {
+            steps: ["In piedi, inizia a camminare sul posto", "Solleva le ginocchia a un'altezza comoda", "Pompa le braccia naturalmente", "Mantieni un ritmo costante"],
+            tips: ["Ottimo per alzare la frequenza cardiaca gradualmente", "Atterra morbido"]
+        }
+    },
+    "Camminata Leggera": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/March-in-Place.gif",
+        execution: {
+            steps: ["Cammina a passo leggero", "Muovi le braccia naturalmente", "Respira profondamente", "2-3 minuti per alzare il battito"],
+            tips: ["Non serve velocità, solo attivazione", "Ottimo come warm-up iniziale"]
+        }
+    },
+    "Camminata/Corsa Leggera": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/March-in-Place.gif",
+        execution: {
+            steps: ["Inizia camminando e aumenta gradualmente il ritmo", "Passa a una corsa leggera se possibile", "Mantieni per 3-5 minuti", "Obiettivo: alzare la frequenza cardiaca"],
+            tips: ["Non è uno sprint, mantieni un ritmo confortevole", "Respira regolarmente"]
+        }
+    },
+    "Quad Stretch Dinamico": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
+        execution: {
+            steps: ["In piedi, afferra una caviglia portando il tallone al gluteo", "Mantieni 2-3 secondi", "Rilascia e alterna gamba", "Movimento dinamico, non statico"],
+            tips: ["Tieniti a un supporto se necessario", "Mantieni le ginocchia vicine"]
+        }
+    },
+    "Goblet Squat Paused": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Dumbbell-Goblet-Squat.gif",
+        execution: {
+            steps: ["Tieni un manubrio leggero o nessun peso al petto", "Scendi in squat profondo", "Mantieni la posizione bassa per 3-5 secondi", "Spingi i gomiti dentro le ginocchia per aprire le anche"],
+            tips: ["Ottimo per mobilità delle anche", "Mantieni il petto alto"]
+        }
+    },
+    "Good Mornings a Corpo Libero": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Good-Morning.gif",
+        execution: {
+            steps: ["In piedi, mani dietro la testa o incrociate al petto", "Piegati in avanti dalle anche mantenendo la schiena dritta", "Scendi fino a sentire lo stretch nei femorali", "Risali contraendo glutei e femorali"],
+            tips: ["Ginocchia leggermente piegate", "Non arrotondare la schiena"]
+        }
+    },
+    "Single Leg RDL Senza Peso": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Dumbbell-Single-Leg-Deadlift.gif",
+        execution: {
+            steps: ["In piedi su una gamba", "Piegati in avanti estendendo l'altra gamba dietro", "Braccia verso il pavimento per equilibrio", "Torna alla posizione eretta"],
+            tips: ["Mantieni la schiena dritta", "Ottimo per equilibrio e attivazione femorali/glutei"]
+        }
+    },
+    "Hamstring Walkouts": {
+        gifUrl: "https://gymvisual.com/img/p/6/7/0/6/6706.gif",
+        execution: {
+            steps: ["In piedi, piegati toccando il pavimento", "Cammina con le mani in avanti fino a plank", "Mantieni le gambe più dritte possibile", "Cammina con i piedi verso le mani e alzati"],
+            tips: ["Simile all'inchworm", "Focus sullo stretch dei femorali durante il ritorno"]
+        }
+    },
+    "Clamshells": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Clamshell-Exercise.gif",
+        execution: {
+            steps: ["Sdraiato sul fianco, ginocchia piegate a 45°", "Piedi uniti, apri il ginocchio superiore", "Come una conchiglia che si apre", "Chiudi controllando e ripeti"],
+            tips: ["Non ruotare il bacino", "Ottimo per gluteo medio e stabilità dell'anca"]
+        }
+    },
+    "Fire Hydrants": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Fire-Hydrant.gif",
+        execution: {
+            steps: ["A quattro zampe, core attivato", "Solleva un ginocchio lateralmente mantenendo 90°", "Come un cane all'idrante", "Abbassa controllando e ripeti"],
+            tips: ["Non ruotare il busto", "Attiva gluteo medio e piccolo"]
+        }
+    },
+    "Donkey Kicks": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Donkey-Kicks.gif",
+        execution: {
+            steps: ["A quattro zampe, core attivato", "Solleva una gamba piegata verso il soffitto", "Spingi il tallone verso l'alto", "Contrai il gluteo in alto e abbassa controllando"],
+            tips: ["Non arcuare la schiena", "Movimento controllato, non usare slancio"]
+        }
+    },
+    "Monster Walks": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Monster-Walk.gif",
+        execution: {
+            steps: ["Elastico sopra le ginocchia o alle caviglie", "Posizione semi-squat", "Cammina lateralmente a passi ampi", "Mantieni tensione sull'elastico"],
+            tips: ["Ginocchia in fuori, non farle crollare", "Ottimo per attivare i glutei prima di squat"]
+        }
+    },
+    "Ankle Circles": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Ankle-Circles.gif",
+        execution: {
+            steps: ["In piedi su una gamba o seduto", "Solleva un piede da terra", "Ruota la caviglia in cerchio", "Fai cerchi in entrambe le direzioni"],
+            tips: ["10-15 cerchi per direzione per piede", "Ottimo per mobilità della caviglia"]
+        }
+    },
+    "Calf Raises Leggeri": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
+        execution: {
+            steps: ["In piedi, piedi alla larghezza delle spalle", "Solleva sui talloni alzandoti sulle punte", "Mantieni un secondo in alto", "Abbassa lentamente"],
+            tips: ["Senza peso aggiuntivo", "Serve per attivare i polpacci"]
+        }
+    },
+    "Toe Walks": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
+        execution: {
+            steps: ["Alzati sulle punte dei piedi", "Cammina in avanti mantenendoti in punta", "Mantieni il core attivo", "20-30 passi"],
+            tips: ["Mantieni una postura eretta", "Attiva polpacci e stabilità della caviglia"]
+        }
+    },
+    "Heel Walks": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Heel-Walk.gif",
+        execution: {
+            steps: ["Solleva le punte dei piedi, cammina sui talloni", "Mantieni le punte sollevate", "Cammina in avanti per 20-30 passi", "Senti il lavoro sui tibiali anteriori"],
+            tips: ["Mantieni il busto eretto", "Ottimo per prevenire shin splints"]
+        }
+    },
+    "Dynamic Calf Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Standing-Wall-Calf-Stretch.gif",
+        execution: {
+            steps: ["Di fronte a un muro, un piede avanti e uno dietro", "Spingi il tallone posteriore a terra", "Oscilla avanti e indietro dinamicamente", "Alterna le gambe"],
+            tips: ["Non mantenere la posizione statica, movimento dinamico", "Senti lo stretch nel polpaccio"]
+        }
+    },
+    "Hip Circles (in piedi)": {
+        gifUrl: "https://gymvisual.com/img/p/9/1/8/2/9182.gif",
+        execution: {
+            steps: ["In piedi, mani sui fianchi", "Ruota il bacino in cerchi ampi", "Fai cerchi in entrambe le direzioni", "10-15 cerchi per direzione"],
+            tips: ["Movimento fluido e controllato", "Ottimo per mobilità dell'anca e zona lombare"]
+        }
+    },
+    "Torso Rotations": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Torso-Rotation.gif",
+        execution: {
+            steps: ["In piedi, braccia davanti al petto", "Ruota il busto da un lato all'altro", "Mantieni i fianchi fermi", "Movimento fluido e dinamico"],
+            tips: ["Non forzare la rotazione", "Ottimo per mobilità toracica e core"]
+        }
+    },
+    "Leg Swings": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Swings.gif",
+        execution: {
+            steps: ["In piedi accanto a un supporto", "Oscilla una gamba avanti e indietro", "Aumenta gradualmente l'ampiezza", "Ripeti sull'altra gamba"],
+            tips: ["Mantieni il busto eretto", "Non forzare oltre il range naturale"]
+        }
     }
 };
 
@@ -2050,6 +2295,459 @@ const COOLDOWN_DETAILS = {
             tips: [
                 "Espira mentre arrotondi la schiena",
                 "Mantieni le spalle lontane dalle orecchie"
+            ]
+        }
+    },
+    // ==========================================
+    // ALIAS e COOLDOWN MANCANTI
+    // ==========================================
+    "Doorway Chest Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/3/2/8/3/8/32838.gif",
+        execution: {
+            steps: [
+                "Posizionati in uno stipite della porta",
+                "Appoggia l'avambraccio contro lo stipite, gomito a 90°",
+                "Fai un passo avanti con il piede dello stesso lato",
+                "Ruota il corpo allontanandoti dallo stipite"
+            ],
+            tips: [
+                "Varia l'altezza del braccio per colpire diverse aree del petto",
+                "Mantieni la posizione per almeno 30 secondi"
+            ]
+        }
+    },
+    "Chest Opener": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Standing-Chest-Stretch.gif",
+        execution: {
+            steps: [
+                "In piedi, intreccia le mani dietro la schiena",
+                "Distendi le braccia e solleva leggermente",
+                "Spingi il petto in fuori e le scapole insieme",
+                "Mantieni la posizione respirando profondamente"
+            ],
+            tips: [
+                "Non inarcare eccessivamente la schiena",
+                "Concentrati sull'apertura delle spalle"
+            ]
+        }
+    },
+    "Floor Chest Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/2/0/6/3/3/20633.gif",
+        execution: {
+            steps: [
+                "Sdraiati a pancia in giù",
+                "Distendi un braccio di lato a 90° rispetto al corpo",
+                "Ruota il corpo dalla parte opposta del braccio",
+                "Senti lo stretch profondo nel petto"
+            ],
+            tips: [
+                "Movimento lento e controllato",
+                "Mantieni 30 secondi per lato"
+            ]
+        }
+    },
+    "Corner Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Corner-Wall-Chest-Stretch.gif",
+        execution: {
+            steps: [
+                "Posizionati di fronte a un angolo della stanza",
+                "Appoggia le mani sulle due pareti all'altezza delle spalle",
+                "Piegati in avanti verso l'angolo",
+                "Senti lo stretch nel petto e nelle spalle anteriori"
+            ],
+            tips: [
+                "Mantieni i gomiti leggermente sotto le spalle",
+                "Non forzare troppo in avanti"
+            ]
+        }
+    },
+    "Cross-Body Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
+        execution: {
+            steps: [
+                "Porta un braccio attraverso il petto",
+                "Con l'altra mano, tira il braccio verso di te",
+                "Mantieni la spalla rilassata, non alzarla",
+                "Senti lo stretch nel deltoide posteriore"
+            ],
+            tips: [
+                "Non ruotare il busto",
+                "Mantieni il braccio stirato dritto"
+            ]
+        }
+    },
+    "Overhead Tricep Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
+        execution: {
+            steps: [
+                "Porta un braccio sopra la testa",
+                "Piega il gomito portando la mano dietro la nuca",
+                "Con l'altra mano, spingi il gomito verso il basso",
+                "Senti lo stretch nel tricipite"
+            ],
+            tips: [
+                "Mantieni il busto eretto",
+                "Non forzare il gomito troppo indietro"
+            ]
+        }
+    },
+    "Overhead Tricep/Shoulder Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Triceps-Stretch.gif",
+        execution: {
+            steps: [
+                "Porta un braccio sopra la testa",
+                "Piega il gomito portando la mano dietro la nuca",
+                "Con l'altra mano, spingi il gomito verso il basso e leggermente indietro",
+                "Senti lo stretch nel tricipite e nella spalla"
+            ],
+            tips: [
+                "Mantieni il busto eretto e il core attivo",
+                "Alterna i due lati"
+            ]
+        }
+    },
+    "Shoulder Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
+        execution: {
+            steps: [
+                "Porta un braccio attraverso il petto",
+                "Con l'altra mano, tira delicatamente il braccio verso di te",
+                "Mantieni la spalla bassa e rilassata",
+                "Senti lo stretch nella parte posteriore della spalla"
+            ],
+            tips: [
+                "Non alzare la spalla del braccio stirato",
+                "Mantieni 30 secondi per lato"
+            ]
+        }
+    },
+    "Wall Shoulder Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Wall-Shoulder-Stretch.gif",
+        execution: {
+            steps: [
+                "In piedi di fianco a un muro",
+                "Appoggia la mano sul muro all'altezza della spalla",
+                "Ruota lentamente il corpo lontano dal muro",
+                "Senti lo stretch nella spalla anteriore e nel petto"
+            ],
+            tips: [
+                "Varia l'altezza della mano per colpire diverse aree",
+                "Mantieni il braccio dritto"
+            ]
+        }
+    },
+    "Eagle Arms": {
+        gifUrl: "https://gymvisual.com/img/p/2/2/5/7/6/22576.gif",
+        execution: {
+            steps: [
+                "In piedi o seduto, braccia davanti a te",
+                "Incrocia un braccio sopra l'altro all'altezza dei gomiti",
+                "Porta i palmi delle mani a contatto (o il più vicino possibile)",
+                "Solleva i gomiti all'altezza delle spalle"
+            ],
+            tips: [
+                "Mantieni le spalle basse e rilassate",
+                "Alterna quale braccio sta sopra"
+            ]
+        }
+    },
+    "Thread the Needle": {
+        gifUrl: "https://gymvisual.com/img/p/1/7/8/6/5/17865.gif",
+        execution: {
+            steps: [
+                "A quattro zampe, posizione del tavolo",
+                "Infila un braccio sotto il corpo verso il lato opposto",
+                "Appoggia la spalla e la tempia a terra",
+                "Il braccio opposto può restare a terra o distendersi in avanti"
+            ],
+            tips: [
+                "Movimento lento e controllato",
+                "Ottimo per la mobilità toracica"
+            ]
+        }
+    },
+    "Cat-Cow Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
+        execution: {
+            steps: [
+                "A quattro zampe, mani sotto le spalle, ginocchia sotto i fianchi",
+                "Inspira: inarca la schiena, guarda in alto (Cow)",
+                "Espira: arrotonda la schiena, mento al petto (Cat)",
+                "Alterna lentamente per il numero di ripetizioni indicato"
+            ],
+            tips: [
+                "Sincronizza il movimento con il respiro",
+                "Ottimo per la mobilità della colonna"
+            ]
+        }
+    },
+    "Cat-Cow": {
+        gifUrl: "https://gymvisual.com/img/p/2/1/7/8/4/21784.gif",
+        execution: {
+            steps: [
+                "A quattro zampe, mani sotto le spalle, ginocchia sotto i fianchi",
+                "Inspira: inarca la schiena, guarda in alto (Cow)",
+                "Espira: arrotonda la schiena, mento al petto (Cat)",
+                "Alterna lentamente per il numero di ripetizioni indicato"
+            ],
+            tips: [
+                "Sincronizza il movimento con il respiro",
+                "Movimento fluido senza forzare"
+            ]
+        }
+    },
+    "Seated Spinal Twist": {
+        gifUrl: "https://gymvisual.com/img/p/2/7/2/9/7/27297.gif",
+        execution: {
+            steps: [
+                "Seduto con le gambe distese",
+                "Piega un ginocchio e appoggia il piede fuori dalla coscia opposta",
+                "Ruota il busto verso il ginocchio piegato",
+                "Usa il gomito opposto per spingere contro il ginocchio"
+            ],
+            tips: [
+                "Mantieni la colonna dritta durante la rotazione",
+                "Non forzare la rotazione"
+            ]
+        }
+    },
+    "Knee-to-Chest Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Knee-to-Chest-Stretch.gif",
+        execution: {
+            steps: [
+                "Sdraiato supino su un tappetino",
+                "Porta un ginocchio verso il petto",
+                "Abbraccia il ginocchio con entrambe le mani",
+                "Mantieni l'altra gamba distesa o piegata a terra"
+            ],
+            tips: [
+                "Mantieni la testa e le spalle a terra",
+                "Stretch per la parte bassa della schiena e i glutei"
+            ]
+        }
+    },
+    "Knee-to-Chest": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Knee-to-Chest-Stretch.gif",
+        execution: {
+            steps: [
+                "Sdraiato supino su un tappetino",
+                "Porta un ginocchio verso il petto",
+                "Abbraccia il ginocchio con entrambe le mani",
+                "Mantieni l'altra gamba distesa a terra"
+            ],
+            tips: [
+                "Mantieni la testa rilassata a terra",
+                "Stretch per glutei e parte bassa della schiena"
+            ]
+        }
+    },
+    "Quad Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
+        execution: {
+            steps: [
+                "In piedi, afferra la caviglia di una gamba",
+                "Tira il tallone verso il gluteo",
+                "Mantieni le ginocchia vicine",
+                "Spingi il fianco in avanti per maggiore stretch"
+            ],
+            tips: [
+                "Tieniti a un supporto se necessario",
+                "Non arcuare la schiena"
+            ]
+        }
+    },
+    "Kneeling Quad Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Kneeling-Quadriceps-Stretch.gif",
+        execution: {
+            steps: [
+                "In ginocchio su una gamba, l'altra con piede a terra davanti",
+                "Afferra il piede della gamba posteriore con la mano",
+                "Tira il tallone verso il gluteo",
+                "Mantieni il busto eretto"
+            ],
+            tips: [
+                "Usa un cuscino sotto il ginocchio a terra",
+                "Stretch più profondo rispetto alla versione in piedi"
+            ]
+        }
+    },
+    "Lying Quad Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Lying-Quadriceps-Stretch.gif",
+        execution: {
+            steps: [
+                "Sdraiati su un fianco",
+                "Afferra la caviglia della gamba superiore",
+                "Tira il tallone verso il gluteo",
+                "Mantieni le ginocchia allineate"
+            ],
+            tips: [
+                "Spingi il fianco in avanti per intensificare",
+                "Mantieni la schiena dritta"
+            ]
+        }
+    },
+    "Couch Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/04/Couch-Stretch.gif",
+        execution: {
+            steps: [
+                "Mettiti in ginocchio davanti a un muro o divano",
+                "Appoggia un piede/shin contro il muro dietro di te",
+                "L'altra gamba in posizione di affondo con piede a terra",
+                "Spingi il bacino in avanti e raddrizza il busto"
+            ],
+            tips: [
+                "Stretch molto intenso per i quadricipiti e i flessori dell'anca",
+                "Inizia gradualmente, non forzare"
+            ]
+        }
+    },
+    "Hamstring Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
+        execution: {
+            steps: [
+                "Posiziona un piede su un rialzo (panca, gradino)",
+                "Mantieni la gamba dritta",
+                "Inclina il busto in avanti dalla vita",
+                "Senti lo stretch nel femorale"
+            ],
+            tips: [
+                "Mantieni la schiena dritta, non arrotondarla",
+                "Non rimbalzare, mantieni la posizione statica"
+            ]
+        }
+    },
+    "Standing Toe Touch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Toe-Touch.gif",
+        execution: {
+            steps: [
+                "In piedi con i piedi uniti o alla larghezza delle spalle",
+                "Piegati lentamente in avanti dalla vita",
+                "Cerca di raggiungere le punte dei piedi o il pavimento",
+                "Mantieni le ginocchia dritte o leggermente piegate"
+            ],
+            tips: [
+                "Non rimbalzare",
+                "Lascia cadere la testa e le braccia per gravità"
+            ]
+        }
+    },
+    "Single Leg Forward Fold": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Seated-Single-Leg-Hamstring-Stretch.gif",
+        execution: {
+            steps: [
+                "Seduto con una gamba distesa in avanti",
+                "L'altra gamba piegata con il piede contro la coscia interna",
+                "Piegati in avanti verso la punta del piede disteso",
+                "Mantieni la schiena dritta il più possibile"
+            ],
+            tips: [
+                "Non forzare, vai fin dove riesci",
+                "Mantieni 30 secondi per gamba"
+            ]
+        }
+    },
+    "Lying Hamstring Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Supine-Hamstring-Stretch.gif",
+        execution: {
+            steps: [
+                "Sdraiato supino su un tappetino",
+                "Solleva una gamba verso il soffitto",
+                "Afferra la coscia o usa una fascia/asciugamano",
+                "Tira delicatamente la gamba verso di te mantenendola dritta"
+            ],
+            tips: [
+                "L'altra gamba resta distesa a terra",
+                "Non sollevare la testa dal pavimento"
+            ]
+        }
+    },
+    "Seated Glute Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Seated-Glute-Stretch.gif",
+        execution: {
+            steps: [
+                "Seduto su una sedia o a terra",
+                "Appoggia una caviglia sulla coscia opposta (posizione 4)",
+                "Piegati in avanti dal busto",
+                "Senti lo stretch nel gluteo della gamba incrociata"
+            ],
+            tips: [
+                "Mantieni la schiena dritta mentre ti pieghi",
+                "Premi delicatamente il ginocchio verso il basso"
+            ]
+        }
+    },
+    "Lying Side Stretch": {
+        gifUrl: "https://gymvisual.com/img/p/2/7/2/9/7/27297.gif",
+        execution: {
+            steps: [
+                "Sdraiato supino, braccia distese sopra la testa",
+                "Inclina il corpo lateralmente formando una C",
+                "Incrocia la caviglia esterna sopra l'altra",
+                "Senti lo stretch lungo tutto il fianco"
+            ],
+            tips: [
+                "Mantieni le spalle e i fianchi a terra",
+                "30 secondi per lato"
+            ]
+        }
+    },
+    "Figure-4": {
+        gifUrl: "https://gymvisual.com/img/p/9/0/6/3/9063.gif",
+        execution: {
+            steps: [
+                "Sdraiato supino, piedi a terra",
+                "Appoggia una caviglia sulla coscia opposta",
+                "Tira la coscia verso il petto",
+                "Senti lo stretch nel gluteo e nel piriforme"
+            ],
+            tips: [
+                "Mantieni la testa e le spalle a terra",
+                "Ottimo per chi soffre di tensione ai glutei"
+            ]
+        }
+    },
+    "Wrist Flexor Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Wrist-Flexor-Stretch.gif",
+        execution: {
+            steps: [
+                "Distendi un braccio davanti a te, palmo verso l'alto",
+                "Con l'altra mano, tira le dita verso il basso e indietro",
+                "Senti lo stretch nella parte interna dell'avambraccio",
+                "Mantieni 20 secondi per mano"
+            ],
+            tips: [
+                "Non tirare troppo forte",
+                "Braccio completamente disteso"
+            ]
+        }
+    },
+    "Wrist Extensor Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Wrist-Extensor-Stretch.gif",
+        execution: {
+            steps: [
+                "Distendi un braccio davanti a te, palmo verso il basso",
+                "Con l'altra mano, spingi le dita verso il basso",
+                "Senti lo stretch nella parte esterna dell'avambraccio",
+                "Mantieni 20 secondi per mano"
+            ],
+            tips: [
+                "Movimento delicato e controllato",
+                "Utile dopo esercizi di presa"
+            ]
+        }
+    },
+    "Hip Flexor Stretch": {
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
+        execution: {
+            steps: [
+                "Posizionati in affondo, ginocchio posteriore a terra",
+                "Il ginocchio anteriore a 90°, sopra la caviglia",
+                "Spingi il bacino in avanti e in basso",
+                "Senti lo stretch nel flessore dell'anca posteriore"
+            ],
+            tips: [
+                "Contrai il gluteo della gamba posteriore",
+                "Mantieni il busto eretto"
             ]
         }
     }
