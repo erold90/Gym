@@ -4988,8 +4988,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Deep Breathing": {
-        gifUrl: "",  // Nessuna GIF disponibile, usa SVG fallback
-        svgAnimation: "breathing",
+        gifUrl: "https://gymvisual.com/img/p/2/6/2/5/4/26254.gif",
         execution: {
             steps: [
                 "Siediti o sdraiati in posizione comoda",
