@@ -719,38 +719,32 @@ body {
 /* Exercise Type Tabs (Workout/Warmup/Cooldown) */
 .exercise-type-tabs {
     display: flex;
-    gap: 0;
+    gap: 10px;
     margin-bottom: 15px;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    width: fit-content;
 }
 
 .type-tab {
     padding: 10px 24px;
-    background: var(--bg-card);
-    border: none;
-    color: var(--text-secondary);
+    border-radius: 20px;
+    background: var(--bg-card, #1a1a2e);
+    border: 2px solid var(--accent-primary, #4361ee);
+    color: var(--accent-primary, #4361ee);
     cursor: pointer;
-    transition: var(--transition);
-    font-size: 0.9rem;
-    font-weight: 500;
-    border-right: 1px solid var(--border-color);
-}
-
-.type-tab:last-child {
-    border-right: none;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 .type-tab:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+    background: rgba(67, 97, 238, 0.15);
+    color: white;
 }
 
 .type-tab.active {
-    background: var(--accent-primary);
+    background: var(--accent-primary, #4361ee);
     color: white;
+    border-color: var(--accent-primary, #4361ee);
 }
 
 .filter-tabs {
