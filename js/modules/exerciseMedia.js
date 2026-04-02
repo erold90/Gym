@@ -187,7 +187,7 @@ const EXERCISE_GIF_MAP = {
     "cobra-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
     "piriformis-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Piriformis-Stretch.gif",
     "butterfly-stretch": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butterfly-Stretch.gif",
-    "downward-dog": "https://fitnessprogramer.com/wp-content/uploads/2022/05/Balasana-Child-Pose.gif",
+    "downward-dog": "https://static.exercisedb.dev/media/ZgsNQ6d.gif",
     "world-greatest-stretch": "https://static.exercisedb.dev/media/DFGXwZr.gif",
     "foam-roller-back": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Roll-Upper-Back.gif",
     "foam-roller-quads": "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-Quads.gif",
@@ -4988,7 +4988,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Deep Breathing": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/Balasana-Child-Pose.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Fish-Pose-Matsyasana.gif",
         execution: {
             steps: [
                 "Siediti o sdraiati in posizione comoda",
