@@ -271,9 +271,22 @@ const App = {
             this.finishWorkout();
         });
 
+        // Exercise type tabs (Workout/Warmup/Cooldown)
+        document.querySelectorAll('.type-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.switchExerciseType(tab.dataset.type);
+            });
+        });
+
         // Exercise search
         document.getElementById('exercise-search')?.addEventListener('input', (e) => {
-            this.filterExercises(e.target.value);
+            if (this._exerciseTypeTab !== 'workout') {
+                this.renderWarmupCooldownExercises(this._exerciseTypeTab, e.target.value);
+            } else {
+                this.filterExercises(e.target.value);
+            }
         });
 
         // Exercise category filters
@@ -958,6 +971,100 @@ const App = {
         }
         const filtered = getExercisesByPrimaryMuscle(muscle);
         this.renderExercises(filtered);
+    },
+
+    // Current exercise type tab
+    _exerciseTypeTab: 'workout',
+
+    switchExerciseType(type) {
+        this._exerciseTypeTab = type;
+        const workoutFilters = document.getElementById('workout-filters');
+        const muscleFilter = document.querySelector('.muscle-filter');
+        const searchInput = document.getElementById('exercise-search');
+
+        if (type === 'workout') {
+            if (workoutFilters) workoutFilters.style.display = '';
+            if (muscleFilter) muscleFilter.style.display = '';
+            if (searchInput) searchInput.placeholder = 'Cerca esercizio...';
+            this.renderExercises();
+        } else {
+            if (workoutFilters) workoutFilters.style.display = 'none';
+            if (muscleFilter) muscleFilter.style.display = 'none';
+            if (searchInput) searchInput.placeholder = type === 'warmup' ? 'Cerca warmup...' : 'Cerca stretching...';
+            this.renderWarmupCooldownExercises(type);
+        }
+        // Clear search
+        if (searchInput) searchInput.value = '';
+    },
+
+    getUniqueWarmupCooldownExercises(type) {
+        const db = type === 'warmup' ? Warmups.WARMUPS_DB : Warmups.COOLDOWN_DB;
+        const detailsFn = type === 'warmup' ? getWarmupDetails : getCooldownDetails;
+        const seen = new Set();
+        const exercises = [];
+
+        for (const key of Object.keys(db)) {
+            for (const ex of db[key].exercises) {
+                if (!seen.has(ex.name)) {
+                    seen.add(ex.name);
+                    const details = detailsFn(ex.name);
+                    exercises.push({
+                        name: ex.name,
+                        duration: ex.duration,
+                        description: ex.description,
+                        gifUrl: details?.gifUrl || '',
+                        hasDetails: !!details?.execution,
+                        type: type
+                    });
+                }
+            }
+        }
+        return exercises.sort((a, b) => a.name.localeCompare(b.name));
+    },
+
+    renderWarmupCooldownExercises(type, filter = '') {
+        const container = document.getElementById('exercises-grid');
+        let exercises = this.getUniqueWarmupCooldownExercises(type);
+
+        if (filter) {
+            const q = filter.toLowerCase();
+            exercises = exercises.filter(ex =>
+                ex.name.toLowerCase().includes(q) || ex.description.toLowerCase().includes(q)
+            );
+        }
+
+        if (!exercises.length) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:40px">Nessun esercizio trovato</p>';
+            return;
+        }
+
+        container.innerHTML = exercises.map(ex => {
+            const gifHtml = ex.gifUrl
+                ? `<img src="${ex.gifUrl}" alt="${ex.name}" class="exercise-gif" loading="lazy" onerror="this.style.display='none'">`
+                : '';
+            const typeLabel = type === 'warmup' ? 'Riscaldamento' : 'Stretching';
+            return `
+            <div class="exercise-card exercise-grid-card" data-name="${ex.name}" data-type="${type}">
+                <div class="exercise-gif-container">
+                    ${gifHtml}
+                </div>
+                ${ex.hasDetails ? `<button class="exercise-info-btn" data-exercise-name="${ex.name}" data-type="${type}" title="Vedi esecuzione">ℹ️</button>` : ''}
+                <h4>${ex.name}</h4>
+                <div class="muscle-tags">
+                    <span class="muscle-tag ${type}">${typeLabel}</span>
+                    <span class="muscle-tag secondary">${ex.duration}</span>
+                </div>
+                <div class="equipment">${ex.description}</div>
+            </div>
+        `}).join('');
+
+        // Info button handlers
+        container.querySelectorAll('.exercise-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showExerciseInfoModal(null, btn.dataset.exerciseName, btn.dataset.type);
+            });
+        });
     },
 
     /**

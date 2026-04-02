@@ -716,6 +716,43 @@ body {
 }
 
 /* Filter Tabs */
+/* Exercise Type Tabs (Workout/Warmup/Cooldown) */
+.exercise-type-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 15px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    width: fit-content;
+}
+
+.type-tab {
+    padding: 10px 24px;
+    background: var(--bg-card);
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-right: 1px solid var(--border-color);
+}
+
+.type-tab:last-child {
+    border-right: none;
+}
+
+.type-tab:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.type-tab.active {
+    background: var(--accent-primary);
+    color: white;
+}
+
 .filter-tabs {
     display: flex;
     gap: 10px;
@@ -817,6 +854,16 @@ body {
 .muscle-tag.secondary {
     background: var(--bg-hover);
     color: var(--text-secondary);
+}
+
+.muscle-tag.warmup {
+    background: rgba(250, 204, 21, 0.15);
+    color: var(--warning);
+}
+
+.muscle-tag.cooldown {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--success);
 }
 
 .exercise-card .equipment {
