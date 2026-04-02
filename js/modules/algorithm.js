@@ -235,7 +235,7 @@ const TrainingAlgorithm = {
         hypertrophy: { maxPerDay: 4, allowCompound: true,  useGiantSets: false },
         recomp:      { maxPerDay: 5, allowCompound: true,  useGiantSets: false },
         toning:      { maxPerDay: 4, allowCompound: true,  useGiantSets: false },
-        endurance:   { maxPerDay: 4, allowCompound: true,  useGiantSets: true  },
+        endurance:   { maxPerDay: 8, allowCompound: true,  useGiantSets: true  },  // Myers 2023: circuit-like structure superiore per endurance
     },
 
     // Esercizi MAI in superset (compound pesanti, alta richiesta tecnica/sistema nervoso)
@@ -643,7 +643,8 @@ const TrainingAlgorithm = {
 
         // STANDARD (non-toning) splits below
         if (days === 3) {
-            // 3 days: Upper, Lower, Upper (alternate each week) or Upper, Lower, Full Body
+            // 3 days: Upper/Lower/Full Body — ogni muscolo minimo 2x/settimana
+            // Ralston 2023: 2x/settimana superiore a 1x per ipertrofia e forza
             program.days.push({
                 name: 'Giorno 1',
                 type: 'Upper A',
@@ -660,12 +661,22 @@ const TrainingAlgorithm = {
                 exercises: this.buildLowerWorkout(profile, Math.round(setsPerMuscle * 1.3), repRanges, restTimes, 'full', sessionDuration)
             });
 
+            // Giorno 3: Full Body — colma la frequenza: lower body 2x/week + upper compound
+            const fbSets = Math.max(2, Math.round(setsPerMuscle * 0.7));
             program.days.push({
                 name: 'Giorno 3',
-                type: 'Upper B',
-                focus: 'Ipertrofia Upper Body',
-                warmup: 'upper',
-                exercises: this.buildUpperWorkout(profile, setsPerMuscle, repRanges, restTimes, 'hypertrophy', sessionDuration)
+                type: 'Full Body',
+                focus: 'Richiamo Completo',
+                warmup: 'full-body',
+                exercises: [
+                    ...this.selectExercises('quadricipiti', 'compound', 1, fbSets, equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('femorali', 'compound', 1, fbSets, equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('petto', 'compound', 1, fbSets, equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('schiena', 'compound', 1, fbSets, equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('spalle', 'compound', 1, Math.max(2, fbSets - 1), equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('bicipiti', 'isolation', 1, Math.max(2, fbSets - 1), equipment, repRanges, restTimes, co + 1),
+                    ...this.selectExercises('tricipiti', 'isolation', 1, Math.max(2, fbSets - 1), equipment, repRanges, restTimes, co + 1)
+                ]
             });
 
         } else if (days === 4) {

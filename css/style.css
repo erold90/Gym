@@ -5218,6 +5218,12 @@ input[type="number"] {
     letter-spacing: 0.5px;
 }
 
+.wizard-card.wizard-disabled {
+    opacity: 0.35;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
 .wizard-card-small {
     padding: 0.75rem 0.5rem;
 }

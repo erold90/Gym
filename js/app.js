@@ -1402,9 +1402,14 @@ const App = {
             };
         });
 
-        // Split cards (step 3) — auto-advance
+        // Split cards (step 3) — auto-advance, with PPL disabled for 3-4 days
         document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(card => {
             card.onclick = () => {
+                // PPL non disponibile per 3-4 giorni (Ralston 2023: frequenza subottimale)
+                if (card.dataset.value === 'push-pull-legs' && this.wizardState.days <= 4) {
+                    this.showNotification('Push/Pull/Legs richiede almeno 5 giorni per frequenza ottimale (2x/muscolo/settimana)', 'warning');
+                    return;
+                }
                 document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.wizardState.split = card.dataset.value;
@@ -1478,6 +1483,14 @@ const App = {
         } else if (s.step === 3) {
             this._renderSplitSuggestion(recs, s.days);
             document.getElementById('wizard-step-3').classList.remove('hidden');
+            // Disable PPL for 3-4 days (frequency too low)
+            document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
+                if (c.dataset.value === 'push-pull-legs') {
+                    c.classList.toggle('wizard-disabled', s.days <= 4);
+                } else {
+                    c.classList.remove('wizard-disabled');
+                }
+            });
             if (s.split) {
                 document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
                     c.classList.toggle('selected', c.dataset.value === s.split);
