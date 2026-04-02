@@ -5095,7 +5095,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Upper Back Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/GSDioYu.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Upper-Back-Stretch.gif",
         execution: {
             steps: [
                 "In piedi o seduto, intreccia le mani davanti a te",
@@ -5128,7 +5128,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Chest Opener": {
-        gifUrl: "https://static.exercisedb.dev/media/3uj0Ozg.gif",
+        gifUrl: "https://static.exercisedb.dev/media/QoHIhPl.gif",
         execution: {
             steps: [
                 "In piedi, intreccia le mani dietro la schiena",
@@ -5143,7 +5143,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Floor Chest Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/3uj0Ozg.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Back-Pec-Stretch.gif",
         execution: {
             steps: [
                 "Sdraiati a pancia in giù",
@@ -5158,7 +5158,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Corner Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/3uj0Ozg.gif",
+        gifUrl: "https://static.exercisedb.dev/media/Uto7l43.gif",
         execution: {
             steps: [
                 "Posizionati di fronte a un angolo della stanza",
@@ -5218,7 +5218,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Shoulder Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/QoHIhPl.gif",
+        gifUrl: "https://static.exercisedb.dev/media/Uto7l43.gif",
         execution: {
             steps: [
                 "Porta un braccio attraverso il petto",
@@ -5248,7 +5248,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Eagle Arms": {
-        gifUrl: "https://static.exercisedb.dev/media/QoHIhPl.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/The-Eagle-Yoga-Pose.gif",
         execution: {
             steps: [
                 "In piedi o seduto, braccia davanti a te",
@@ -5263,7 +5263,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Thread the Needle": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/12/Supine-Spinal-Twist.gif",
+        gifUrl: "https://static.exercisedb.dev/media/c3Pfhti.gif",
         execution: {
             steps: [
                 "A quattro zampe, posizione del tavolo",
@@ -5308,7 +5308,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Seated Spinal Twist": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/12/Supine-Spinal-Twist.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Seated-Oblique-Twist.gif",
         execution: {
             steps: [
                 "Seduto con le gambe distese",
@@ -5323,7 +5323,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Knee-to-Chest Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/QFmz6ch.gif",
+        gifUrl: "https://static.exercisedb.dev/media/znP9SIh.gif",
         execution: {
             steps: [
                 "Sdraiato supino su un tappetino",
@@ -5338,7 +5338,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Knee-to-Chest": {
-        gifUrl: "https://static.exercisedb.dev/media/QFmz6ch.gif",
+        gifUrl: "https://static.exercisedb.dev/media/znP9SIh.gif",
         execution: {
             steps: [
                 "Sdraiato supino su un tappetino",
@@ -5428,7 +5428,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Standing Toe Touch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Toe-Touch.gif",
         execution: {
             steps: [
                 "In piedi con i piedi uniti o alla larghezza delle spalle",
@@ -5488,7 +5488,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Lying Side Stretch": {
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/12/Supine-Spinal-Twist.gif",
+        gifUrl: "https://static.exercisedb.dev/media/rTbyBYV.gif",
         execution: {
             steps: [
                 "Sdraiato supino, braccia distese sopra la testa",
@@ -5533,7 +5533,7 @@ const COOLDOWN_DETAILS = {
         }
     },
     "Wrist Extensor Stretch": {
-        gifUrl: "https://static.exercisedb.dev/media/2zNKRUB.gif",
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/03/reverse-Wrist-Stretch.gif",
         execution: {
             steps: [
                 "Distendi un braccio davanti a te, palmo verso il basso",
