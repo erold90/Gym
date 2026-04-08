@@ -193,6 +193,13 @@ const App = {
             this.builderSearchExercises(e.target.value);
         });
 
+        // Day picker modal - close on background click
+        document.getElementById('day-picker-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'day-picker-modal') {
+                this.closeDayPicker();
+            }
+        });
+
         // Start workout buttons
         document.getElementById('start-scheduled-workout')?.addEventListener('click', () => {
             this.startScheduledWorkout();
@@ -567,7 +574,8 @@ const App = {
             return;
         }
 
-        const nextWorkout = TrainingAlgorithm.getTodaysWorkout(program);
+        const suggestedIndex = this.getSuggestedDayIndex(program);
+        const nextWorkout = program.days[suggestedIndex];
         if (!nextWorkout) {
             titleEl.textContent = 'Giorno di riposo 😴';
             subtitleEl.textContent = 'Recupera per il prossimo allenamento';
@@ -577,12 +585,12 @@ const App = {
         }
 
         const duration = TrainingAlgorithm.estimateWorkoutDuration(nextWorkout);
-        titleEl.textContent = nextWorkout.type;
+        titleEl.textContent = nextWorkout.type || nextWorkout.name;
         subtitleEl.textContent = `${nextWorkout.exercises.length} esercizi • ~${duration} min`;
         btnEl.textContent = '▶️ Inizia';
         btnEl.onclick = () => {
             this.navigateTo('workout');
-            setTimeout(() => this.startWorkout(nextWorkout), 100);
+            setTimeout(() => this.openDayPicker(program), 100);
         };
     },
 
@@ -2212,13 +2220,68 @@ const App = {
             return;
         }
 
-        const workout = TrainingAlgorithm.getTodaysWorkout(program);
-        if (!workout) {
-            this.showNotification('Nessun allenamento programmato per oggi', 'info');
+        if (!program.days || program.days.length === 0) {
+            this.showNotification('La scheda non ha giorni configurati', 'warning');
             return;
         }
 
-        this.startWorkout(workout);
+        this.openDayPicker(program);
+    },
+
+    openDayPicker(program) {
+        const suggestedIndex = this.getSuggestedDayIndex(program);
+        const container = document.getElementById('day-picker-list');
+        const cycleInfo = Storage.getCycleInfo();
+        const isDeload = Storage.isDeloadActive();
+
+        container.innerHTML = program.days.map((day, i) => {
+            const isSuggested = i === suggestedIndex;
+            const exerciseCount = day.exercises ? day.exercises.length : 0;
+            const duration = TrainingAlgorithm.estimateWorkoutDuration(day);
+
+            // Collect main muscle groups
+            const muscles = new Set();
+            (day.exercises || []).forEach(ex => {
+                const dbEx = typeof EXERCISES_DB !== 'undefined' ? EXERCISES_DB[ex.exerciseId] : null;
+                if (dbEx && dbEx.primaryMuscles) {
+                    dbEx.primaryMuscles.forEach(m => muscles.add(m));
+                }
+            });
+            const muscleList = [...muscles].slice(0, 4).join(', ');
+
+            return `
+                <div class="day-picker-item ${isSuggested ? 'day-picker-suggested' : ''}" onclick="App.selectWorkoutDay(${i})">
+                    <div class="day-picker-item-header">
+                        <span class="day-picker-day-name">${day.type || day.name || 'Giorno ' + (i + 1)}</span>
+                        ${isSuggested ? '<span class="day-picker-badge">Consigliato</span>' : ''}
+                    </div>
+                    <div class="day-picker-item-details">
+                        <span>${exerciseCount} esercizi</span>
+                        <span>~${duration} min</span>
+                    </div>
+                    ${muscleList ? `<div class="day-picker-muscles">${muscleList}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('day-picker-modal').classList.add('active');
+    },
+
+    getSuggestedDayIndex(program) {
+        const workoutsThisWeek = Storage.getWorkoutsThisWeek();
+        return workoutsThisWeek.length % program.days.length;
+    },
+
+    selectWorkoutDay(dayIndex) {
+        const program = Storage.getActiveProgram();
+        if (!program || !program.days[dayIndex]) return;
+
+        this.closeDayPicker();
+        this.startWorkout(program.days[dayIndex]);
+    },
+
+    closeDayPicker() {
+        document.getElementById('day-picker-modal').classList.remove('active');
     },
 
     startFreeWorkout() {

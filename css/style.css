@@ -1430,6 +1430,70 @@ body {
     margin-top: 20px;
 }
 
+/* Day Picker Modal */
+.day-picker-item {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.day-picker-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.day-picker-item:active {
+    transform: scale(0.98);
+}
+
+.day-picker-suggested {
+    border-color: var(--accent);
+    background: rgba(67, 97, 238, 0.08);
+}
+
+.day-picker-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.day-picker-day-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.day-picker-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.day-picker-item-details {
+    display: flex;
+    gap: 16px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.day-picker-muscles {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--text-muted, var(--text-secondary));
+    opacity: 0.8;
+    text-transform: capitalize;
+}
+
 .workout-header-bar {
     display: flex;
     justify-content: space-between;
