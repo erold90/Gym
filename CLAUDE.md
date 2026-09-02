@@ -5,20 +5,20 @@
 - **Repo**: github.com/erold90/Gym
 - **Deploy**: erold90.github.io/Gym (GitHub Pages, auto-merge)
 - **Branch**: `claude/main-IDVRj` (HEAD, deploy diretto — no main branch)
-- **Versione**: v1.18.0 (2026-03-27)
+- **Versione**: v1.22.0 (2026-04-03)
 - **Utenti**: Daniele + moglie (obiettivo Tonificazione)
 
 ## Struttura File
 
 ```
-index.html (1212 righe) — SPA singola pagina, 7 sezioni + 7 modals
-sw.js (132 righe) — Service Worker, CACHE_VERSION = 'v1.18.0'
-css/style.css (~5525 righe) — Design system dark + responsive
-js/app.js (5215 righe) — Logica principale, 40+ funzioni
-js/modules/algorithm.js (1711 righe) — Generazione schede + periodizzazione + superset
+index.html (1227 righe) — SPA singola pagina, 7 sezioni + 7 modals + type tabs
+sw.js (132 righe) — Service Worker, CACHE_VERSION = 'v1.22.0'
+css/style.css (~5674 righe) — Design system dark + responsive
+js/app.js (5542 righe) — Logica principale, 40+ funzioni + exercise type tabs
+js/modules/algorithm.js (1729 righe) — Generazione schede + periodizzazione + superset
 js/modules/storage.js (1191 righe) — Persistenza localStorage (10 chiavi)
 js/modules/timer.js (211 righe) — Rest timer + workout timer + Web Audio
-js/modules/exerciseMedia.js (2233 righe) — GIF e dettagli ~180 esercizi (funzioni GLOBALI)
+js/modules/exerciseMedia.js (5742 righe) — GIF e dettagli ~291 esercizi (funzioni GLOBALI)
 js/modules/conditioningExercises.js (567 righe) — Protocolli HIIT/LISS
 js/data/exercises.js (1871 righe) — Database esercizi
 js/data/warmups.js (1625 righe) — Riscaldamento e stretching
@@ -160,8 +160,8 @@ Bottone in Impostazioni > Debug & Test. Flag `_isSimulation` previene salvataggi
 
 ## Split Consigliati
 
-- 3 giorni → Full Body
-- 4 giorni → Upper/Lower
+- 3 giorni → Full Body (consigliato) o Upper/Lower (con FB al giorno 3)
+- 4 giorni → Upper/Lower (PPL disabilitato nel wizard — frequenza insufficiente)
 - 5 giorni → PPL o Upper/Lower
 - 6 giorni → PPL
 
@@ -180,7 +180,7 @@ Bottone in Impostazioni > Debug & Test. Flag `_isSimulation` previene salvataggi
 | hypertrophy | 4 | Sì | No |
 | recomp | 5 | Sì | No |
 | toning | 4 | Sì | No |
-| endurance | 4 | Sì | Sì |
+| endurance | 8 | Sì | Sì |
 
 ### Esclusi (mai in superset)
 squat, front-squat, deadlift, romanian-deadlift, stiff-leg-deadlift, hip-thrust, sumo-deadlift, overhead-press, push-press, good-morning, hack-squat, leg-press, smith-squat
@@ -244,6 +244,30 @@ Su mobile tutto deve stare nello schermo. Usare `overflow: hidden` su `.card` e 
 ## Export/Import
 
 JSON con version, exportDate, tutti i dati. `clearProgressData()` cancella solo workouts/PRs/streak/cycle_history (mantiene profilo/settings/programmi).
+
+## Pagina Esercizi — Tab Workout/Warmup/Cooldown (v1.20.0)
+
+- 3 type tabs (pill buttons) sopra filtri categoria/muscolo
+- Filtri visibili solo per tab Workout
+- Warmup/Cooldown: lista deduplicata da WARMUPS_DB/COOLDOWN_DB
+- Tag colorati: warmup (giallo `.muscle-tag.warmup`), cooldown (verde `.muscle-tag.cooldown`)
+- Ricerca funziona su tutti i tab
+- `switchExerciseType(type)`, `renderWarmupCooldownExercises(type, filter)`
+
+## GIF — Fonti e regole
+
+- **Fonti**: fitnessprogramer.com (primaria), static.exercisedb.dev (ExerciseDB CDN)
+- **gymvisual.com**: BLOCCATO, non usare (hotlink blocked, mostra ?)
+- **Coverage**: 139 workout + 93 warmup + 59 cooldown = ~291 GIF uniche
+- **Regola**: ogni esercizio DEVE avere GIF unica (no duplicati, verificare con script)
+- **Strutture dati**: EXERCISE_GIF_MAP (workout), WARMUP_DETAILS (warmup), COOLDOWN_DETAILS (cooldown)
+
+## Audit Scientifico (v1.22.0, 2026-04-03)
+
+Tutti i parametri dell'algoritmo validati contro meta-analisi 2023-2026:
+- Reps, rest, RIR, volume, tempo, periodizzazione, E1RM, superset, double progression: TUTTI VALIDATI
+- 3 fix implementati: U/L 3gg→FB giorno 3, PPL bloccato ≤4gg, endurance maxSS→8
+- Fonti: Schoenfeld 2024, Singer 2024, Robinson 2024, Pelland 2024, Zhang 2025, Contreras/Plotkin 2023
 
 ## Limitazioni Note
 
