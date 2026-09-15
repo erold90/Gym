@@ -1,6 +1,6 @@
 // GymTracker Pro - Service Worker
 // Cambia questa versione ad ogni deploy per forzare l'aggiornamento
-const CACHE_VERSION = 'v1.24.0';
+const CACHE_VERSION = 'v1.24.1';
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 
 // File da cachare. Percorsi RELATIVI: il SW è registrato nella cartella dell'app
@@ -105,23 +105,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Per file dell'app: Network First (sempre aggiornato)
+    // Per file dell'app: Stale-While-Revalidate — la cache risponde SUBITO (LCP veloce),
+    // la rete aggiorna la cache in background. Le nuove versioni arrivano col bump di
+    // CACHE_VERSION (install ricacha tutto) e col banner "nuova versione disponibile".
     event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // Aggiorna la cache con la nuova versione
-                if (response.ok) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            })
-            .catch(() => {
-                // Se offline, usa la cache
-                return caches.match(event.request);
-            })
+        caches.match(event.request).then((cached) => {
+            const fromNetwork = fetch(event.request)
+                .then((response) => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => cached);
+            return cached || fromNetwork;
+        })
     );
 });
 
