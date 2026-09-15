@@ -395,14 +395,15 @@ const TrainingAlgorithm = {
             day.exercises = day.exercises.concat(this.buildCoreBlock(i, profile.equipment || []));
         });
 
-        // Trim per rientrare nella durata: rimuove SOLO accessori non-core (gli addominali
-        // non si tagliano mai via), partendo dall'ultimo.
+        // Trim per rientrare nella durata: rimuove SOLO accessori NON protetti (addominali e
+        // polpacci non si tagliano mai via), partendo dall'ultimo — così cade un isolamento
+        // ridondante, non i muscoli piccoli difficili da recuperare altrove.
         program.days.forEach(day => {
             let estimated = this.estimateWorkoutDuration({ exercises: day.exercises });
-            while (estimated > sessionDuration && day.exercises.filter(e => !e.isCore).length > 4) {
+            while (estimated > sessionDuration && day.exercises.filter(e => !e.isProtected).length > 4) {
                 let idx = -1;
                 for (let k = day.exercises.length - 1; k >= 0; k--) {
-                    if (!day.exercises[k].isCore) { idx = k; break; }
+                    if (!day.exercises[k].isProtected) { idx = k; break; }
                 }
                 if (idx === -1) break;
                 day.exercises.splice(idx, 1);
@@ -893,8 +894,9 @@ const TrainingAlgorithm = {
             exercises.push(...this.selectExercisesUnique('femorali', 'isolation', 1, Math.ceil(baseSets / 2), equipment, repRanges, restTimes, usedExercises, co));
         }
 
-        // Calves — 4 serie/sessione (~8/sett con 2 lower day): rispondono alla frequenza
-        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 6, equipment, repRanges, restTimes, usedExercises, co));
+        // Calves — 4 serie/sessione (~8/sett), protetti dal taglio-per-durata come il core
+        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 6, equipment, repRanges, restTimes, usedExercises, co)
+            .map(e => ({ ...e, isProtected: true })));
 
         // NB: il core NON si aggiunge qui — lo aggiunge buildCoreBlock() a OGNI giorno,
         // con la regione che ruota nella settimana (retto basso/obliqui/retto alto/anti-estensione).
@@ -917,7 +919,7 @@ const TrainingAlgorithm = {
         const pick = (ids) => ids.find(has) || ids[ids.length - 1];
         const mk = (id, sets, reps, rest, note) => {
             const ex = (typeof EXERCISES_DB !== 'undefined' && EXERCISES_DB[id]) ? EXERCISES_DB[id] : { name: id };
-            return { exerciseId: id, name: ex.name, sets, reps: String(reps), rest, notes: note, isCore: true };
+            return { exerciseId: id, name: ex.name, sets, reps: String(reps), rest, notes: note, isCore: true, isProtected: true };
         };
         const slot = ((dayIndex % 4) + 4) % 4;
         if (slot === 0) {
@@ -1012,8 +1014,9 @@ const TrainingAlgorithm = {
 
         // Core: lo aggiunge buildCoreBlock() a ogni giorno con la regione che ruota, non qui
 
-        // Calves (lighter focus for toning)
-        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
+        // Calves (lighter focus for toning) — protetti dal taglio
+        exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co)
+            .map(e => ({ ...e, isProtected: true })));
 
         return exercises;
     },
