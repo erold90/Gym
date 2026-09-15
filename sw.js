@@ -1,22 +1,24 @@
 // GymTracker Pro - Service Worker
 // Cambia questa versione ad ogni deploy per forzare l'aggiornamento
-const CACHE_VERSION = 'v1.23.0';
+const CACHE_VERSION = 'v1.24.0';
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 
-// File da cachare
+// File da cachare. Percorsi RELATIVI: il SW è registrato nella cartella dell'app
+// (es. /Gym/sw.js), quindi questi risolvono a /Gym/... e l'app resta portabile —
+// chi la forka la serve dal suo GitHub Pages senza toccare nulla.
 const ASSETS_TO_CACHE = [
-    '/',
-    '/index.html',
-    '/css/style.css',
-    '/js/app.js',
-    '/js/modules/storage.js',
-    '/js/modules/timer.js',
-    '/js/modules/algorithm.js',
-    '/js/modules/exerciseMedia.js',
-    '/js/modules/conditioningExercises.js',
-    '/js/data/exercises.js',
-    '/js/data/warmups.js',
-    '/manifest.json'
+    './',
+    './index.html',
+    './css/style.css',
+    './js/app.js',
+    './js/modules/storage.js',
+    './js/modules/timer.js',
+    './js/modules/algorithm.js',
+    './js/modules/exerciseMedia.js',
+    './js/modules/conditioningExercises.js',
+    './js/data/exercises.js',
+    './js/data/warmups.js',
+    './manifest.json'
 ];
 
 // Installazione: cacha i file essenziali

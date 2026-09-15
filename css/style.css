@@ -13,6 +13,7 @@
     --text-secondary: #a0a0b0;
     --text-muted: #6c6c7c;
     --accent-primary: #4361ee;
+    --accent-text: #a8b5ff; /* accent leggibile come TESTO su fondo scuro (contrasto AA) */
     --accent-secondary: #7209b7;
     --accent-gradient: linear-gradient(135deg, #4361ee, #7209b7);
     --success: #06d6a0;
@@ -36,6 +37,7 @@
     --text-muted: #8a8a9a;
     --border-color: #e0e0e5;
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --accent-text: #3a4bc0; /* accent più scuro come TESTO su fondo chiaro */
 }
 
 /* Reset & Base */
@@ -646,7 +648,7 @@ body {
 
 .form-section h3 {
     margin-bottom: 20px;
-    color: var(--accent-primary);
+    color: var(--accent-text);
 }
 
 .form-row {

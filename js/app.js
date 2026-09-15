@@ -53,7 +53,7 @@ const App = {
         const profile = Storage.getProfile();
         if (!profile.name) {
             this.showPage('profile');
-            this.showNotification('Benvenuto! Configura il tuo profilo per iniziare.', 'info');
+            this.showNotification('Benvenuto! Basta il nome per iniziare — il resto è già pre-impostato e lo cambi quando vuoi.', 'info');
         }
 
         console.log('GymTracker Pro initialized!');
@@ -4971,16 +4971,25 @@ const App = {
         // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <span>${message}</span>
-            <button onclick="this.parentElement.remove()">×</button>
-        `;
+        // Accessibilità: annuncia il messaggio agli screen reader (fix "region")
+        notification.setAttribute('role', 'status');
+        notification.setAttribute('aria-live', 'polite');
+        // Sicurezza: il messaggio come TESTO, mai come HTML (niente injection)
+        const msgSpan = document.createElement('span');
+        msgSpan.textContent = message;
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.setAttribute('aria-label', 'Chiudi');
+        closeBtn.onclick = function () { this.parentElement.remove(); };
+        notification.appendChild(msgSpan);
+        notification.appendChild(closeBtn);
 
-        // Style
+        // Style — toast compatto in alto a destra, non copre il titolo su mobile
         notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
+            max-width: min(360px, calc(100vw - 40px));
             padding: 15px 20px;
             border-radius: 8px;
             background: ${type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : type === 'error' ? 'var(--danger)' : 'var(--accent-primary)'};
