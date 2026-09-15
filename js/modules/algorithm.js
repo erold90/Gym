@@ -389,12 +389,23 @@ const TrainingAlgorithm = {
                 program = this.generateUpperLower(profile, volumeConfig, repRanges, restTimes, daysPerWeek, sessionDuration, durationFactor);
         }
 
-        // Trim exercises if estimated duration exceeds sessionDuration
+        // Addominali a fine sessione, con regione che RUOTA per giorno (retto basso / obliqui /
+        // retto alto caricato / core profondo). Aggiunto a OGNI giorno di OGNI split.
+        program.days.forEach((day, i) => {
+            day.exercises = day.exercises.concat(this.buildCoreBlock(i, profile.equipment || []));
+        });
+
+        // Trim per rientrare nella durata: rimuove SOLO accessori non-core (gli addominali
+        // non si tagliano mai via), partendo dall'ultimo.
         program.days.forEach(day => {
             let estimated = this.estimateWorkoutDuration({ exercises: day.exercises });
-            while (estimated > sessionDuration && day.exercises.length > 4) {
-                // Remove last exercise (least important, usually accessory)
-                day.exercises.pop();
+            while (estimated > sessionDuration && day.exercises.filter(e => !e.isCore).length > 4) {
+                let idx = -1;
+                for (let k = day.exercises.length - 1; k >= 0; k--) {
+                    if (!day.exercises[k].isCore) { idx = k; break; }
+                }
+                if (idx === -1) break;
+                day.exercises.splice(idx, 1);
                 estimated = this.estimateWorkoutDuration({ exercises: day.exercises });
             }
         });
@@ -885,10 +896,52 @@ const TrainingAlgorithm = {
         // Calves — 4 serie/sessione (~8/sett con 2 lower day): rispondono alla frequenza
         exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 6, equipment, repRanges, restTimes, usedExercises, co));
 
-        // Core
-        exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
-
+        // NB: il core NON si aggiunge qui — lo aggiunge buildCoreBlock() a OGNI giorno,
+        // con la regione che ruota nella settimana (retto basso/obliqui/retto alto/anti-estensione).
         return exercises;
+    },
+
+    // Blocco addominali a fine sessione, con REGIONE che ruota per giorno.
+    // Scienza: il retto ha reclutamento regionale (crunch=alto, leg raise=basso, ultrasuoni
+    // PMC10824285), gli obliqui e il core profondo vanno allenati a parte, e l'addome risponde
+    // al SOVRACCARICO progressivo (fibre simili ai quadricipiti) — non alle mille rep a corpo libero.
+    // Su cavi assenti si ripiega su varianti a corpo libero.
+    buildCoreBlock(dayIndex, equipment) {
+        const eq = equipment || [];
+        const has = (id) => {
+            const ex = (typeof EXERCISES_DB !== 'undefined') ? EXERCISES_DB[id] : null;
+            if (!ex) return false;
+            return !ex.equipment || ex.equipment.length === 0 ||
+                ex.equipment.some(e => eq.includes(e) || e === 'corpo-libero');
+        };
+        const pick = (ids) => ids.find(has) || ids[ids.length - 1];
+        const mk = (id, sets, reps, rest, note) => {
+            const ex = (typeof EXERCISES_DB !== 'undefined' && EXERCISES_DB[id]) ? EXERCISES_DB[id] : { name: id };
+            return { exerciseId: id, name: ex.name, sets, reps: String(reps), rest, notes: note, isCore: true };
+        };
+        const slot = ((dayIndex % 4) + 4) % 4;
+        if (slot === 0) {
+            // Retto basso
+            return [ mk(pick(['hanging-leg-raise', 'leg-raise', 'reverse-crunch']), 3, '10-15', 75,
+                'Addome basso: controlla la discesa, non usare slancio') ];
+        }
+        if (slot === 1) {
+            // Obliqui (rotazione + anti-flessione laterale)
+            return [
+                mk(pick(['cable-woodchop', 'russian-twist']), 3, '12-15', 60, 'Obliqui: rotazione controllata, per lato'),
+                mk('side-plank', 3, '30-45', 45, 'Obliqui: anti-flessione laterale — secondi per lato')
+            ];
+        }
+        if (slot === 2) {
+            // Retto alto, CARICATO (sovraccarico progressivo)
+            return [ mk(pick(['cable-crunch', 'ab-crunch-machine', 'crunch']), 4, '10-15', 75,
+                'Addome alto: usa un carico e aumentalo nel tempo (sovraccarico progressivo)') ];
+        }
+        // slot 3: core profondo (anti-estensione) + rotazione
+        return [
+            mk(pick(['ab-wheel-rollout', 'plank']), 3, '8-12', 60, 'Core profondo: anti-estensione, addome contratto'),
+            mk('russian-twist', 3, '15-20', 45, 'Rotazione: obliqui')
+        ];
     },
 
     buildArmsWorkout(profile, baseSets, repRanges, restTimes, sessionDuration) {
@@ -957,8 +1010,7 @@ const TrainingAlgorithm = {
             exercises.push(...this.selectExercisesUnique('femorali', 'compound', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
         }
 
-        // Core on every lower day (4-8 sets/week, Barbalho 2019)
-        exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
+        // Core: lo aggiunge buildCoreBlock() a ogni giorno con la regione che ruota, non qui
 
         // Calves (lighter focus for toning)
         exercises.push(...this.selectExercisesUnique('polpacci', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
@@ -978,7 +1030,6 @@ const TrainingAlgorithm = {
             exercises.push(...this.selectExercisesUnique('bicipiti', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('tricipiti', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
             exercises.push(...this.selectExercisesUnique('spalle', 'isolation', 1, 3, equipment, repRanges, restTimes, usedExercises, co));
-            exercises.push(...this.selectExercisesUnique('addome', 'isolation', 2, 3, equipment, repRanges, restTimes, usedExercises, co));
         } else if (variant === 'full') {
             // Balanced upper
             exercises.push(...this.selectExercisesUnique('schiena', 'compound', 1, Math.max(3, baseSets), equipment, repRanges, restTimes, usedExercises, co));
