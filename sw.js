@@ -1,6 +1,6 @@
 // GymTracker Pro - Service Worker
 // Cambia questa versione ad ogni deploy per forzare l'aggiornamento
-const CACHE_VERSION = 'v1.24.5';
+const CACHE_VERSION = 'v1.24.6';
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 
 // File da cachare. Percorsi RELATIVI: il SW è registrato nella cartella dell'app
@@ -71,7 +71,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch: Network First per HTML/JS/CSS, Cache First per immagini/GIF
+// Fetch: Stale-While-Revalidate per HTML/JS/CSS, Cache First per immagini/GIF
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 

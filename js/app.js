@@ -2852,21 +2852,28 @@ const App = {
                         <div class="set-row-top">
                             <div class="set-number-mobile">${idx + 1}</div>
                             <div class="set-inputs-mobile">
-                                <div class="input-group">
-                                    <input type="number" inputmode="decimal" step="0.5"
-                                        value="${set.weight || (isBodyweight ? effectiveWeight : '')}"
-                                        placeholder="${isBodyweight ? effectiveWeight : 'kg'}"
-                                        onchange="App.updateSet(${idx}, 'weight', this.value)"
-                                        onfocus="this.select()">
-                                    <span class="input-suffix">kg</span>
+                                <div class="input-stepper">
+                                    <button class="step-btn" type="button" tabindex="-1" aria-label="Diminuisci peso" onclick="App.adjustSet(${idx}, 'weight', -2.5)">−</button>
+                                    <div class="input-group">
+                                        <input type="number" inputmode="decimal" step="0.5"
+                                            value="${set.weight || (isBodyweight ? effectiveWeight : '')}"
+                                            placeholder="${isBodyweight ? effectiveWeight : 'kg'}"
+                                            oninput="App.updateSet(${idx}, 'weight', this.value)"
+                                            onfocus="this.select()">
+                                        <span class="input-suffix">kg</span>
+                                    </div>
+                                    <button class="step-btn" type="button" tabindex="-1" aria-label="Aumenta peso" onclick="App.adjustSet(${idx}, 'weight', 2.5)">+</button>
                                 </div>
-                                <span class="set-x">×</span>
-                                <div class="input-group">
-                                    <input type="number" inputmode="numeric"
-                                        value="${set.reps}" placeholder="reps"
-                                        onchange="App.updateSet(${idx}, 'reps', this.value)"
-                                        onfocus="this.select()">
-                                    <span class="input-suffix">reps</span>
+                                <div class="input-stepper">
+                                    <button class="step-btn" type="button" tabindex="-1" aria-label="Diminuisci ripetizioni" onclick="App.adjustSet(${idx}, 'reps', -1)">−</button>
+                                    <div class="input-group">
+                                        <input type="number" inputmode="numeric"
+                                            value="${set.reps}" placeholder="reps"
+                                            oninput="App.updateSet(${idx}, 'reps', this.value)"
+                                            onfocus="this.select()">
+                                        <span class="input-suffix">reps</span>
+                                    </div>
+                                    <button class="step-btn" type="button" tabindex="-1" aria-label="Aumenta ripetizioni" onclick="App.adjustSet(${idx}, 'reps', 1)">+</button>
                                 </div>
                             </div>
                             <button class="set-done-btn ${set.completed ? 'done' : ''}"
@@ -3005,6 +3012,21 @@ const App = {
         if (!this.activeWorkout) return;
         const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
         exercise.setsData[setIndex][field] = value;
+    },
+
+    // Stepper − / + su peso e ripetizioni: aggiusta con un tap (comodo con i guanti/mani sudate)
+    adjustSet(setIndex, field, delta) {
+        if (!this.activeWorkout) return;
+        const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
+        const set = exercise.setsData[setIndex];
+        let cur = parseFloat(set[field]);
+        if (isNaN(cur)) cur = 0;
+        let val = cur + delta;
+        if (val < 0) val = 0;
+        val = (field === 'weight') ? Math.round(val * 4) / 4 : Math.round(val); // peso a 0.25kg, reps interi
+        set[field] = val;
+        set.autoFilled = true;
+        this.displayCurrentExercise();
     },
 
     setRir(setIndex, rir) {
