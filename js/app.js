@@ -2884,12 +2884,13 @@ const App = {
                         ${set.completed ? `
                         <div class="set-row-bottom">
                             <div class="inline-rest-timer" id="inline-rest-timer-${idx}" style="display: none;">
-                                <span class="inline-rest-icon">⏱</span>
+                                <button class="inline-rest-adjust" type="button" onclick="App.adjustInlineRest(-15)" aria-label="Meno 15 secondi">−15</button>
                                 <span class="inline-rest-display" id="inline-rest-display-${idx}">0:00</span>
                                 <div class="inline-rest-bar-wrap">
                                     <div class="inline-rest-bar-fill" id="inline-rest-bar-${idx}"></div>
                                 </div>
-                                <button class="inline-rest-skip" onclick="App.skipInlineRest()">Salta</button>
+                                <button class="inline-rest-adjust" type="button" onclick="App.adjustInlineRest(15)" aria-label="Più 15 secondi">+15</button>
+                                <button class="inline-rest-skip" type="button" onclick="App.skipInlineRest()">Salta</button>
                             </div>
                             <div class="rir-selector" title="Quante rep potevi ancora fare?">
                                 <span class="rir-label">RIR:</span>
@@ -2917,37 +2918,14 @@ const App = {
             </div>
         `;
 
-        // Re-attach inline rest timer if still running after re-render
+        // Re-attach inline rest timer if still running after re-render.
+        // Le callback cercano gli elementi per id a ogni tick, quindi sopravvivono
+        // al re-render: qui basta ri-mostrare la riga e ridisegnare lo stato attuale.
         if (this._activeRestTimerSetIdx != null && Timer.restTimer) {
             const inlineTimer = document.getElementById(`inline-rest-timer-${this._activeRestTimerSetIdx}`);
-            const inlineDisplay = document.getElementById(`inline-rest-display-${this._activeRestTimerSetIdx}`);
-            const inlineBar = document.getElementById(`inline-rest-bar-${this._activeRestTimerSetIdx}`);
-
             if (inlineTimer) {
                 inlineTimer.style.display = 'flex';
-                // Update display with current remaining time
-                const remaining = Timer.restTimeRemaining;
-                const total = Timer.restTimeTotal;
-                if (inlineDisplay) {
-                    const mins = Math.floor(remaining / 60);
-                    const secs = remaining % 60;
-                    inlineDisplay.textContent = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : remaining;
-                }
-                if (inlineBar) {
-                    inlineBar.style.width = `${(remaining / total) * 100}%`;
-                }
-
-                // Re-bind callbacks to new DOM elements
-                Timer.callbacks.onRestTick = (rem, tot) => {
-                    const m = Math.floor(rem / 60);
-                    const s = rem % 60;
-                    inlineDisplay.textContent = m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : rem;
-                    inlineBar.style.width = `${(rem / tot) * 100}%`;
-                };
-                Timer.callbacks.onRestComplete = () => {
-                    inlineTimer.style.display = 'none';
-                    this._activeRestTimerSetIdx = null;
-                };
+                this._renderInlineRest(this._activeRestTimerSetIdx, Timer.restTimeRemaining, Timer.restTimeTotal);
             }
         }
 
@@ -3142,38 +3120,60 @@ const App = {
         const exercise = this.activeWorkout.exercises[this.currentExerciseIndex];
         const lastCompletedIdx = exercise.setsData.reduce((last, s, i) => s.completed ? i : last, -1);
 
-        const inlineTimer = document.getElementById(`inline-rest-timer-${lastCompletedIdx}`);
-        const inlineDisplay = document.getElementById(`inline-rest-display-${lastCompletedIdx}`);
-        const inlineBar = document.getElementById(`inline-rest-bar-${lastCompletedIdx}`);
+        // Nasconde un eventuale riposo precedente (anche in stato "Pronto"/overtime)
+        this._hideActiveRest();
 
+        const inlineTimer = document.getElementById(`inline-rest-timer-${lastCompletedIdx}`);
         if (inlineTimer) {
             this._activeRestTimerSetIdx = lastCompletedIdx;
             inlineTimer.style.display = 'flex';
+            inlineTimer.classList.remove('is-warning', 'is-done');
 
             Timer.startRestTimer(
                 seconds,
-                (remaining, total) => {
-                    const mins = Math.floor(remaining / 60);
-                    const secs = remaining % 60;
-                    inlineDisplay.textContent = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : remaining;
-                    const percent = (remaining / total) * 100;
-                    inlineBar.style.width = `${percent}%`;
-                },
-                () => {
-                    inlineTimer.style.display = 'none';
-                    this._activeRestTimerSetIdx = null;
-                }
+                (remaining, total) => this._renderInlineRest(this._activeRestTimerSetIdx, remaining, total),
+                () => { /* onRestZero: il render mostra già "Pronto!" in overtime */ }
             );
         }
     },
 
-    skipInlineRest() {
-        Timer.skipRest();
+    // Disegna la riga del rest timer per il set idx. remaining può essere negativo
+    // (overtime): allora mostra "+M:SS" in verde. Sotto i 10s vira ambra/rosso.
+    _renderInlineRest(idx, remaining, total) {
+        if (idx == null) return;
+        const timerEl = document.getElementById(`inline-rest-timer-${idx}`);
+        const disp = document.getElementById(`inline-rest-display-${idx}`);
+        const bar = document.getElementById(`inline-rest-bar-${idx}`);
+        if (!timerEl || !disp || !bar) return;
+        const fmt = (s) => { const m = Math.floor(s / 60), x = s % 60; return m > 0 ? `${m}:${String(x).padStart(2, '0')}` : String(x); };
+        if (remaining > 0) {
+            disp.textContent = fmt(remaining);
+            bar.style.width = `${Math.max(0, Math.min(100, (remaining / (total || 1)) * 100))}%`;
+            timerEl.classList.toggle('is-warning', remaining <= 10);
+            timerEl.classList.remove('is-done');
+        } else {
+            disp.textContent = `+${fmt(-remaining)}`;
+            bar.style.width = '100%';
+            timerEl.classList.remove('is-warning');
+            timerEl.classList.add('is-done');
+        }
+    },
+
+    _hideActiveRest() {
         if (this._activeRestTimerSetIdx != null) {
             const el = document.getElementById(`inline-rest-timer-${this._activeRestTimerSetIdx}`);
-            if (el) el.style.display = 'none';
-            this._activeRestTimerSetIdx = null;
+            if (el) { el.style.display = 'none'; el.classList.remove('is-warning', 'is-done'); }
         }
+    },
+
+    adjustInlineRest(delta) {
+        Timer.adjustRestTime(delta);
+    },
+
+    skipInlineRest() {
+        Timer.stopRestTimer();   // niente onRestZero sullo skip: nessun avviso
+        this._hideActiveRest();
+        this._activeRestTimerSetIdx = null;
     },
 
     showSupersetTransition(targetExerciseIndex, seconds, nextExName, isNewRound) {
@@ -3274,6 +3274,9 @@ const App = {
     previousExercise() {
         if (this._supersetTransitionActive) return;
         if (this.currentExerciseIndex > 0) {
+            Timer.stopRestTimer();
+            this._hideActiveRest();
+            this._activeRestTimerSetIdx = null;
             this.currentExerciseIndex--;
             this.displayCurrentExercise();
         }
@@ -3282,6 +3285,9 @@ const App = {
     nextExercise() {
         if (this._supersetTransitionActive) return;
         if (this.currentExerciseIndex < this.activeWorkout.exercises.length - 1) {
+            Timer.stopRestTimer();
+            this._hideActiveRest();
+            this._activeRestTimerSetIdx = null;
             this.currentExerciseIndex++;
             this.displayCurrentExercise();
         }
