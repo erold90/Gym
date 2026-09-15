@@ -389,6 +389,26 @@ const Storage = {
         return null;
     },
 
+    // Ultime N sessioni con questo esercizio (dalla più recente) — per rilevare stalli ricorrenti
+    getRecentPerformances(exerciseId, limit = 3) {
+        const workouts = this.getWorkouts();
+        const out = [];
+        for (const workout of workouts) {
+            if (out.length >= limit) break;
+            if (!workout.exercises) continue;
+            const exercise = workout.exercises.find(ex => ex.exerciseId === exerciseId);
+            if (!exercise || !exercise.sets) continue;
+            const done = exercise.sets.filter(s => s.completed && s.weight && s.reps);
+            if (done.length === 0) continue;
+            out.push({
+                weight: Math.max(...done.map(s => parseFloat(s.weight))),
+                minReps: Math.min(...done.map(s => parseInt(s.reps))),
+                date: workout.date
+            });
+        }
+        return out;
+    },
+
     // Get PR for an exercise
     getExercisePR(exerciseId) {
         const prs = this.getPersonalRecords();
@@ -507,9 +527,22 @@ const Storage = {
             };
         }
 
-        // CASE 3: Some sets below range → MAINTAIN or check for issues
+        // CASE 3: Sotto il range → back-off se lo stallo è ricorrente, altrimenti mantieni
         if (minRepsAchieved < range.min) {
-            // Check if this is a recurring problem (would need history check)
+            const recent = this.getRecentPerformances(exerciseId, 3);
+            const stalled = recent.filter(s => s.weight === lastWeight && s.minReps < range.min).length;
+            if (stalled >= 2) {
+                // Stallo su 2+ sessioni allo stesso peso → scarica ~10% (arrotondato a 1.25kg) e ricostruisci
+                const backoff = Math.max(1.25, Math.round((lastWeight * 0.9) / 1.25) * 1.25);
+                return {
+                    suggestedWeight: backoff,
+                    suggestedReps: range.min,
+                    message: `🔻 Stallo su ${lastWeight}kg da ${stalled} sessioni: scarica a ${backoff}kg e ricostruisci verso ${range.max} rep`,
+                    status: 'backoff',
+                    action: 'deload_exercise',
+                    lastPerformance: { weight: lastWeight, reps: lastReps }
+                };
+            }
             return {
                 suggestedWeight: lastWeight,
                 suggestedReps: range.min,
