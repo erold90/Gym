@@ -494,6 +494,7 @@ const App = {
     // ========================================
 
     loadDashboard() {
+        this.checkReturnFromLayoff();
         this.syncCycleWeekWithCalendar();
         this.updateGreeting();
         this.updateStats();
@@ -706,6 +707,36 @@ const App = {
             this.showNotification('✅ Deload terminato! Volume normale', 'success');
         }
         this.updateCycleCard();
+    },
+
+    // Rientro dopo pausa lunga: invece di lasciare il ciclo spinto a deload dal
+    // calendario, riparte da Settimana 1 (Accumulo). Si abbina alla riduzione
+    // pesi per esercizio: carichi leggeri + fase di accumulo + RIR alto = rientro
+    // da manuale. Idempotente: se il ciclo è già fresco non fa nulla (niente spam).
+    checkReturnFromLayoff() {
+        const program = Storage.getActiveProgram();
+        if (!program?.metadata?.cycle) return;
+
+        const workouts = Storage.getWorkouts();
+        if (!workouts || !workouts.length) return;
+
+        const lastMs = workouts.reduce((mx, w) => {
+            const d = w.date ? new Date(w.date).getTime() : 0;
+            return d > mx ? d : mx;
+        }, 0);
+        if (!lastMs) return;
+
+        const daysAgo = Math.floor((Date.now() - lastMs) / 86400000);
+        if (daysAgo < 21) return; // pausa nella norma: nessun reset
+
+        const cycle = program.metadata.cycle;
+        const startMs = cycle.startDate ? new Date(cycle.startDate).getTime() : 0;
+        const alreadyFresh = cycle.currentWeek === 1 && startMs && (Date.now() - startMs) < 21 * 86400000;
+        if (alreadyFresh) return; // già ripartito da capo: non rifare, non ri-notificare
+
+        Storage.resetCycle();
+        const weeks = Math.round(daysAgo / 7);
+        this.showNotification(`👋 Bentornato dopo ${weeks} settimane! Ciclo ripartito da Settimana 1 (Accumulo) e pesi alleggeriti per il rientro.`, 'info');
     },
 
     syncCycleWeekWithCalendar() {
