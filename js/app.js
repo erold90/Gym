@@ -2639,6 +2639,9 @@ const App = {
                 if (isBodyweight) {
                     set.weight = effectiveWeight || '';
                     set.isBodyweight = true;
+                } else if (progressionSuggestion && progressionSuggestion.status === 'detraining') {
+                    // Rientro dopo pausa lunga: precompila il peso ridotto, non quello vecchio
+                    set.weight = progressionSuggestion.suggestedWeight;
                 } else if (lastPerformance) {
                     set.weight = lastPerformance.weight;
                 }
@@ -2680,7 +2683,8 @@ const App = {
         // Build progression suggestion HTML
         let progressionHTML = '';
         if (progressionSuggestion && progressionSuggestion.status !== 'new') {
-            const statusClass = progressionSuggestion.action === 'weight_up' ? 'suggestion-up' :
+            const statusClass = progressionSuggestion.status === 'detraining' ? 'suggestion-detraining' :
+                               progressionSuggestion.action === 'weight_up' ? 'suggestion-up' :
                                progressionSuggestion.action === 'reps_up' ? 'suggestion-reps' :
                                'suggestion-maintain';
             progressionHTML = `

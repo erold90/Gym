@@ -501,6 +501,29 @@ const Storage = {
         const isLowerBody = lowerBodyExercises.some(ex => exerciseId.includes(ex));
         const actualIncrement = isLowerBody ? 5 : weightIncrement;
 
+        // CASE 0: pausa lunga (detraining). Se l'ultima volta è troppo lontana nel
+        // tempo, "aumenta il peso" sarebbe sbagliato: la memoria muscolare fa
+        // recuperare in fretta, ma tendini e tecnica no. Si riparte più leggeri,
+        // con RIR alto, e si risale. Questo caso ha la precedenza su tutti gli altri.
+        const daysAgo = lastPerf.date ? Math.floor((Date.now() - new Date(lastPerf.date).getTime()) / 86400000) : 0;
+        const detr = this.getDetrainingAdjustment(daysAgo);
+        if (detr) {
+            let reduced = Math.round((lastWeight * detr.factor) / actualIncrement) * actualIncrement;
+            if (reduced >= lastWeight) reduced = lastWeight - actualIncrement; // garantisci una riduzione
+            if (reduced < actualIncrement) reduced = actualIncrement;
+            const realPct = Math.round((1 - reduced / lastWeight) * 100);
+            return {
+                suggestedWeight: reduced,
+                suggestedReps: range.min,
+                message: `🔄 Rientro dopo ${detr.weeksOff} settimane di stop: riparti a ${reduced}kg (−${realPct}% dai ${lastWeight}kg), RIR 3-4. Risali gradualmente, torni ai vecchi carichi in poche sedute.`,
+                status: 'detraining',
+                action: 'return_deload',
+                weeksOff: detr.weeksOff,
+                reductionPct: realPct,
+                lastPerformance: { weight: lastWeight, reps: lastReps }
+            };
+        }
+
         // CASE 1: All sets at or above top of range → INCREASE WEIGHT
         if (allSetsAtTop) {
             const newWeight = lastWeight + actualIncrement;
@@ -562,6 +585,23 @@ const Storage = {
             action: 'maintain',
             lastPerformance: { weight: lastWeight, reps: lastReps }
         };
+    },
+
+    /**
+     * Rilevazione pausa lunga (detraining) e fattore di riduzione del peso.
+     * Modello coach evidence-based: nessun taglio fino a ~3 settimane; oltre, il
+     * carico cala di ~2,5% a settimana (memoria muscolare: forza ritenuta bene,
+     * ma tendini/tecnica si riadattano più lenti → si riparte submassimali).
+     * Pavimento al 60% per pause molto lunghe. Ritorna null se la pausa è normale.
+     * Riferimenti: detraining ~ -5/15% forza in 8-12 sett; regain rapido (mionuclei).
+     * @param {number} daysAgo - giorni dall'ultima sessione con quell'esercizio
+     * @returns {{weeksOff:number, factor:number}|null}
+     */
+    getDetrainingAdjustment(daysAgo) {
+        const weeksOff = daysAgo / 7;
+        if (weeksOff < 3) return null; // pausa nella norma: progressione standard
+        const factor = Math.max(0.60, 1 - 0.025 * (weeksOff - 2));
+        return { weeksOff: Math.round(weeksOff), factor };
     },
 
     /**

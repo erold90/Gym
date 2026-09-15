@@ -2520,6 +2520,12 @@ body {
     background: rgba(255, 193, 7, 0.1);
 }
 
+/* Rientro dopo pausa lunga: si distingue dagli altri suggerimenti */
+.progression-suggestion.suggestion-detraining {
+    border-left-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+}
+
 .progression-message {
     font-size: 0.9rem;
     font-weight: 500;
