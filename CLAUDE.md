@@ -1,277 +1,175 @@
 # GymTracker Pro - Note per Claude Code
 
+> ⚠️ Questo repo è **pubblico** e GitHub Pages serve anche questo file
+> (`erold90.github.io/Gym/CLAUDE.md`): niente dati personali qui dentro.
+
+## Prima di toccare qualunque cosa
+
+1. **`git fetch` e `git status -sb`.** Il repo si modifica anche da sessioni web di Claude
+   (claude.ai/code) che pushano direttamente: il 15/10/2026 la copia del Mac era ferma alla
+   v1.22.0 mentre online girava la v1.25.0 (12 commit avanti). Si lavora solo su una copia allineata.
+2. **Bug noti**: c'è un catalogo completo con ID e righe (analisi del 15/10/2026, v1.25.0) nella
+   memoria di Claude sul Mac, `reference_gymtracker_analisi_2026_10.md`. Banco di prova (matrice
+   delle schede in Node + Playwright) in `.analisi-2026-10/` (solo locale, escluso da git).
+
 ## Progetto
 - **PWA**: Vanilla JS + CSS + HTML (no framework, no build tools)
-- **Repo**: github.com/erold90/Gym
-- **Deploy**: erold90.github.io/Gym (GitHub Pages, auto-merge)
-- **Branch**: `claude/main-IDVRj` (HEAD, deploy diretto — no main branch)
-- **Versione**: v1.22.0 (2026-04-03)
-- **Utenti**: Daniele + moglie (obiettivo Tonificazione)
+- **Repo**: github.com/erold90/Gym (pubblico)
+- **Deploy**: GitHub Pages "legacy" dal ramo `claude/main-IDVRj`, cartella radice, a ogni push.
+  Non esiste `main`. Il workflow `auto-merge-claude.yml` unisce i rami `claude/main-*` in quello,
+  ma con push diretti è inerte (tutte le run *skipped*).
+- **Versione**: v1.25.0 (15/09/2026)
+- **Utenti**: 2 persone, una con obiettivo Tonificazione
 
-## Struttura File
+## Struttura File (v1.25.0)
 
 ```
-index.html (1227 righe) — SPA singola pagina, 7 sezioni + 7 modals + type tabs
-sw.js (132 righe) — Service Worker, CACHE_VERSION = 'v1.22.0'
-css/style.css (~5674 righe) — Design system dark + responsive
-js/app.js (5542 righe) — Logica principale, 40+ funzioni + exercise type tabs
-js/modules/algorithm.js (1729 righe) — Generazione schede + periodizzazione + superset
-js/modules/storage.js (1191 righe) — Persistenza localStorage (10 chiavi)
-js/modules/timer.js (211 righe) — Rest timer + workout timer + Web Audio
-js/modules/exerciseMedia.js (5742 righe) — GIF e dettagli ~291 esercizi (funzioni GLOBALI)
-js/modules/conditioningExercises.js (567 righe) — Protocolli HIIT/LISS
-js/data/exercises.js (1871 righe) — Database esercizi
-js/data/warmups.js (1625 righe) — Riscaldamento e stretching
+index.html (1246) — SPA, 7 pagine + modali (anche day-picker e free-workout) + CSP in <meta>
+sw.js (132) — Service Worker, CACHE_VERSION = 'v1.25.0', percorsi RELATIVI
+css/style.css (5837) — dark + tema chiaro parziale, breakpoint solo max-width
+js/app.js (5677) — oggetto App: tutta l'interfaccia (+ un <style> iniettato in fondo)
+js/modules/algorithm.js (1783) — TrainingAlgorithm: schede, periodizzazione, superset, core block
+js/modules/storage.js (1285) — Storage: localStorage, PR, streak, cicli, progressione, detraining
+js/modules/timer.js (375) — Timer: riposo a timestamp, beep sul clock audio, keep-alive, notifiche
+js/modules/exerciseMedia.js (5742) — GIF e dettagli (funzioni GLOBALI)
+js/modules/conditioningExercises.js (567) — HIIT/LISS
+js/data/exercises.js (1871) — EXERCISES_DB: 139 esercizi
+js/data/warmups.js (1641) — IIFE `Warmups` (WARMUPS_DB/COOLDOWN_DB NON sono globali)
 ```
+
+Ordine degli script (sincroni, fine body): Chart.js da jsdelivr **senza versione** → exercises →
+warmups → storage → algorithm → timer → exerciseMedia → conditioningExercises → app → registrazione SW.
 
 ## Regole CRITICHE
 
-### Service Worker — SEMPRE bumpare CACHE_VERSION
-Ogni modifica a file JS/CSS/HTML richiede bump di `CACHE_VERSION` in `sw.js`. Senza bump, l'utente vede la versione vecchia dalla cache. Formato: `vX.Y.Z`.
+### Service Worker
+- Ogni modifica a JS/CSS/HTML → bump di `CACHE_VERSION` in `sw.js` (`vX.Y.Z`).
+- Percorsi SEMPRE relativi (`register('sw.js')`, `'./index.html'`): l'app sta sotto `/Gym/`.
+  Con `/sw.js` il SW dà 404 e non si registra — è successo dal 12/2025 al 9/2026 senza che nessuno
+  se ne accorgesse, perché `cache.addAll` ha un `.catch` che ingoia l'errore.
+- App: stale-while-revalidate. GIF esterne: cache-first, ma le risposte `<img>` sono opache
+  (`ok=false`) e quindi **non finiscono mai in cache**. Chart.js non è in cache.
 
-### CSS — Due sistemi di visibilità separati
-- `.page` / `.page.active` — navigazione pagine principali (display none/block)
-- `.hidden { display: none !important }` — sotto-elementi, wizard steps
-- **NON mescolare** i due sistemi
+### Visibilità: due sistemi da NON mescolare
+- `.page` / `.page.active` per le pagine; `.hidden { display:none !important }` per i sotto-elementi.
+- `startWorkout` usa `style.display` su `#workout-active`/`#workout-not-started`: chi ci aggiunge
+  `.hidden` (ramo "0 serie" di `finishWorkout`) rompe la pagina finché non si ricarica.
 
-### ExerciseMedia — Funzioni GLOBALI, non oggetto
-Le funzioni media sono globali: `getExerciseGif(id)`, `getExerciseMediaInfo(id, name, type)`, `getExerciseDetails(id)`.
-**NON usare** `ExerciseMedia.getGifUrl()` o simili — NON ESISTE come oggetto.
-Check: `typeof getExerciseGif === 'function' ? getExerciseGif(id) : null`
+### ExerciseMedia — funzioni GLOBALI
+`getExerciseGif(id)`, `getExerciseDetails(id)`, `getWarmupDetails(name)`, `getCooldownDetails(name)`,
+`getExerciseMediaInfo(id, name, type)`. Non esiste un oggetto `ExerciseMedia`.
+Warmup e cooldown si cercano per **nome visualizzato**, il workout per **id**.
 
-### Riferimenti HTML/JS — Pulire SEMPRE
-Se si rimuove un elemento HTML (id), cercare TUTTI i riferimenti nel JS (con e senza `?.`). Le righe senza optional chaining crashano silenziosamente.
-Comando: `grep -n 'removed-id' js/app.js`
+### Riferimenti HTML/JS
+Rimuovendo un id dall'HTML, cercare tutti i riferimenti nel JS (con e senza `?.`).
+Prima di usare una classe o una variabile CSS, verificare che sia definita: `--primary`, `--accent`,
+`--radius-md`, `--radius-lg`, `--border`, `--bg-tertiary` NON esistono (le vere sono
+`--accent-primary`, `--radius`, `--radius-sm`…).
 
-### Storage — Dati indipendenti dalla scheda
-Workouts, PRs, Streak, Cycle History sono **completamente indipendenti** dal programma attivo. Eliminare/sostituire la scheda NON cancella storico, PR, streak.
+### Mobile
+`min-width:0` sui flex item ha tolto lo scroll orizzontale ma ha schiacciato lo stepper ± della riga
+serie a 390 px (valore invisibile). Ogni modifica alla riga serie va misurata a 360 e 390 px.
 
-Chiavi localStorage:
-- `gymtracker_profile` — profilo utente (nome, sesso, livello, goal, equipment...)
-- `gymtracker_settings` — rest times, suono, vibrazione, tema, unità
-- `gymtracker_workouts` — array allenamenti (unshift, con timestamp/ID)
-- `gymtracker_programs` — programmi salvati
-- `gymtracker_active_program` — programma attivo (uno solo)
-- `gymtracker_measurements` — peso corporeo (solo peso, no % grasso)
-- `gymtracker_prs` — personal records per exerciseId (3 tipi: max weight, max reps, E1RM)
-- `gymtracker_streak` — { current, best, lastWorkoutDate }
-- `gymtracker_cycle_history` — ultimi 20 cicli completati
-- `gymtracker_conditioning` — sessioni HIIT/LISS
+## Storage (localStorage, nessuna migrazione, nessun try/catch su JSON.parse)
 
-## Navigazione e Pagine
+- `gymtracker_profile` — default tarati su un uomo 90 kg advanced (vedi bug noti)
+- `gymtracker_settings` — restSound, vibration, theme; restTime* e weightUnit salvati ma MAI usati
+- `gymtracker_workouts` — array, il più recente in testa; set = `{weight, reps (stringhe), completed, rir?, isNewPR?}`
+- `gymtracker_programs` — vecchio, mai scritto
+- `gymtracker_active_program` — `{name, days[{name,type,focus,warmup,exercises[]}], metadata{goal, split, daysPerWeek, sessionDuration, level, cycle{duration,currentWeek,startDate,isDeloadActive,phases[]}}}`
+- `gymtracker_measurements` — `[{id,date,weight}]`, aggiorna anche `profile.weight`
+- `gymtracker_prs` — per exerciseId: maxWeight, maxReps, estimated1RM, history (max 50)
+- `gymtracker_streak` — `{current,best,lastWorkoutDate}` (giorni CONSECUTIVI)
+- `gymtracker_cycle_history` — ultimi 20 cicli
+- `gymtracker_conditioning` — salvato con type **minuscolo** `'hiit'/'liss'`, duration in MINUTI
 
-`showPage(pageName)` in app.js gestisce la navigazione.
-Refresh dati su navigazione:
-- `progress` → chiama `loadProgress()` + `initCharts()`
+Lo storico (workouts, PR, streak, cicli) è indipendente dalla scheda attiva.
+L'export NON include `cycle_history` né `conditioning`. `clearProgressData` cancella anche il conditioning.
+La sessione in corso (`App.activeWorkout`) vive solo in memoria.
 
-### 7 Pagine
-1. **Dashboard** (`#page-dashboard`) — greeting, stats, weekly overview, body stats, cycle card, recent activity
-2. **Workout** (`#page-workout`) — not-started/preview/active mode, warmup, exercise flow, rest timer, cooldown
-3. **Exercises** (`#page-exercises`) — database ~180 esercizi, search, filter categoria/muscolo
-4. **Programs** (`#page-programs`) — active program card, AI Generator wizard 4 step, Manual Builder
-5. **Progress** (`#page-progress`) — charts (volume, frequenza, RIR, strength, peso), PRs, cycle history
-6. **Profile** (`#page-profile`) — dati personali, esperienza, goals, availability, equipment
-7. **Settings** (`#page-settings`) — workout prefs, appearance, data, debug, danger zone
+## Generazione schede (algorithm.js)
 
-### 7 Modals
-1. **AI Generator** (`#ai-generator-modal`) — wizard: goal → giorni → split → durata → summary
-2. **Manual Builder** (`#manual-builder-modal`) — definisci giorni → aggiungi esercizi
-3. **Exercise Detail** (`#exercise-modal`) — info semplice
-4. **Exercise Info** (`#exercise-info-modal`) — completa con GIF, execution, tips, mistakes, breathing
-5. **Conditioning** (`#conditioning-modal`) — tipo → protocollo → sessione → riepilogo
-6. **Rest Timer** (`#rest-timer-modal`) — countdown + ±15s/skip
-7. **Cooldown** (`#cooldown-modal`) — stretching con GIF
+- Input reali: `level`, `equipment`, goal/giorni/split/durata dal wizard. **`gender` non è mai letto.**
+- Goal: `strength`, `hypertrophy`, `recomp`, `endurance`, `toning` (il select del profilo ha valori
+  diversi: recomp/bulk/cut/strength/maintenance).
 
-## Obiettivi (Goal)
+| Goal | Compound | Isolation | Rest C/I | Tempo |
+|------|----------|-----------|----------|-------|
+| strength | 1-5 | 6-8 | 240/150 s | 2-0-X-0 |
+| hypertrophy | 8-12 | 10-15 | 150/90 s | 3-1-1-0 |
+| recomp | 8-12 | 10-15 | 120/90 s | 2-1-2-0 |
+| endurance | 15-20 | 15-25 | 60/45 s | 2-0-1-0 |
+| toning | 8-12 | 12-15 (glute 12-20) | 90/45 s | 3-1-1-0 |
 
-5 goal: `strength`, `hypertrophy`, `recomp`, `endurance`, `toning`
+Polpacci/addome/avambracci hanno range propri per ogni goal.
 
-### Parametri per goal
+- Volume ottimale/settimana: beginner 10, intermediate 14, advanced 16, expert 18 (min-max 8-12 … 14-22).
+- `durationFactor = clamp(durata/60, 0.7, 1.3)`; frequenza ×1.2/1/0.85 **solo in Upper/Lower**.
+- Esercizi da `EXERCISE_PRIORITY` (lista per muscolo, ruotata di `cycleOffset`); attrezzatura
+  controllata con `some()`; serie 60%/40% per il 1°/successivi, min 2 max 4.
+- Split: U/L (3gg = Upper, Lower, Full Body — **il ramo 3gg non-toning va in ReferenceError**),
+  PPL (5gg = gambe 1×/sett), Full Body 6 schemi A-F. Toning: varianti lower glute-quad/glute-ham/
+  glute-focus, upper default/arms/full.
+- `face-pull` aggiunto fisso a ogni Upper/Pull, `wrist-curl` al giorno Braccia.
+- **v1.24.4**: `buildCoreBlock` aggiunge a OGNI giorno 1-2 esercizi di addome (regione a rotazione
+  dayIndex % 4) marcati `isProtected`; anche i polpacci U/L sono `isProtected`.
+- Taglio per durata: toglie l'ultimo esercizio NON protetto finché la stima supera la durata e
+  restano >4 non protetti. Avviene PRIMA dei superset.
+- Stima durata: `8' + Σ(serie×45 s + (serie−1)×rest)`, superset a parte. Nessun cooldown.
+- Superset (`applySupersets`): 25 coppie + 7 giant set definiti (se ne formano davvero 9 e 1);
+  max/giorno strength 2, hyp 4, recomp 5, toning 4, endurance 8; rest = 80% del maggiore; le serie
+  del gruppo vengono pareggiate al massimo. 13 esercizi esclusi (squat, deadlift, hip-thrust, OHP…).
+- Mesociclo: durata strength 4/6/8/8, hyp e recomp 4/5/6/6, endurance 3/4/5/5, toning 4/5/5/6
+  (beg/int/adv/exp). Fasi `round(d×0.5)` accumulo (RIR 2-4) + `round(d×0.35)` intensificazione
+  (RIR 0-2, volume 0.9 — non applicato) + resto deload (RIR 4-5, volume 0.5). Con d=3 o 5 le fasi
+  sono d+1 e il deload non arriva.
+- `rotateProgram` (fine ciclo) chiama i generatori senza goal/durata: non va usata così com'è.
 
-| Goal | Compound Reps | Isolation Reps | Rest C/I | Tempo |
-|------|--------------|----------------|----------|-------|
-| strength | 1-5 | 6-8 | 240s/150s | 2-0-X-0 |
-| hypertrophy | 8-12 | 10-15 | 150s/90s | 3-1-1-0 |
-| recomp | 8-12 | 10-15 | 120s/90s | 2-1-2-0 |
-| endurance | 15-20 | 15-25 | 60s/45s | 2-0-1-0 |
-| toning | 8-12 | 12-15 | 90s/45s | 3-1-1-0 |
+## Progressione (storage.getProgressionSuggestion)
 
-### Toning (femminile, aggiunto 2026-03-25)
-- Volume: 62% lower / 38% upper (Frontiers 2025)
-- Glutei priorità: hip thrust + squat + RDL 2-4x/settimana
-- Hip thrust: 86.8% attivazione glutei vs squat 45.4% (Contreras 2015)
-- Rest ridotti (Harty 2018: femmine recovery veloce 25-50%)
-- Glute accessory range: 12-20 reps
-- Lower variants: glute-quad, glute-ham, glute-focus
-- Upper variants: default (V-taper), arms, full
+0. **Detraining** (v1.25): se quell'esercizio manca da ≥3 settimane, peso × max(0.6, 1−0.025×(sett−2)),
+   arrotondato all'incremento, RIR 3-4, peso ridotto precompilato.
+1. Tutte le serie al massimo del range → +peso (+5 kg "gambe" riconosciute per sottostringa,
+   +2.5 compound, +1.25 isolation, tipo da `Storage.getExerciseType`, NON dal DB).
+2. Tutte nel range → +1 rep.
+3. Sotto il range → mantieni; se stallo allo stesso peso in ≥2 delle ultime 3 sessioni → back-off −10%.
 
-## Volume e Periodizzazione
+`checkReturnFromLayoff` (dashboard): nessun allenamento da ≥21 giorni → `resetCycle()` (settimana 1,
+startDate oggi, deload spento), senza rotazione né storico.
 
-### Volume (serie/muscolo/settimana)
-- beginner: 8-12, intermediate: 10-16, advanced: 12-20, expert: 14-22
-- Moltiplicatore frequenza: 3gg ×1.2, 4gg ×1.0, 5+gg ×0.85
+PR: E1RM Brzycki ≤10 rep, Epley 11-20, tetto a 20 rep.
 
-### Mesociclo (durata settimane per goal/level)
-- strength: 4/6/8/8, hypertrophy: 4/5/6/6, recomp: 4/5/6/6, endurance: 3/4/5/5, toning: 4/5/5/6
+## Sessione di allenamento
 
-### Fasi
-- **Accumulation** 50%: RIR 2-4, Volume 100%
-- **Intensification** 35%: RIR 0-2, Volume 90%
-- **Deload** 15%: RIR 4-5, Volume 50%
+- Avvio: "Inizia" (dashboard) o "Inizia allenamento" → **day picker** (v1.23) con giorno
+  "Consigliato" = allenamenti della settimana % giorni. `startWorkout` non controlla sessioni in corso.
+- Riga serie: `.set-row-top` (stepper ± peso 2.5 / reps 1, `oninput`) e `.set-row-bottom` (RIR + timer).
+- Timer di riposo **inline** (mai modale; `#rest-timer-modal` è codice morto): fonte di verità
+  `Timer.restEndTime`, tick 250 ms, ricalcolo su `visibilitychange`, beep a −10 s e 0 programmati
+  sull'AudioContext, `<audio>` muto in loop come keep-alive, notifiche di sistema, overtime fino a
+  −120 s, ±15 s, Salta. Avanti/Indietro fermano il riposo. I superset usano ancora un setInterval proprio.
+- Simulazione: Impostazioni > Debug, flag `_isSimulation` (non salva).
 
-### Ciclo Flow
-1. Genera programma → ciclo auto-creato
-2. Dashboard card: "Settimana X/Y - Fase Z"
-3. Pulsanti: "Attiva Deload", "Avanza Settimana"
-4. Completa ultimo week → `completeCycle()` → rotazione esercizi → nuovo ciclo week 1
+## Date
+Il lunedì della settimana è calcolato con `getDate()-getDay()+1`: **di domenica dà il lunedì dopo**.
+Va corretto in un punto solo (oggi è copiato in 5 posti).
 
-## Workout Session
+## Pagina Esercizi, GIF, riscaldamento
+- Tab Workout (139) / Warmup (64) / Cooldown (52); filtri solo su Workout.
+- GIF: 196 URL unici, fitnessprogramer.com (160) + static.exercisedb.dev (36). gymvisual.com vietato.
+  **Una GIF unica non è una GIF giusta**: circa 31 mostrano un esercizio diverso. Prima di assegnare
+  una GIF, verificare cosa mostra (nome del file / API ExerciseDB / guardarla).
+- Riscaldamento da `day.warmup` (`Warmups.getWarmupByMuscle`), defaticamento da `day.type`
+  (`Warmups.getCooldownForWorkout`, mappa senza Push B/Pull B/Legs B/Glute Burn).
 
-### Layout Set Row
-- `.set-row-top` — input: peso, reps
-- `.set-row-bottom` — RIR + timer inline
-- Rest timer **inline** nella riga completata (NON modale fullscreen)
-- `_activeRestTimerSetIdx` traccia quale set ha il timer attivo
-- Dopo re-render (`displayCurrentExercise`), il timer si ri-aggancia al DOM
-
-### Flusso Completo
-1. Warmup (collapsible, riscaldamento dinamico specifico per giorno)
-2. Per ogni esercizio: form input + progression suggestion + PR check
-3. `completeSet()` → salva set → rest timer inline
-4. Ultimo esercizio → cooldown (stretching statico)
-5. `finishWorkout()` → salva workout + aggiorna streak/PRs/cicli
-
-### Simulazione
-Bottone in Impostazioni > Debug & Test. Flag `_isSimulation` previene salvataggio in `finishWorkout()`.
-
-## Double Progression
-
-1. Tutte serie al top range → **aumenta peso** (+5kg legs, +2.5kg upper compound, +1.25kg isolation)
-2. Nel range ma non top → **aumenta reps**
-3. Sotto range → **mantieni peso**
-
-## Personal Records — E1RM
-
-- **Brzycki** (<=10 reps): `weight × 36 / (37 - reps)`
-- **Epley** (>10 reps): `weight × (1 + reps/30)`
-- **Capped** (>=20 reps): Epley con max 20 reps
-- 3 tipi: max weight, max reps, estimated 1RM
-- History: ultimi 50 per esercizio
-
-## Split Consigliati
-
-- 3 giorni → Full Body (consigliato) o Upper/Lower (con FB al giorno 3)
-- 4 giorni → Upper/Lower (PPL disabilitato nel wizard — frequenza insufficiente)
-- 5 giorni → PPL o Upper/Lower
-- 6 giorni → PPL
-
-## Superset & Giant Set (v1.18.0)
-
-### Struttura
-- 25 coppie superset predefinite (stessa attrezzatura/metro quadro)
-- 7 giant set (3 esercizi, solo endurance)
-- `applySupersets()` post-processing in `generateProgram()`
-- Stazioni: bench-barbell, ez-bar-bench, bench-dumbbells, dumbbells, cable, floor
-
-### Regole per goal
-| Goal | Max/giorno | Compound in SS | Giant Set |
-|------|-----------|---------------|-----------|
-| strength | 2 | No | No |
-| hypertrophy | 4 | Sì | No |
-| recomp | 5 | Sì | No |
-| toning | 4 | Sì | No |
-| endurance | 8 | Sì | Sì |
-
-### Esclusi (mai in superset)
-squat, front-squat, deadlift, romanian-deadlift, stiff-leg-deadlift, hip-thrust, sumo-deadlift, overhead-press, push-press, good-morning, hack-squat, leg-press, smith-squat
-
-### Workout Flow
-1. Prep card: mostra esercizi del gruppo + peso suggerito da ultima sessione
-2. Transition countdown (5-15s) tra esercizi nello stesso round
-3. Riposo completo (supersetRest = 80% del rest più alto) solo tra round
-4. Round indicator con pallini completato/attivo/da fare
-5. Badge colorati A/B/C/D per gruppo
-
-### Campi esercizio (aggiunti da applySupersets)
-`supersetGroup` (A/B/C...), `supersetOrder` (1/2/3), `supersetRest`, `transitionTime`, `isGiantSet`
-
-## Stima Durata Workout
-
-`8min warmup + 5min cooldown + (sets × 45s) + (exercises × 30s transition)`
-Se stimata > sessione, rimuove accessori in coda.
-
-## Conditioning (HIIT/LISS)
-
-- HIIT: Tabata, EMOM, 30/30
-- LISS: Tapis roulant, Cyclette, Camminata, Nuoto
-- Tracking: tipo, durata, calorie stimate + manuali (Apple Watch), note
+## Conditioning
+HIIT (protocollo fisso `circuit30`, 22 GIF su 27 rotte) e LISS (7 attività). Calorie = MET × 3.5 ×
+kg / 200 × minuti. `CONDITIONING_BY_GOAL` non ha `toning`. Il grafico filtra 'HIIT' maiuscolo: è vuoto.
 
 ## Grafici (Chart.js)
+Volume e frequenza 4 settimane con label relative, RIR medio ultimi 10, forza per esercizio,
+peso ultimi 10, conditioning. Ogni grafico fa `destroy()` prima di ricrearsi.
 
-- Volume settimanale — label relative ("3 sett fa", "Scorsa", "Questa")
-- Frequenza allenamenti
-- RIR trend — visibile con 1+ allenamento (soglia minima 1, non 2)
-- Strength per esercizio (dropdown)
-- Peso corporeo
-
-## Peso Corporeo
-
-- Form semplificato: solo peso (no % grasso)
-- Data salvata automaticamente
-- Formato data italiano (25 mar 2026)
-
-## Streak
-
-- Workout oggi → niente cambio
-- Workout ieri → continua streak (+1)
-- Altrimenti → reset a 1
-- Best aggiornato se current > best
-
-## CSS Design System
-
-### Tema Dark (Default)
-- `--bg-primary`: #0f0f1a, `--bg-secondary`: #1a1a2e
-- `--accent`: #4361ee, `--success`: #4ade80, `--warning`: #facc15, `--danger`: #ef4444
-
-### Responsive
-- Mobile <=480px: sidebar drawer, single column, padding 15px
-- Desktop 769px+: sidebar fixed left, multi-column
-
-## Mobile — Attenzione Overflow
-
-Su mobile tutto deve stare nello schermo. Usare `overflow: hidden` su `.card` e `.page`. Griglie collassano a 1-2 colonne. Media query `@media (max-width: 480px)`.
-
-## Export/Import
-
-JSON con version, exportDate, tutti i dati. `clearProgressData()` cancella solo workouts/PRs/streak/cycle_history (mantiene profilo/settings/programmi).
-
-## Pagina Esercizi — Tab Workout/Warmup/Cooldown (v1.20.0)
-
-- 3 type tabs (pill buttons) sopra filtri categoria/muscolo
-- Filtri visibili solo per tab Workout
-- Warmup/Cooldown: lista deduplicata da WARMUPS_DB/COOLDOWN_DB
-- Tag colorati: warmup (giallo `.muscle-tag.warmup`), cooldown (verde `.muscle-tag.cooldown`)
-- Ricerca funziona su tutti i tab
-- `switchExerciseType(type)`, `renderWarmupCooldownExercises(type, filter)`
-
-## GIF — Fonti e regole
-
-- **Fonti**: fitnessprogramer.com (primaria), static.exercisedb.dev (ExerciseDB CDN)
-- **gymvisual.com**: BLOCCATO, non usare (hotlink blocked, mostra ?)
-- **Coverage**: 139 workout + 93 warmup + 59 cooldown = ~291 GIF uniche
-- **Regola**: ogni esercizio DEVE avere GIF unica (no duplicati, verificare con script)
-- **Strutture dati**: EXERCISE_GIF_MAP (workout), WARMUP_DETAILS (warmup), COOLDOWN_DETAILS (cooldown)
-
-## Audit Scientifico (v1.22.0, 2026-04-03)
-
-Tutti i parametri dell'algoritmo validati contro meta-analisi 2023-2026:
-- Reps, rest, RIR, volume, tempo, periodizzazione, E1RM, superset, double progression: TUTTI VALIDATI
-- 3 fix implementati: U/L 3gg→FB giorno 3, PPL bloccato ≤4gg, endurance maxSS→8
-- Fonti: Schoenfeld 2024, Singer 2024, Robinson 2024, Pelland 2024, Zhang 2025, Contreras/Plotkin 2023
-
-## Limitazioni Note
-
-- Client-side only — no cloud sync, single device
-- localStorage limit ~5-10 MB
-- GIF hotlinking — possibili CORS
-- Chart.js lento con 100+ workouts
+## Design
+`--bg-primary` #0f0f1a, `--bg-secondary` #1a1a2e, `--accent-primary` #4361ee, `--success` #06d6a0,
+`--warning` #ffd166, `--danger` #ef476f. Breakpoint 1024/768/600/480/380.
