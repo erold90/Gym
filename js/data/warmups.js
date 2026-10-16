@@ -1602,6 +1602,91 @@ function getCooldownDurationMin(warmupKey) {
     return getCooldownByKey(warmupKey).durationMin;
 }
 
+// ========================================
+// ROUTINE RIDOTTE PER LA DURATA DELLA SEDUTA (algoritmo v2)
+// ========================================
+// In una seduta corta conta il lavoro: riscaldamento e defaticamento GENERALI hanno un tetto
+// proporzionale alla durata scelta (il riscaldamento specifico — la rampa del primo esercizio —
+// è a parte). Per risparmiare tempo basta quello specifico (Iversen 2021); quello generale serve
+// ad alzare la temperatura e a muovere le articolazioni della seduta (Fradkin 2010).
+
+// Minuti di riscaldamento generale per la durata della seduta: 45' → 6, 60' → 7, 75' → 8, 90' → 10
+function getWarmupBudgetMin(sessionMinutes) {
+    const m = Number(sessionMinutes) || 60;
+    return m < 45 ? 5 : (m < 60 ? 6 : (m < 75 ? 7 : (m < 90 ? 8 : 10)));
+}
+
+// Minuti di defaticamento: 45' → 3, 60' → 4, 75' e oltre → 5
+function getCooldownBudgetMin(sessionMinutes) {
+    const m = Number(sessionMinutes) || 60;
+    return m < 60 ? 3 : (m < 75 ? 4 : 5);
+}
+
+// Utilità di un esercizio di riscaldamento: prima i movimenti che preparano gli esercizi della
+// seduta (accosciate, cerniere, ponti, spinte, tirate con elastico, attivazione delle scapole e dei
+// glutei), poi la mobilità generale e l'attivazione cardiovascolare, per ultimi i movimenti di
+// contorno (cerchi con i polsi, rotazioni delle spalle, collo, caviglie).
+const WARMUP_USEFUL = [
+    [3, /squat|lunge|affond|bridge|ponte|good morning|rdl|hinge|push-up|pull-apart|face pull|scapular|wall slide|monster|clamshell|external rotation|y-t-w|inchworm|world's greatest|dead bug|bird dog|band (curls|pushdowns)|hamstring walkout|empty can|dislocates|thoracic|incline push/i],
+    [2, /swing|hip circles|high knees|jumping|camminata|corsa|mountain|superman|cat-cow|fire hydrant|donkey|leg swings|calf raises|lat stretch|rotations|arm swings|chest stretch|tricep stretch/i],
+    [1, /./]
+];
+// Defaticamento: gli allungamenti dei muscoli della seduta prima del respiro e del collo
+const COOLDOWN_USEFUL = [
+    [1, /breathing|respir|neck|collo|chin tuck/i],
+    [2, /./]
+];
+
+function usefulness(ex, table, index) {
+    const name = String(ex && ex.name || '');
+    for (const [score, re] of table) if (re.test(name)) return score * 100 - index;   // a parità, l'ordine della routine
+    return -index;
+}
+
+// Routine ridotta: sceglie per utilità finché la durata VERA sta nel tetto (si può scendere a una
+// serie), poi le rimette nell'ordine originale. Non modifica il database.
+function reduceRoutine(routine, budgetMin, table) {
+    const budgetSec = Math.max(1, budgetMin) * 60;
+    const items = routine.exercises.map((ex, i) => ({ ex, i, u: usefulness(ex, table, i) }));
+    const cost = (ex, sets) => sets * ex.durationSec + (sets - 1) * SET_REST_SECONDS + CHANGE_SECONDS;
+    const chosen = [];
+    let total = 0;
+    items.slice().sort((a, b) => b.u - a.u).forEach(it => {
+        for (let sets = it.ex.sets; sets >= 1; sets--) {
+            const c = cost(it.ex, sets);
+            if (total + c <= budgetSec) { chosen.push({ ...it, sets }); total += c; return; }
+        }
+    });
+    chosen.sort((a, b) => a.i - b.i);
+    const exercises = chosen.map(c => ({ ...c.ex, sets: c.sets }));
+    const durationMin = Math.max(1, Math.round(total / 60));
+    return {
+        ...routine,
+        exercises,
+        durationMin: Math.min(durationMin, budgetMin),
+        duration: `${Math.min(durationMin, budgetMin)} min`,
+        budgetMin,
+        fullDurationMin: routine.durationMin,
+        reduced: exercises.length < routine.exercises.length || chosen.some(c => c.sets < c.ex.sets)
+    };
+}
+
+// Riscaldamento generale per il giorno (chiave = day.warmup) ridotto alla durata della seduta
+function getWarmupForDuration(key, sessionMinutes) {
+    const routine = WARMUPS_DB[key] || WARMUPS_DB["full-body"];
+    const budget = getWarmupBudgetMin(sessionMinutes);
+    if (routine.durationMin <= budget) return { ...routine, exercises: routine.exercises.map(e => ({ ...e })), budgetMin: budget, fullDurationMin: routine.durationMin, reduced: false };
+    return reduceRoutine(routine, budget, WARMUP_USEFUL);
+}
+
+// Defaticamento coerente col riscaldamento del giorno, ridotto alla durata della seduta
+function getCooldownForDuration(warmupKey, sessionMinutes) {
+    const routine = getCooldownByKey(warmupKey);
+    const budget = getCooldownBudgetMin(sessionMinutes);
+    if (routine.durationMin <= budget) return { ...routine, exercises: routine.exercises.map(e => ({ ...e })), budgetMin: budget, fullDurationMin: routine.durationMin, reduced: false };
+    return reduceRoutine(routine, budget, COOLDOWN_USEFUL);
+}
+
 // Get cooldown for workout type (ripiego quando il giorno non ha `warmup`)
 function getCooldownForWorkout(workoutType) {
     const key = resolveRoutineKey(workoutType);
@@ -1653,7 +1738,11 @@ return {
     getCooldownByMuscle,
     getCooldownByKey,
     getCooldownDurationMin,
-    resolveRoutineKey
+    resolveRoutineKey,
+    getWarmupBudgetMin,
+    getCooldownBudgetMin,
+    getWarmupForDuration,
+    getCooldownForDuration
 };
 
 })();

@@ -1,5 +1,10 @@
 /**
- * GymTracker Pro - Training Algorithm (v1.26.0)
+ * GymTracker Pro - Training Algorithm (v1.26 + algoritmo v2 della seduta)
+ *
+ * v2 (ALGORITMO-V2.md): tag degli esercizi, scala dei carichi della palestra, salti percentuali,
+ * doppia progressione con correzione RIR, primo peso e "Trova il peso", rampa e dischi, alternative,
+ * mesociclo 6/6/5/5 con RIR per settimana, seduta corta, scarico anticipato, cardio. Le funzioni v2
+ * sono PURE (la data entra come parametro): Storage legge i dati e le chiama.
  *
  * Genera le schede come farebbe un allenatore: prima decide QUANTO volume serve a ogni muscolo
  * nella settimana, poi lo distribuisce nei giorni dello split dentro il tempo che la persona ha.
@@ -72,13 +77,12 @@ const TrainingAlgorithm = {
     },
     REST_CALVES: 60,
 
-    // Riscaldamento e defaticamento: durate reali da Warmups (ripiego 8' e 5').
-    // Nel PIANO si contano al massimo 10' e 8': in una seduta corta conta il lavoro, e la stima
-    // resta comunque entro +15% della durata scelta.
+    // Riscaldamento e defaticamento GENERALI: routine ridotte alla durata scelta (Warmups,
+    // 45' → 6'+3', 60' → 7'+4', 75' → 8'+5', 90' → 10'+5'); ripiego 8' e 5' senza Warmups.
+    // Il giorno generato le porta con sé (warmupMin, cooldownMin): la stima usa le stesse.
     WARMUP_FALLBACK: 8,
     COOLDOWN_FALLBACK: 5,
-    PLAN_WARMUP_CAP: 10,
-    PLAN_COOLDOWN_CAP: 8,
+    PLAN_SLACK: 75,
 
     TEMPO: {
         strength: {
@@ -126,7 +130,7 @@ const TrainingAlgorithm = {
         },
         volumeMultiplier: {
             accumulation: 1.0,
-            intensification: 0.9,
+            intensification: 1.0,   // v2: il volume non cala in intensificazione (§12.2)
             deload: 0.5
         },
         phaseNames: {
@@ -306,7 +310,8 @@ const TrainingAlgorithm = {
             this._planCore(ctx, days);
             this._allocate(ctx, days);
             this._spareVolume(ctx, days);
-            if (ctx.goal === 'toning') this._enforceLowerShare(ctx, days);
+            if (ctx.goal === 'toning' && ctx.emphasis === 'lower') this._enforceLowerShare(ctx, days);
+            this._rescueMinimums(ctx, days);
             this._spareRest(ctx, days);
 
             const program = {
@@ -331,6 +336,7 @@ const TrainingAlgorithm = {
                 gender: ctx.gender,
                 createdFor: (profile && profile.name) || '',
                 algorithmVersion: 2,
+                emphasis: ctx.emphasis,
                 weeklyVolume: this.calculateWeeklyVolume(program),
                 tempo: this.TEMPO[ctx.goal] || this.TEMPO.hypertrophy,
                 cycle: this.buildCycle(ctx.goal, ctx.level)
@@ -378,6 +384,7 @@ const TrainingAlgorithm = {
         const eq = this._normalizeEquipment(profile.equipment);
         const loadEquip = ['bilanciere', 'manubri', 'macchine', 'cavi'].some(e => eq.has(e));
 
+        const list = (v) => Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : [];
         const ctx = {
             goal, level, daysPerWeek, split, sessionDuration, cycleNumber,
             gender: profile.gender || '',
@@ -385,7 +392,14 @@ const TrainingAlgorithm = {
             strength: goal === 'strength',
             toning: goal === 'toning',
             minExercises: loadEquip ? 4 : 3,
-            usage: {}  // quante volte uno schema è già stato usato nella settimana (varietà)
+            usage: {},  // quante volte uno schema è già stato usato nella settimana (varietà)
+            // preferenze della persona (§6.5): mai proposti, sempre primi, zone dolenti, enfasi
+            avoid: new Set(list(profile.avoidExercises)),
+            prefer: list(profile.preferExercises),
+            pain: this._painAreas(profile),
+            emphasis: ['lower', 'upper', 'balanced'].includes(profile.emphasis) ? profile.emphasis : (goal === 'toning' ? 'lower' : 'balanced'),
+            // riscaldamento e defaticamento generali VERI per questa durata
+            warmCool: {}
         };
         ctx.restFactor = this._durationRestFactor(sessionDuration) * (female ? 0.85 : 1);
         ctx.targets = this._weeklyTargets(ctx);
@@ -464,6 +478,17 @@ const TrainingAlgorithm = {
                     quadricipiti: big(P), femorali: big(P - 2), glutei: big(P - 4),
                     bicipiti: Math.round(P * 0.5), tricipiti: Math.round(P * 0.5), polpacci: advanced ? 8 : 6
                 });
+        }
+        // Enfasi scelta nel profilo (§4.3): una preferenza, non fisiologia. 'upper': parte alta +2 e
+        // gambe al minimo del livello; 'lower' (fuori dalla tonificazione): il contrario. Nella
+        // tonificazione 'upper'/'balanced' tolgono la priorità alla parte bassa.
+        const UP = ['petto', 'schiena', 'spalle'], LO = ['quadricipiti', 'femorali', 'glutei'];
+        if (ctx.emphasis === 'upper' || (ctx.toning && ctx.emphasis === 'balanced')) {
+            UP.forEach(m => { T[m] = ctx.emphasis === 'upper' ? Math.min(V.max, Math.max(T[m], big(P)) + 2) : Math.max(T[m], big(P - 2)); });
+            if (ctx.emphasis === 'upper') LO.forEach(m => { T[m] = Math.min(T[m], big(V.min)); });
+        } else if (ctx.emphasis === 'lower' && !ctx.toning) {
+            LO.forEach(m => { T[m] = Math.min(V.max, Math.max(T[m], big(V.min)) + 2); });
+            UP.forEach(m => { T[m] = Math.min(T[m], big(V.min)); });
         }
         T.bicipiti = Math.max(4, T.bicipiti);
         T.tricipiti = Math.max(4, T.tricipiti);
@@ -765,6 +790,8 @@ const TrainingAlgorithm = {
         if (!ex || ex.hidden) return false;
         if (!this._hasEquipment(ex, ctx.eq)) return false;
         if (ctx.level === 'beginner' && ex.difficulty === 'advanced') return false;
+        if (ctx.avoid && ctx.avoid.has(id)) return false;
+        if (ctx.pain && ctx.pain.length && ctx.pain.some(a => ((ex.joint || {})[a] || 0) === 2)) return false;
         return true;
     },
 
@@ -782,6 +809,17 @@ const TrainingAlgorithm = {
         if (ctx.level === 'beginner' && elig.every(id => this.BEGINNER_AVOID.includes(id)) && pat.alt) {
             const alt = this._pick(ctx, pat.alt, prio, used, depth + 1);
             if (alt && !this.BEGINNER_AVOID.includes(alt.id)) return alt;
+        }
+        // zone dolenti: chi sollecita quell'articolazione (joint 1) scende in fondo alla lista
+        if (ctx.pain && ctx.pain.length) {
+            const hurts = (id) => ctx.pain.some(a => ((this._db(id).joint || {})[a] || 0) >= 1) ? 1 : 0;
+            elig = elig.map((id, i) => ({ id, i, h: hurts(id) })).sort((a, b) => (a.h - b.h) || (a.i - b.i)).map(x => x.id);
+        }
+        // "Tienilo fisso": l'esercizio preferito vince e non ruota (§6.5)
+        const preferred = (ctx.prefer || []).find(id => elig.includes(id));
+        if (preferred) {
+            ctx.usage[key] = (ctx.usage[key] || 0) + 1;
+            return { id: preferred, key, m: pat.m };
         }
         // non ruotare da un esercizio con carico a uno a corpo libero "leggero"
         if (!this._isLightBodyweight(elig[0])) elig = elig.filter(id => !this._isLightBodyweight(id));
@@ -808,15 +846,6 @@ const TrainingAlgorithm = {
         return !!ex && ex.category === 'corpo-libero' && !this.HARD_BODYWEIGHT.includes(id);
     },
 
-    // Secondi di lavoro di una serie (tempo sotto carico + sistemazione)
-    _setSeconds(id, reps) {
-        const r = this._avgReps(reps);
-        let t;
-        if (this.TIMED.includes(id)) t = r;
-        else t = r * (this._isLightBodyweight(id) ? 3 : 4) + 5;
-        if (this.UNILATERAL.includes(id)) t *= 1.8;
-        return Math.max(20, Math.min(100, t));
-    },
 
     _round5(x) {
         return Math.round(x / 5) * 5;
@@ -867,13 +896,13 @@ const TrainingAlgorithm = {
 
         if (this.FIXED_REPS[slot.id]) reps = this.FIXED_REPS[slot.id];
         const notes = [];
-        if (this.TIMED.includes(slot.id)) notes.push('secondi');
-        if (this.UNILATERAL.includes(slot.id)) notes.push('per lato');
+        if (ex.metric === 'time' || this.TIMED.includes(slot.id)) notes.push('secondi');
+        if (ex.unilateral) notes.push('per lato');
 
         slot.role = role;
         slot.reps = reps;
         slot.rest = rest;
-        slot.tul = this._setSeconds(slot.id, reps);
+        slot.tul = this._setSecondsV2(slot.id, reps, ctx.goal);
         slot.notes = notes.join(' ');
         slot.compound = ex.type === 'compound';
         slot.prims = ex.primaryMuscles.slice();
@@ -933,10 +962,14 @@ const TrainingAlgorithm = {
                 : ['vPush', 'hinge2', 'vPull', 'hPull', 'backBw', 'lunge', 'hipThrust'];
             extras.forEach((k, f) => addSlot([k, 4], 70 + f));
         }
-        const budget = (ctx.sessionDuration - Math.min(this.PLAN_WARMUP_CAP, this._warmupMinutes(spec.warmup)) -
-            Math.min(this.PLAN_COOLDOWN_CAP, this._cooldownMinutes(spec.warmup))) * 60;
+        // Tempo per il lavoro = durata − riscaldamento e defaticamento generali RIDOTTI per questa durata
+        const warmupMin = this._routineMinutes('warmup', spec.warmup, ctx.sessionDuration);
+        const cooldownMin = this._routineMinutes('cooldown', spec.warmup, ctx.sessionDuration);
+        // + PLAN_SLACK: il piano conta 30 s di cambio per ogni esercizio e il riposo dopo l'ultima serie,
+        // la stima (§13.1) no; senza questo margine il piano lascerebbe ~2' inutilizzati
+        const budget = (ctx.sessionDuration - warmupMin - cooldownMin) * 60 + this.PLAN_SLACK;
         return {
-            index, type: spec.type, focus: spec.focus, warmup: spec.warmup,
+            index, type: spec.type, focus: spec.focus, warmup: spec.warmup, warmupMin, cooldownMin,
             slots, used, budget, spent: 0, vol: {},
             isLower: /Lower|Legs|Glute/.test(spec.type)
         };
@@ -1006,7 +1039,7 @@ const TrainingAlgorithm = {
             if (s.group) {
                 if (seen.has(s.group)) return;
                 seen.add(s.group);
-                sec += s.sets * this._slotRoundCost(s) + 30 * s.group.members.length;
+                sec += s.sets * this._slotRoundCost(s) + 30;   // un cambio per blocco, come la stima (§13.1)
             } else {
                 sec += s.sets * (s.tul + s.rest) + 30;
             }
@@ -1183,7 +1216,10 @@ const TrainingAlgorithm = {
                             if (!this._canAddVolume(ctx, vol, d, x, 1, false)) { ok = false; break; }
                             const nx = this._need(ctx, vol, x.m, floorMode);
                             const over = ctx.toning && this.UPPER_MUSCLES.includes(x.m) ? 2 : 3;
-                            const lim = members.length > 1 ? Math.min((ctx.targets[x.m] || 0) + over, this.VOLUME_CONFIG[ctx.level].max + 3) : (ctx.targets[x.m] || 0) + 1;
+                            // addome e polpacci in un superset non superano il loro obiettivo
+                            const fixedT = x.role === 'core' || x.role === 'calves';
+                            const lim = fixedT ? (ctx.targets[x.m] || 0)
+                                : (members.length > 1 ? Math.min((ctx.targets[x.m] || 0) + over, this.VOLUME_CONFIG[ctx.level].max + 3) : (ctx.targets[x.m] || 0) + 1);
                             if (nx <= 0 && (vol[x.m] || 0) + 1 > lim) { ok = false; break; }
                             need = Math.max(need, nx);
                         }
@@ -1240,15 +1276,37 @@ const TrainingAlgorithm = {
         return (fa === 'cavi' || fb === 'cavi') && iso(a) && iso(b);
     },
 
+    // Addome con un esercizio non di addome; polpacci con un esercizio della parte alta (§13.2)
+    _accessoryPairOk(a, b) {
+        const core = (x) => x.role === 'core', calf = (x) => x.role === 'calves';
+        if (core(a) !== core(b)) return !calf(a) && !calf(b) && !(core(a) ? b : a).compound;
+        if (calf(a) !== calf(b)) return this.UPPER_MUSCLES.includes((calf(a) ? b : a).m) && !(calf(a) ? b : a).compound;
+        return false;
+    },
+
     _musclesCompatible(a, b) {
         return this.SUPERSET_MUSCLE_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
     },
 
+    // Sedute fino a 75': i superset antagonisti fanno stare più volume nel tempo (Zhang 2025: stesso
+    // volume in meno tempo, senza perdere forza né crescita; Robbins 2010 con panca e rematore).
+    _shortSession(ctx) {
+        return ctx.sessionDuration <= 75;
+    },
+
+    // Multiarticolari della parte alta ammessi in superset antagonista nelle sedute corte
+    SUPERSET_SHORT_OK: ['overhead-press', 't-bar-row'],
+
     _supersetEligible(ctx, s) {
-        if (!s.active || s.group || s.role === 'core' || s.role === 'calves') return false;
-        if (this.SUPERSET_EXCLUDED.includes(s.id)) return false;
+        const short = this._shortSession(ctx);
+        if (!s.active || s.group) return false;
+        // addome e polpacci in superset solo nelle sedute corte (§13.2: core con qualunque esercizio,
+        // polpacci con la parte alta)
+        if ((s.role === 'core' || s.role === 'calves') && !short) return false;
+        if (this.SUPERSET_EXCLUDED.includes(s.id) && !(short && this.SUPERSET_SHORT_OK.includes(s.id))) return false;
         const rules = this.SUPERSET_RULES[ctx.goal] || this.SUPERSET_RULES.hypertrophy;
-        if (!rules.allowCompound && s.compound) return false;
+        // forza: i complementari multiarticolari in superset antagonista solo nelle sedute corte
+        if (!rules.allowCompound && s.compound && !short) return false;
         // Il fondamentale che apre la seduta resta da solo (vedi anchor in _formSupersets); nella forza
         // nessun fondamentale va in superset
         if (ctx.strength && s.prio === 1) return false;
@@ -1262,8 +1320,9 @@ const TrainingAlgorithm = {
      */
     _formSupersets(ctx, d, vol) {
         const rules = this.SUPERSET_RULES[ctx.goal] || this.SUPERSET_RULES.hypertrophy;
+        const maxPerDay = rules.maxPerDay + 1;   // v2: un superset in più al giorno (più volume nel tempo)
         let groups = new Set(d.slots.filter(s => s.group).map(s => s.group)).size;
-        if (groups >= rules.maxPerDay) return;
+        if (groups >= maxPerDay) return;
         // il multiarticolare che apre la seduta resta da solo
         const anchor = d.slots.filter(s => s.active && s.compound && s.role !== 'core')
             .sort((a, b) => (a.prio - b.prio) || (a.order - b.order))[0];
@@ -1275,7 +1334,7 @@ const TrainingAlgorithm = {
                 const def = this.SUPERSET_PAIRS.find(p => p.exercises.includes(a.id) && p.exercises.includes(b.id));
                 let score = 0, transition = 15;
                 if (def) { score = 3; transition = def.transition; }
-                else if (this._stationsNear(a.id, b.id) && this._musclesCompatible(a.m, b.m)) {
+                else if (this._stationsNear(a.id, b.id) && (this._musclesCompatible(a.m, b.m) || this._accessoryPairOk(a, b))) {
                     score = 1; transition = this._stationFamily(a.id) === this._stationFamily(b.id) ? 10 : 15;
                 }
                 if (!score) continue;
@@ -1284,12 +1343,13 @@ const TrainingAlgorithm = {
         }
         pairs.sort((x, y) => y.score - x.score);
         for (const p of pairs) {
-            if (groups >= rules.maxPerDay) break;
+            if (groups >= maxPerDay) break;
             if (p.a.group || p.b.group) continue;
             const members = [p.a, p.b].sort((x, y) => x.order - y.order);
             if (rules.useGiantSets) {
                 // circuito: un terzo esercizio della stessa famiglia e di un altro muscolo
-                const third = cand.find(c => !c.group && c !== p.a && c !== p.b &&
+                const third = cand.find(c => !c.group && c !== p.a && c !== p.b && c.role !== 'core' && c.role !== 'calves' &&
+                    p.a.role !== 'core' && p.a.role !== 'calves' && p.b.role !== 'core' && p.b.role !== 'calves' &&
                     this._stationFamily(c.id) === this._stationFamily(p.a.id) &&
                     c.m !== p.a.m && c.m !== p.b.m);
                 if (third) members.push(third);
@@ -1313,10 +1373,11 @@ const TrainingAlgorithm = {
         members.forEach(x => { x.group = group; });
         // prova a pareggiare verso l'alto (tempo e volume permettendo), altrimenti verso il basso
         const tryLevel = (lvl) => {
+            if (members.some(x => lvl > x.max)) return false;   // mai oltre le serie massime dello slot
             const delta = members.map(x => lvl - x.sets);
             const okVol = members.every((x, i) => delta[i] <= 0 || (
                 this._canAddVolume(ctx, vol, d, x, delta[i], false) &&
-                (vol[x.m] || 0) + delta[i] <= (ctx.targets[x.m] || 0) + 1));
+                (vol[x.m] || 0) + delta[i] <= (ctx.targets[x.m] || 0) + (x.role === 'core' || x.role === 'calves' ? 0 : 1)));
             if (!okVol) return false;
             members.forEach(x => { x.sets = lvl; });
             const spent = this._daySpent(d);
@@ -1401,6 +1462,84 @@ const TrainingAlgorithm = {
                 this._addVolume(vol, vd, victim, -victim.sets); victim.sets = 0; victim.active = false;
             }
             vd.spent = this._daySpent(vd);
+        }
+    },
+
+    /**
+     * Ultimo recupero dei minimi: un muscolo grande ancora sotto min−2 (petto ≥6 e polpacci al loro
+     * minimo nella tonificazione) quando nei giorni c'è ancora tempo. Prima +1 serie a un esercizio
+     * già attivo; se il superset in cui sta è bloccato dal compagno (tetto per seduta o serie
+     * massime), il superset si scioglie; poi un esercizio nuovo da 2 serie.
+     */
+    _rescueMinimums(ctx, days) {
+        const vol = ctx._vol;
+        const V = this.VOLUME_CONFIG[ctx.level];
+        const floors = {};
+        this.BIG_MUSCLES.forEach(m => {
+            floors[m] = Math.min(ctx.targets[m] || 0, V.min - 2);
+            if (ctx.toning && m === 'petto') floors[m] = Math.max(floors[m], Math.min(6, ctx.targets.petto || 0));
+        });
+        if ((ctx.floors.polpacci || 0) > 0) floors.polpacci = ctx.toning ? Math.min(4, ctx.floors.polpacci) : ctx.floors.polpacci;
+        const capOk = (d, x, n) => x.prims.every(p => (d.vol[p] || 0) + n <= (ctx.dayCap[p] != null ? ctx.dayCap[p] : 8) &&
+            (p === x.m || !this.BIG_MUSCLES.includes(p) || (vol[p] || 0) + n <= V.max + 3)) &&
+            (!(x.role === 'core' || x.role === 'calves') || floors[x.m] != null || (vol[x.m] || 0) + n <= (ctx.targets[x.m] || 0));
+        // tonificazione: la parte alta non deve portare la quota della parte bassa sotto il 57%
+        const shareOk = (x, n) => {
+            if (!ctx.toning || !x.prims.some(p => this.UPPER_MUSCLES.includes(p))) return true;
+            const lo = this.LOWER_MUSCLES.reduce((a, p) => a + (vol[p] || 0), 0);
+            const up = this.UPPER_MUSCLES.reduce((a, p) => a + (vol[p] || 0), 0) + n * x.prims.filter(p => this.UPPER_MUSCLES.includes(p)).length;
+            return lo / Math.max(1, lo + up) >= 0.57;
+        };
+        for (let guard = 0; guard < 120; guard++) {
+            let moved = false;
+            for (const m of Object.keys(floors)) {
+                if ((vol[m] || 0) >= floors[m]) continue;
+                let best = null;
+                for (const d of days) {
+                    const rem = d.budget - d.spent;
+                    if (rem <= 0) continue;
+                    for (const s of d.slots) {
+                        if (s.prio >= 5 || !s.prims.includes(m) || !shareOk(s, s.active ? 1 : 2)) continue;
+                        let opt = null;
+                        if (s.active) {
+                            if (s.sets >= s.max || !capOk(d, s, 1)) continue;
+                            const members = s.group ? s.group.members : [s];
+                            if (!s.group) opt = { kind: 'set', cost: s.tul + s.rest };
+                            // il compagno del superset non deve superare il suo obiettivo (+1) né il massimo del livello
+                            else if (members.every(x => x.sets < x.max && capOk(d, x, 1) && (x === s ||
+                                x.prims.every(p => !this.BIG_MUSCLES.includes(p) || (vol[p] || 0) + 1 <= Math.min(V.max + 3, (ctx.targets[p] || 0) + 1)))))
+                                opt = { kind: 'group', cost: this._slotRoundCost(s) };
+                            else {
+                                const g = s.group;
+                                members.forEach(x => { x.group = null; });
+                                const after = this._daySpent(d);
+                                members.forEach(x => { x.group = g; });
+                                opt = { kind: 'split', cost: after - d.spent + s.tul + s.rest };
+                            }
+                        } else {
+                            if (!capOk(d, s, 2)) continue;
+                            opt = { kind: 'activate', cost: 30 + 2 * (s.tul + s.rest) };
+                        }
+                        if (opt.cost > rem) continue;
+                        // la serie che costa meno, a parità il giorno con più tempo libero
+                        const per = opt.kind === 'activate' ? opt.cost / 2 : opt.cost;
+                        if (!best || per < best.per - 1e-9 || (Math.abs(per - best.per) < 1e-9 && rem > best.rem)) best = { ...opt, d, s, per, rem };
+                    }
+                }
+                if (!best) continue;
+                const { d, s } = best;
+                if (best.kind === 'group') {
+                    s.group.members.forEach(x => { x.sets++; this._addVolume(vol, d, x, 1); });
+                } else if (best.kind === 'activate') {
+                    s.active = true; s.sets = 2; this._addVolume(vol, d, s, 2);
+                } else {
+                    if (best.kind === 'split') s.group.members.forEach(x => { x.group = null; });
+                    s.sets++; this._addVolume(vol, d, s, 1);
+                }
+                d.spent = this._daySpent(d);
+                moved = true;
+            }
+            if (!moved) break;
         }
     },
 
@@ -1550,6 +1689,10 @@ const TrainingAlgorithm = {
                     notes: s.notes || ''
                 };
                 if (s.role === 'core') out.isCore = true;
+                // ruolo, schema e metrica (§19.1): servono a fasi, seduta corta e progressione
+                out.role = s.role === 'core' ? 'core' : (ex.type === 'compound' ? (exercises.length === 0 ? 'main' : 'secondary') : 'accessory');
+                out.pattern = ex.pattern || null;
+                out.metric = ex.metric === 'time' ? 'time' : 'reps';
                 if (letter) {
                     out.supersetGroup = letter;
                     out.supersetOrder = k + 1;
@@ -1565,6 +1708,10 @@ const TrainingAlgorithm = {
             type: d.type,
             focus: d.focus,
             warmup: d.warmup,
+            // riscaldamento e defaticamento generali ridotti per la durata scelta (minuti veri)
+            warmupMin: d.warmupMin,
+            cooldownMin: d.cooldownMin,
+            goal: ctx.goal,
             exercises
         };
     },
@@ -1573,34 +1720,47 @@ const TrainingAlgorithm = {
     // MESOCICLO
     // ========================================
 
+    // Mesociclo v2 (§12.1): settimane di lavoro con RIR che scende, poi SEMPRE una di scarico.
+    // Uguale per tutti gli obiettivi; advanced/expert +1 serie nelle settimane 3-4.
+    CYCLE_V2: {
+        beginner: { comp: [3, 3, 2, 2, 2], iso: [3, 2, 2, 1, 1], extraWeeks: [] },
+        intermediate: { comp: [3, 2, 2, 1, 1], iso: [2, 2, 1, 1, 0], extraWeeks: [] },
+        advanced: { comp: [3, 2, 1, 1], iso: [2, 1, 1, 0], extraWeeks: [3, 4] },
+        expert: { comp: [3, 2, 1, 1], iso: [2, 1, 1, 0], extraWeeks: [3, 4] }
+    },
+
     /**
-     * Fasi del mesociclo: la somma è sempre la durata e l'ultima settimana è deload.
-     * intensificazione = max(1, round((d−1)×0.4)), accumulo = d−1−intensificazione.
+     * Fasi del mesociclo (sostituisce la tabella durate v1.26): 6/6/5/5 settimane, le prime ceil(n/2)
+     * di accumulo, le altre di intensificazione, l'ultima di scarico (serie ÷2, carico −10%, RIR 4).
+     * Ogni fase tiene la forma v1.26 ({week, phase, phaseName, rirTarget, volumeMultiplier}) più
+     * { rir: {compound, isolation}, setsDelta, loadFactor }.
      */
     buildCycle(goal, level) {
         const config = this.CYCLE_CONFIG;
-        const g = this._normalizeGoal(goal);
-        const duration = config.duration[g]?.[level] || config.duration.hypertrophy.intermediate;
-        const intensification = duration >= 3 ? Math.max(1, Math.round((duration - 1) * 0.4)) : 0;
-        const accumulation = Math.max(0, duration - 1 - intensification);
+        const L = this.CYCLE_V2[level] || this.CYCLE_V2.intermediate;
+        const n = L.comp.length;
+        const acc = Math.ceil(n / 2);
         const phases = [];
-        let week = 1;
-        const push = (phase) => phases.push({
-            week: week++,
-            phase,
-            phaseName: config.phaseNames[phase],
-            rirTarget: { ...config.rirTargets[phase] },
-            volumeMultiplier: config.volumeMultiplier[phase]
+        const rirTarget = (c, i) => ({ min: Math.min(c, i), max: Math.max(c, i) + (c === i ? 1 : 0) });
+        for (let w = 1; w <= n; w++) {
+            const phase = w <= acc ? 'accumulation' : 'intensification';
+            const c = L.comp[w - 1], i = L.iso[w - 1];
+            phases.push({
+                week: w, phase, phaseName: config.phaseNames[phase], rirTarget: rirTarget(c, i), volumeMultiplier: 1,
+                rir: { compound: c, isolation: i }, setsDelta: L.extraWeeks.includes(w) ? 1 : 0, loadFactor: 1
+            });
+        }
+        phases.push({
+            week: n + 1, phase: 'deload', phaseName: config.phaseNames.deload, rirTarget: rirTarget(4, 4), volumeMultiplier: 0.5,
+            rir: { compound: 4, isolation: 4 }, setsDelta: 0, loadFactor: 0.9
         });
-        for (let i = 0; i < accumulation; i++) push('accumulation');
-        for (let i = 0; i < intensification; i++) push('intensification');
-        push('deload');
         return {
-            duration,
+            duration: n + 1,
             currentWeek: 1,
             startDate: new Date().toISOString(),
             phases,
-            isDeloadActive: false
+            isDeloadActive: false,
+            version: 2
         };
     },
 
@@ -1626,48 +1786,79 @@ const TrainingAlgorithm = {
         return typeof v === 'number' ? v : 1;
     },
 
+    // Fase normalizzata, con i default per le schede salvate prima della v2 (§19.1):
+    // rir da rirTarget.min, setsDelta 0, loadFactor 1 (0,9 in scarico)
+    normalizePhase(phase) {
+        const ph = typeof phase === 'string' ? { phase } : (phase && typeof phase === 'object' ? phase : {});
+        const key = ['accumulation', 'intensification', 'deload'].includes(ph.phase) ? ph.phase : 'accumulation';
+        const isDeload = key === 'deload';
+        const rt = ph.rirTarget && Number.isFinite(Number(ph.rirTarget.min)) ? ph.rirTarget : (this.CYCLE_CONFIG.rirTargets[key] || null);
+        let rir = ph.rir && Number.isFinite(Number(ph.rir.compound)) ? { compound: Number(ph.rir.compound), isolation: Number(ph.rir.isolation ?? ph.rir.compound) } : null;
+        if (!rir) rir = isDeload ? { compound: 4, isolation: 4 } : (rt ? { compound: Number(rt.min), isolation: Number(rt.min) } : { compound: 2, isolation: 2 });
+        return {
+            ...ph,
+            phase: key,
+            rirTarget: rt ? { min: Number(rt.min), max: Number(rt.max) } : null,
+            rir,
+            setsDelta: isDeload ? 0 : (Number.isFinite(Number(ph.setsDelta)) ? Number(ph.setsDelta) : 0),
+            loadFactor: Number.isFinite(Number(ph.loadFactor)) && Number(ph.loadFactor) > 0 ? Number(ph.loadFactor) : (isDeload ? 0.9 : 1)
+        };
+    },
+
     /**
-     * Copia del giorno con le serie della fase: max(2, round(serie×moltiplicatore)), mai più
-     * di prima, superset pareggiati, e il RIR target della fase. In intensificazione (0.9),
-     * dove l'arrotondamento per esercizio non toglierebbe nulla, si toglie una serie agli
-     * isolamenti fino a ~−10% del totale.
+     * Copia del giorno con la fase (§12.2, sostituisce il moltiplicatore 0,9 della v1.26):
+     * - lavoro: serie invariate (+setsDelta sul primo accessorio, o secondario, di ogni muscolo grande),
+     *   targetRir per esercizio = rir.compound se multiarticolare, rir.isolation altrimenti;
+     * - scarico: serie = max(1, ceil(serie/2)), targetRir 4, loadFactor 0,9.
+     * Con una zona dolente che quell'esercizio sollecita (joint ≥1): RIR minimo 2.
+     * ctx = { painAreas }
      */
-    applyPhaseToDay(day, phase) {
+    applyPhaseToDay(day, phase, ctx = {}) {
         const copy = JSON.parse(JSON.stringify(day || {}));
-        const ph = typeof phase === 'string' ? { phase } : (phase || {});
-        const key = ph.phase || 'accumulation';
-        const mult = this.getVolumeMultiplier(ph);
-        const rir = ph.rirTarget || this.CYCLE_CONFIG.rirTargets[key] || null;
-        const exs = Array.isArray(copy.exercises) ? copy.exercises : [];
-        let base = 0;
-        exs.forEach(ex => {
+        const ph = this.normalizePhase(phase);
+        const isDeload = ph.phase === 'deload';
+        const exs = Array.isArray(copy.exercises) ? copy.exercises.filter(Boolean) : [];
+        copy.exercises = exs;
+        const prof = { painAreas: (ctx && ctx.painAreas) || [] };
+        const roles = this._rolesOf(exs);
+        exs.forEach((ex, i) => {
             const s = parseInt(ex.sets, 10);
             const sets = Number.isFinite(s) && s > 0 ? s : 0;
-            base += sets;
-            if (sets > 0 && mult < 1) ex.sets = Math.min(sets, Math.max(2, Math.round(sets * mult)));
-            if (rir) ex.rirTarget = { ...rir };
+            if (isDeload && sets > 0) ex.sets = Math.max(1, Math.ceil(sets / 2));
+            const compound = roles[i] === 'main' || roles[i] === 'secondary';
+            let t = isDeload ? 4 : (compound ? ph.rir.compound : ph.rir.isolation);
+            if (this._painTouches(ex.exerciseId, prof)) t = Math.max(2, t);
+            ex.targetRir = t;
+            if (ph.rirTarget) ex.rirTarget = { ...ph.rirTarget };
+            if (isDeload) ex.loadFactor = ph.loadFactor;
         });
-        if (mult < 1 && mult > 0.5) {
-            const target = Math.round(base * mult);
-            let cur = exs.reduce((a, ex) => a + (parseInt(ex.sets, 10) || 0), 0);
-            for (let i = exs.length - 1; i >= 0 && cur > target; i--) {
-                const ex = exs[i];
-                if (ex.supersetGroup || ex.isCore) continue;
-                const type = ex.type || this._db(ex.exerciseId)?.type;
-                if (type === 'compound') continue;
-                if ((parseInt(ex.sets, 10) || 0) >= 3) { ex.sets = parseInt(ex.sets, 10) - 1; cur--; }
-            }
+        // serie in più (advanced/expert, ultime settimane di lavoro): il primo accessorio (o secondario)
+        // di ogni muscolo grande; un esercizio riceve al massimo una serie
+        if (!isDeload && ph.setsDelta > 0) {
+            const bumped = new Set();
+            this.BIG_MUSCLES.forEach(m => {
+                const has = (ex) => (this._metaOrDefault(ex.exerciseId).primaryMuscles || []).includes(m);
+                const pick = exs.find((ex, i) => roles[i] === 'accessory' && !ex.supersetGroup && has(ex) && !bumped.has(ex))
+                    || exs.find((ex, i) => roles[i] === 'secondary' && !ex.supersetGroup && has(ex) && !bumped.has(ex))
+                    || exs.find((ex, i) => roles[i] === 'accessory' && has(ex) && !bumped.has(ex));
+                if (!pick) return;
+                const group = pick.supersetGroup ? exs.filter(o => o.supersetGroup === pick.supersetGroup) : [pick];
+                group.forEach(o => { o.sets = (parseInt(o.sets, 10) || 0) + ph.setsDelta; bumped.add(o); });
+            });
         }
-        // superset: stesse serie per tutti i membri
+        // superset: stesse serie per tutti i membri (scarico al ribasso)
         const bySs = {};
         exs.forEach(ex => { if (ex.supersetGroup) (bySs[ex.supersetGroup] = bySs[ex.supersetGroup] || []).push(ex); });
         Object.values(bySs).forEach(g => {
-            const lo = Math.min(...g.map(ex => parseInt(ex.sets, 10) || 0));
-            g.forEach(ex => { ex.sets = lo; });
+            const v = g.map(ex => parseInt(ex.sets, 10) || 0);
+            const n = isDeload ? Math.min(...v) : Math.max(...v);
+            g.forEach(ex => { ex.sets = n; });
         });
-        copy.phase = key;
-        copy.rirTarget = rir ? { ...rir } : null;
-        copy.volumeMultiplier = mult;
+        copy.phase = ph.phase;
+        copy.rirTarget = ph.rirTarget ? { ...ph.rirTarget } : null;
+        copy.targetRir = { ...ph.rir };
+        copy.volumeMultiplier = isDeload ? 0.5 : 1;
+        copy.loadFactor = ph.loadFactor;
         return copy;
     },
 
@@ -1806,25 +1997,29 @@ const TrainingAlgorithm = {
     },
 
     /**
-     * Durata stimata (minuti): riscaldamento e defaticamento reali (Warmups, ripiego 8' e 5')
-     * + serie × tempo sotto carico + riposi (anche quello dopo l'ultima serie, che l'app
-     * cronometra fino all'esercizio dopo) + 30 s di cambio per esercizio.
-     * Superset: riposo solo fra i giri.
+     * Durata stimata in minuti (§13.1):
+     *   riscaldamento generale + serie di rampa × 90 s
+     *   + esercizi singoli: serie × (tempo della serie + riposo)
+     *   + superset: giri × (Σ tempi + transizioni) + giri × riposo del giro
+     *   + 30 s di cambio fra i blocchi − il riposo dell'ultimo blocco + defaticamento.
+     * Tempo della serie: metà del range × s/rep dell'obiettivo, fra 20 e 75 s, ×2 se unilaterale;
+     * a tempo = metà del range in secondi.
+     * Riscaldamento e defaticamento: ctx.warmupMin/cooldownMin, poi quelli del giorno (giorni v2:
+     * proporzionali alla durata scelta), poi, con ctx.minutes, la routine ridotta per quella durata,
+     * altrimenti la routine intera (ripiego 10') e 5' di defaticamento.
+     * ctx = { goal, minutes, warmupMin, cooldownMin }
      */
-    estimateWorkoutDuration(workout) {
+    estimateWorkoutDuration(workout, ctx = {}) {
         if (!workout || !Array.isArray(workout.exercises) || !workout.exercises.length) return 0;
-        let sec = (this._warmupMinutes(workout.warmup) + this._cooldownMinutes(workout.warmup)) * 60;
-        const items = [];
-        const groups = {};
-        workout.exercises.forEach(ex => {
-            if (!ex) return;
-            if (ex.supersetGroup) {
-                if (!groups[ex.supersetGroup]) { groups[ex.supersetGroup] = []; items.push(groups[ex.supersetGroup]); }
-                groups[ex.supersetGroup].push(ex);
-            } else {
-                items.push([ex]);
-            }
-        });
+        const c = ctx || {};
+        const goal = this._normalizeGoal(c.goal || workout.goal || 'hypertrophy');
+        const pick = (...vals) => { for (const v of vals) { const n = Number(v); if (v != null && v !== '' && Number.isFinite(n) && n >= 0) return n; } return null; };
+        const minutes = pick(c.minutes);
+        const warmMin = pick(c.warmupMin, workout.warmupMin,
+            minutes != null ? this._routineMinutes('warmup', workout.warmup, minutes) : null, this._warmupMinutes(workout.warmup)) ?? 10;
+        const coolMin = pick(c.cooldownMin, workout.cooldownMin,
+            minutes != null ? this._routineMinutes('cooldown', workout.warmup, minutes) : null) ?? 5;
+        const exs = workout.exercises.filter(Boolean);
         const restOf = (ex) => {
             const r = parseInt(ex.rest, 10);
             if (Number.isFinite(r) && r >= 0) return r;
@@ -1836,84 +2031,1429 @@ const TrainingAlgorithm = {
             return Number.isFinite(s) && s > 0 ? s : 3;
         };
         const repsOf = (ex) => ex.reps != null ? ex.reps : ex.targetReps;
-        items.forEach((it, i) => {
-            const last = i === items.length - 1;
-            if (it.length === 1 && !it[0].supersetGroup) {
+        const setSec = (ex) => this._setSecondsV2(ex.exerciseId, repsOf(ex), goal);
+        let sec = warmMin * 60;
+        exs.forEach(ex => {
+            const ramp = Array.isArray(ex.warmupSets) ? ex.warmupSets.length : (parseInt(ex.rampSets, 10) || 0);
+            sec += ramp * 90;
+        });
+        const blocks = this._blocks(exs);
+        let lastRest = 0;
+        blocks.forEach(b => {
+            const it = b.idx.map(i => exs[i]);
+            if (it.length === 1) {
                 const ex = it[0];
-                const s = setsOf(ex);
-                const r = restOf(ex);
-                sec += s * this._setSeconds(ex.exerciseId, repsOf(ex)) + (last ? s - 1 : s) * r + 30;
+                const s = setsOf(ex), r = restOf(ex);
+                sec += s * setSec(ex) + s * r;
+                lastRest = r;
             } else {
-                const s = Math.max(...it.map(setsOf));
-                const trans = parseInt(it[0].transitionTime, 10);
-                const tr = Number.isFinite(trans) ? trans : 10;
+                const round = Math.max(...it.map(setsOf));
+                const tr = Number.isFinite(parseInt(it[0].transitionTime, 10)) ? parseInt(it[0].transitionTime, 10) : 15;
                 const rr = parseInt(it[0].supersetRest, 10);
                 const r = Number.isFinite(rr) ? rr : Math.round(Math.max(...it.map(restOf)) * 0.8);
-                const round = it.reduce((a, ex) => a + this._setSeconds(ex.exerciseId, repsOf(ex)), 0) + (it.length - 1) * tr;
-                sec += s * round + (last ? s - 1 : s) * r + 30 * it.length;
+                sec += round * (it.reduce((a, ex) => a + setSec(ex), 0) + (it.length - 1) * tr) + round * r;
+                lastRest = r;
             }
         });
+        sec += 30 * (blocks.length - 1) - lastRest + coolMin * 60;
         return Math.round(sec / 60);
+    },
+
+    // Minuti VERI della routine generale (riscaldamento o defaticamento) ridotta per la durata scelta
+    _routineMinutes(kind, key, sessionMinutes) {
+        try {
+            if (typeof Warmups !== 'undefined' && Warmups) {
+                const fn = kind === 'warmup' ? Warmups.getWarmupForDuration : Warmups.getCooldownForDuration;
+                if (typeof fn === 'function') {
+                    const r = fn(key || 'full-body', sessionMinutes);
+                    const v = Number(r && r.durationMin);
+                    if (Number.isFinite(v) && v > 0) return v;
+                }
+            }
+        } catch (e) { /* ripiego sotto */ }
+        const budget = kind === 'warmup' ? this.warmupBudgetMin(sessionMinutes) : this.cooldownBudgetMin(sessionMinutes);
+        const full = kind === 'warmup' ? this._warmupMinutes(key) : this._cooldownMinutes(key);
+        return Math.min(budget, full);
+    },
+
+    // Tetto di riscaldamento e defaticamento generali per la durata scelta: in una seduta corta
+    // conta il lavoro (Iversen 2021: per risparmiare tempo basta il riscaldamento specifico)
+    warmupBudgetMin(sessionMinutes) {
+        if (typeof Warmups !== 'undefined' && Warmups && typeof Warmups.getWarmupBudgetMin === 'function') return Warmups.getWarmupBudgetMin(sessionMinutes);
+        const m = Number(sessionMinutes) || 60;
+        return m < 45 ? 5 : (m < 60 ? 6 : (m < 75 ? 7 : (m < 90 ? 8 : 10)));
+    },
+
+    cooldownBudgetMin(sessionMinutes) {
+        if (typeof Warmups !== 'undefined' && Warmups && typeof Warmups.getCooldownBudgetMin === 'function') return Warmups.getCooldownBudgetMin(sessionMinutes);
+        const m = Number(sessionMinutes) || 60;
+        return m < 60 ? 3 : (m < 75 ? 4 : 5);
+    },
+
+    // ========================================
+    // v2 — PALESTRA, TAG, SCALA DEI CARICHI (ALGORITMO-V2.md §2-§3)
+    // Funzioni PURE: niente localStorage, la data entra come parametro, chili in unità da 0,25 kg
+    // dentro gli arrotondamenti. Storage legge i dati e chiama queste funzioni.
+    // ========================================
+
+    DEFAULT_GYM: {
+        barKg: 20,
+        ezBarKg: 10,
+        plates: [25, 20, 15, 10, 5, 2.5, 1.25],     // dischi PER LATO, quantità illimitata
+        plateCounts: null,                          // { 25: 2, ... } coppie per lato (facoltativo)
+        dumbbells: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50],
+        stackStepKg: 5, stackMinKg: 5, stackMaxKg: 150,
+        cableStepKg: 2.5, cableMinKg: 2.5, cableMaxKg: 100,
+        assistMaxKg: 70,
+        loadablePlateStep: 2.5, loadableMaxKg: 60
+    },
+
+    PATTERN_ENUM: ['squat', 'lunge', 'hinge', 'bridge', 'push-h', 'push-v', 'pull-h', 'pull-v',
+        'iso-chest', 'iso-back', 'iso-shoulder-lat', 'iso-shoulder-front', 'iso-shoulder-rear', 'iso-biceps',
+        'iso-triceps', 'iso-quad', 'iso-ham', 'iso-glute', 'iso-calf', 'iso-traps', 'iso-forearm',
+        'core-antiext', 'core-antilat', 'core-flex', 'core-rot', 'carry'],
+    LOAD_TYPES: ['barbell', 'ez-bar', 'dumbbell-pair', 'dumbbell-single', 'machine-stack', 'machine-plate',
+        'cable', 'bodyweight', 'bodyweight-loadable', 'assisted'],
+    // Pattern "di gambe" (salti del 5% sui multiarticolari, stima del primo peso femminile 0,65)
+    LEG_PATTERNS: ['squat', 'hinge', 'lunge', 'bridge'],
+    LEG_SEED_PATTERNS: ['squat', 'hinge', 'lunge', 'bridge', 'iso-quad', 'iso-ham', 'iso-glute', 'iso-calf'],
+    MACHINE_TYPES: ['machine-stack', 'machine-plate', 'cable'],
+    RIR_BIAS: { beginner: 1, intermediate: 0.5, advanced: 0, expert: 0 },
+
+    // Isometrie e trasporti: range in SECONDI per livello (§8.1)
+    TIME_RANGES: {
+        'plank': { beginner: [20, 30], intermediate: [30, 45], advanced: [45, 60], expert: [45, 60] },
+        'side-plank': { beginner: [15, 25], intermediate: [20, 35], advanced: [30, 45], expert: [30, 45] },
+        'mountain-climber': { beginner: [20, 30], intermediate: [30, 40], advanced: [30, 45], expert: [30, 45] },
+        'dead-hang': { beginner: [15, 30], intermediate: [20, 40], advanced: [30, 60], expert: [30, 60] },
+        'farmer-walk': { beginner: [30, 40], intermediate: [30, 45], advanced: [30, 45], expert: [30, 45] }
+    },
+
+    _u(kg) {
+        return Math.round(Number(kg) * 4);
+    },
+
+    _num(v) {
+        const n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(',', '.'));
+        return Number.isFinite(n) ? n : NaN;
+    },
+
+    // "62,5" — una riga per l'interfaccia, virgola decimale
+    _fmtKg(kg) {
+        const n = Math.round(Number(kg) * 100) / 100;
+        return String(Number.isFinite(n) ? n : 0).replace('.', ',');
+    },
+
+    _level(level) {
+        return this.VOLUME_CONFIG[level] ? level : 'intermediate';
+    },
+
+    /** Configurazione della palestra: default uniti a quella passata, valori non validi ignorati. */
+    _gym(gym) {
+        const D = this.DEFAULT_GYM;
+        if (!gym || typeof gym !== 'object') return D;
+        const pos = (v, d) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : d; };
+        const list = (v, d, desc) => {
+            if (!Array.isArray(v)) return d;
+            const a = [...new Set(v.map(Number).filter(n => Number.isFinite(n) && n > 0))].sort((x, y) => desc ? y - x : x - y);
+            return a.length ? a : d;
+        };
+        let counts = null;
+        if (gym.plateCounts && typeof gym.plateCounts === 'object') {
+            counts = {};
+            Object.keys(gym.plateCounts).forEach(k => {
+                const p = Number(k), c = Math.floor(Number(gym.plateCounts[k]));
+                if (Number.isFinite(p) && p > 0 && c > 0) counts[p] = c;
+            });
+            if (!Object.keys(counts).length) counts = null;
+        }
+        return {
+            barKg: pos(gym.barKg, D.barKg),
+            ezBarKg: pos(gym.ezBarKg, D.ezBarKg),
+            plates: list(gym.plates, D.plates, true),
+            plateCounts: counts,
+            dumbbells: list(gym.dumbbells, D.dumbbells, false),
+            stackStepKg: pos(gym.stackStepKg, D.stackStepKg),
+            stackMinKg: pos(gym.stackMinKg, D.stackMinKg),
+            stackMaxKg: pos(gym.stackMaxKg, D.stackMaxKg),
+            cableStepKg: pos(gym.cableStepKg, D.cableStepKg),
+            cableMinKg: pos(gym.cableMinKg, D.cableMinKg),
+            cableMaxKg: pos(gym.cableMaxKg, D.cableMaxKg),
+            assistMaxKg: pos(gym.assistMaxKg, D.assistMaxKg),
+            loadablePlateStep: pos(gym.loadablePlateStep, D.loadablePlateStep),
+            loadableMaxKg: pos(gym.loadableMaxKg, D.loadableMaxKg)
+        };
+    },
+
+    /**
+     * Tag dell'esercizio (§2.2). Esercizi senza tag (id futuri, oggetti finti): derivati da tipo,
+     * muscolo primario e categoria, senza mai lanciare. Id sconosciuto → null.
+     */
+    getExerciseMeta(exerciseId) {
+        const ex = (exerciseId && typeof exerciseId === 'object') ? exerciseId : this._db(exerciseId);
+        if (!ex) return null;
+        if (ex.pattern && ex.loadType) return ex;
+        const prim = Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : [];
+        const m0 = prim[0] || '';
+        const iso = { petto: 'iso-chest', schiena: 'iso-back', spalle: 'iso-shoulder-lat', bicipiti: 'iso-biceps',
+            tricipiti: 'iso-triceps', quadricipiti: 'iso-quad', femorali: 'iso-ham', glutei: 'iso-glute',
+            polpacci: 'iso-calf', addome: 'core-flex', trapezio: 'iso-traps', avambracci: 'iso-forearm' };
+        const comp = { petto: 'push-h', tricipiti: 'push-h', spalle: 'push-v', schiena: 'pull-h', bicipiti: 'pull-v',
+            quadricipiti: 'squat', femorali: 'hinge', glutei: 'bridge', addome: 'core-antiext' };
+        const pattern = ex.type === 'compound' ? (comp[m0] || iso[m0] || 'push-h') : (iso[m0] || comp[m0] || 'iso-chest');
+        const lt = { bilanciere: 'barbell', manubri: 'dumbbell-pair', macchine: 'machine-stack', cavi: 'cable' }[ex.category] || 'bodyweight';
+        return {
+            ...ex,
+            secondaryMuscles: Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [],
+            primaryMuscles: prim,
+            pattern, loadType: lt, barWeight: lt === 'barbell' ? 20 : 0, unilateral: false, metric: 'reps',
+            tier: ex.type === 'compound' ? 2 : 3, prio: 2, stretch: false,
+            joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 },
+            family: ex.id || 'x', easier: [], harder: []
+        };
+    },
+
+    _metaOrDefault(exerciseId) {
+        return this.getExerciseMeta(exerciseId) || {
+            id: exerciseId, name: String(exerciseId || ''), type: 'compound', loadType: 'machine-stack', metric: 'reps',
+            pattern: '', tier: 2, prio: 2, primaryMuscles: [], secondaryMuscles: [], joint: {}, family: String(exerciseId || ''),
+            easier: [], harder: [], equipment: []
+        };
+    },
+
+    // Peso vero del bilanciere di quell'esercizio (0 per i "solo dischi" e per chi non ha bilanciere)
+    _barFor(meta, g) {
+        if (!meta || !['barbell', 'ez-bar', 'machine-plate'].includes(meta.loadType)) return 0;
+        const bw = Number(meta.barWeight) || 0;
+        if (bw === 20) return g.barKg;
+        if (bw === 10) return g.ezBarKg;
+        return bw;
+    },
+
+    // Somme per lato ottenibili con i dischi contati (unità da 0,25 kg)
+    _plateSums(counts, maxU) {
+        const items = [];
+        Object.keys(counts).forEach(k => { for (let i = 0; i < counts[k]; i++) items.push(this._u(Number(k))); });
+        let sums = new Set([0]);
+        items.forEach(it => {
+            const next = new Set(sums);
+            sums.forEach(s => { if (s + it <= maxU) next.add(s + it); });
+            sums = next;
+        });
+        return [...sums];
+    },
+
+    // Scala in unità, ordinata e senza doppioni, unita ai pesi registrati (§3.2)
+    _ladderUnits(meta, g, recorded) {
+        const U = new Set();
+        const lt = meta.loadType;
+        const add = (kg) => { const u = this._u(kg); if (Number.isFinite(u) && u >= 0) U.add(u); };
+        const range = (min, max, step) => {
+            const s = this._u(step);
+            if (!(s > 0)) return;
+            for (let u = this._u(min); u <= this._u(max); u += s) U.add(u);
+        };
+        switch (lt) {
+            case 'barbell': case 'ez-bar': case 'machine-plate': {
+                const ub = this._u(this._barFor(meta, g));
+                if (g.plateCounts) {
+                    this._plateSums(g.plateCounts, 1000).forEach(s => U.add(ub + 2 * s));
+                } else {
+                    const st = 2 * this._u(Math.min(...g.plates));
+                    for (let u = ub; u <= ub + 2000; u += st) U.add(u);
+                }
+                break;
+            }
+            case 'dumbbell-pair': case 'dumbbell-single':
+                g.dumbbells.forEach(add);
+                break;
+            case 'cable':
+                range(g.cableMinKg, g.cableMaxKg, g.cableStepKg);
+                break;
+            case 'bodyweight':
+                U.add(0);
+                break;
+            case 'bodyweight-loadable':
+                U.add(0);
+                if (['iso-calf', 'bridge', 'hinge'].includes(meta.pattern)) g.dumbbells.forEach(add);
+                else range(g.loadablePlateStep, g.loadableMaxKg, g.loadablePlateStep);
+                break;
+            case 'assisted':
+                range(g.stackMinKg, g.assistMaxKg, g.stackStepKg);
+                break;
+            default: // machine-stack (e ripiego)
+                range(g.stackMinKg, g.stackMaxKg, g.stackStepKg);
+        }
+        if (lt !== 'bodyweight' && Array.isArray(recorded)) {
+            recorded.forEach(w => {
+                const n = Number(w);
+                if (Number.isFinite(n) && (n > 0 || (n === 0 && lt === 'bodyweight-loadable'))) add(n);
+            });
+        }
+        return [...U].sort((a, b) => a - b);
+    },
+
+    // Scala che copre anche pesi oltre il massimo configurato (manubri da 60 in una palestra grande):
+    // si prosegue con l'ultimo intervallo della palestra, così lo stepper non torna mai indietro.
+    _ladderAround(meta, kg, gym, recorded, steps = 1) {
+        const g = this._gym(gym);
+        const U = this._ladderUnits(meta, g, recorded);
+        if (!U.length) return [0];
+        if (meta.loadType !== 'bodyweight') {
+            const last0 = U[U.length - 1];
+            const want = Math.min(Math.ceil(Number(kg) * 4) || 0, last0 + 4000);
+            const B = this._ladderUnits(meta, g, []);
+            const gap = B.length >= 2 ? Math.max(1, B[B.length - 1] - B[B.length - 2]) : Math.max(4, B[0] || 4);
+            let guard = 0;
+            while (U[U.length - 1] <= want + gap * Math.max(1, Math.abs(steps)) && guard++ < 4000) U.push(U[U.length - 1] + gap);
+        }
+        return U;
+    },
+
+    /** Carichi possibili per l'esercizio (§3.2), uniti ai pesi già registrati. */
+    getLoadLadder(exerciseId, gym, recorded = []) {
+        const meta = this._metaOrDefault(exerciseId);
+        return this._ladderUnits(meta, this._gym(gym), recorded).map(u => u / 4);
+    },
+
+    /** Porta kg sulla scala: 'floor' | 'ceil' | 'nearest' (a parità il più basso). */
+    snapLoad(exerciseId, kg, mode = 'nearest', gym, recorded = []) {
+        const meta = this._metaOrDefault(exerciseId);
+        const U = this._ladderAround(meta, kg, gym, recorded, 1);
+        const u = Number(kg) * 4;   // in quarti di kg, senza arrotondare (11,9 per difetto = 10)
+        if (!Number.isFinite(u)) return U[0] / 4;
+        const EPS = 1e-6;
+        let lo = -1, hi = -1;
+        for (let i = 0; i < U.length; i++) {
+            if (U[i] <= u + EPS) lo = i;
+            if (U[i] >= u - EPS && hi < 0) hi = i;
+        }
+        if (mode === 'floor') return (lo >= 0 ? U[lo] : U[0]) / 4;
+        if (mode === 'ceil') return (hi >= 0 ? U[hi] : U[U.length - 1]) / 4;
+        if (lo < 0) return U[hi] / 4;
+        if (hi < 0) return U[lo] / 4;
+        return (u - U[lo] <= U[hi] - u + EPS ? U[lo] : U[hi]) / 4;
+    },
+
+    /** Si sposta di `steps` gradini; un peso fuori scala conta il primo gradino sopra (o sotto) come uno. */
+    stepLoad(exerciseId, kg, steps, gym, recorded = []) {
+        const meta = this._metaOrDefault(exerciseId);
+        const n = Math.trunc(Number(steps) || 0);
+        const U = this._ladderAround(meta, kg, gym, recorded, n);
+        const u = Number(kg) * 4;
+        if (!Number.isFinite(u)) return U[0] / 4;
+        if (n === 0) return this.snapLoad(exerciseId, kg, 'nearest', gym, recorded);
+        const EPS = 1e-6;
+        let idx = U.findIndex(v => Math.abs(v - u) < EPS);
+        if (idx >= 0) idx += n;
+        else if (n > 0) {
+            const up = U.findIndex(v => v > u + EPS);
+            idx = up < 0 ? U.length - 1 : up + n - 1;
+        } else {
+            let down = -1;
+            U.forEach((v, i) => { if (v < u - EPS) down = i; });
+            idx = down + n + 1;
+        }
+        return U[Math.max(0, Math.min(U.length - 1, idx))] / 4;
+    },
+
+    /** Un gradino "più duro": più carico, ma MENO assistenza per le trazioni assistite. */
+    harderLoad(exerciseId, kg, gym, recorded = []) {
+        const meta = this._metaOrDefault(exerciseId);
+        return this.stepLoad(exerciseId, kg, meta.loadType === 'assisted' ? -1 : 1, gym, recorded);
+    },
+
+    /**
+     * Dischi per lato (§3.5). Peso non ottenibile → il più vicino PER DIFETTO, exact false.
+     * @returns {{perSide:number[], achieved:number, exact:boolean, belowBar:boolean}}
+     */
+    calcPlates(totalKg, opts = {}) {
+        const barKg = Number.isFinite(Number(opts.barKg)) && Number(opts.barKg) >= 0 ? Number(opts.barKg) : 20;
+        const plates = (Array.isArray(opts.plates) && opts.plates.length ? opts.plates : this.DEFAULT_GYM.plates)
+            .map(Number).filter(p => Number.isFinite(p) && p > 0).sort((a, b) => b - a);
+        const total = Number(totalKg);
+        if (!Number.isFinite(total) || total < barKg) return { perSide: [], achieved: barKg, exact: false, belowBar: true };
+        let rem = Math.floor((this._u(total) - this._u(barKg)) / 2);
+        let perSide = [];
+        const counts = opts.plateCounts && typeof opts.plateCounts === 'object' ? opts.plateCounts : null;
+        if (!counts) {
+            plates.forEach(p => {
+                const pu = this._u(p);
+                while (pu > 0 && pu <= rem) { perSide.push(p); rem -= pu; }
+            });
+        } else {
+            // zaino limitato: massimo totale ≤ rem, a parità meno dischi, poi dischi più grandi prima
+            const items = [];
+            Object.keys(counts).map(Number).filter(p => Number.isFinite(p) && p > 0).sort((a, b) => b - a)
+                .forEach(p => { for (let i = 0; i < Math.floor(Number(counts[p]) || 0); i++) items.push(p); });
+            const better = (a, b) => {   // a meglio di b? (stessa somma)
+                if (a.length !== b.length) return a.length < b.length;
+                for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i];
+                return false;
+            };
+            let best = new Map([[0, []]]);
+            items.forEach(p => {
+                const pu = this._u(p);
+                const next = new Map(best);
+                best.forEach((list, s) => {
+                    const ns = s + pu;
+                    if (ns > rem) return;
+                    const cand = list.concat([p]).sort((a, b) => b - a);
+                    const cur = next.get(ns);
+                    if (!cur || better(cand, cur)) next.set(ns, cand);
+                });
+                best = next;
+            });
+            const top = Math.max(...best.keys());
+            perSide = best.get(top);
+        }
+        const achieved = (this._u(barKg) + 2 * perSide.reduce((a, p) => a + this._u(p), 0)) / 4;
+        return { perSide, achieved, exact: this._u(achieved) === this._u(total), belowBar: false };
+    },
+
+    /**
+     * Salto di progressione (§3.6): +5% multiarticolari di gambe (tier ≤ 2), +2,5% il resto, sulla scala vera.
+     * Corpo libero (e zavorra a 0) → null; assistite → un gradino di assistenza in meno.
+     * @returns {{nextKg:number, pct:number, bigJump:boolean}|null}
+     */
+    getProgressionJump(exerciseId, kg, gym, recorded = []) {
+        const meta = this._metaOrDefault(exerciseId);
+        const lt = meta.loadType;
+        const w = Number(kg) || 0;
+        if (lt === 'bodyweight') return null;
+        if (lt === 'bodyweight-loadable' && !(w > 0)) return null;
+        if (lt === 'assisted') {
+            const next = this.stepLoad(exerciseId, w, -1, gym, recorded);
+            if (!(next < w)) return null;
+            return { nextKg: next, pct: w > 0 ? (next - w) / w : 0, bigJump: false };
+        }
+        if (!(w > 0)) {
+            const first = this.getLoadLadder(exerciseId, gym, recorded).find(x => x > 0);
+            return first ? { nextKg: first, pct: 1, bigJump: true } : null;
+        }
+        const p = (this.LEG_PATTERNS.includes(meta.pattern) && (meta.tier || 3) <= 2) ? 0.05 : 0.025;
+        let next = this.snapLoad(exerciseId, w * (1 + p), 'nearest', gym, recorded);
+        if (next <= w) next = this.stepLoad(exerciseId, w, 1, gym, recorded);
+        if (!(next > w)) return null;
+        const pct = (next - w) / w;
+        return { nextKg: next, pct, bigJump: pct > 0.10 + 1e-9 };
+    },
+
+    /** Rep da fare prima di un salto (Epley): ceil(((1 + lo/30) × next/kg − 1) × 30). */
+    repsToEarnJump(lo, kg, nextKg) {
+        const k = Number(kg), n = Number(nextKg), l = Number(lo);
+        if (!(k > 0) || !(n > 0)) return Math.round(l) || 0;
+        return Math.ceil(((1 + l / 30) * n / k - 1) * 30 - 1e-9);
+    },
+
+    needReps(range, kg, nextKg) {
+        const [lo, hi] = range;
+        return Math.max(hi, Math.min(hi + 5, this.repsToEarnJump(lo, kg, nextKg)));
+    },
+
+    // Difficoltà ammessa (§6.1): principianti solo "beginner" più gli accessori facili alle macchine
+    _difficultyOk(meta, level) {
+        const d = meta.difficulty || 'beginner';
+        if (level === 'advanced' || level === 'expert') return true;
+        if (level === 'intermediate') return d !== 'advanced';
+        if (d === 'beginner') return true;
+        return d === 'intermediate' && meta.tier === 3 && this.MACHINE_TYPES.includes(meta.loadType);
+    },
+
+    _painAreas(profile) {
+        const a = profile && Array.isArray(profile.painAreas) ? profile.painAreas : [];
+        return a.filter(x => ['shoulder', 'elbow', 'knee', 'lowBack'].includes(x));
+    },
+
+    // Esercizio ammesso per la persona (attrezzatura, difficoltà §6.1, zone dolenti, esclusi)
+    _allowedFor(exerciseId, profile = {}, level) {
+        const m = this.getExerciseMeta(exerciseId);
+        if (!m || m.hidden) return false;
+        if (!this._hasEquipment(m, this._normalizeEquipment(profile.equipment))) return false;
+        if (!this._difficultyOk(m, this._level(level || profile.level))) return false;
+        if (Array.isArray(profile.avoidExercises) && profile.avoidExercises.includes(exerciseId)) return false;
+        if (this._painAreas(profile).some(a => (m.joint || {})[a] === 2)) return false;
+        return true;
+    },
+
+    _firstAllowed(list, profile, level) {
+        return (Array.isArray(list) ? list : []).find(id => this._allowedFor(id, profile, level)) || null;
+    },
+
+    // Area dolente con stress articolare ≥ 1 su quell'esercizio → RIR minimo 2
+    _painTouches(exerciseId, profile) {
+        const m = this.getExerciseMeta(exerciseId);
+        return !!m && this._painAreas(profile).some(a => ((m.joint || {})[a] || 0) >= 1);
+    },
+
+    // ========================================
+    // v2 — PRIMO PESO E "TROVA IL PESO" (§10)
+    // ========================================
+
+    // Uomo principiante, × peso corporeo; manubri = PER MANUBRIO [C]
+    SEED_RATIO: {
+        'squat|barbell': 0.35, 'squat|machine-plate': 0.50, 'squat|dumbbell-single': 0.12,
+        'hinge|barbell': 0.40, 'hinge|dumbbell-pair': 0.12, 'hinge|dumbbell-single': 0.12,
+        'lunge|barbell': 0.20, 'lunge|dumbbell-pair': 0.08,
+        'bridge|barbell': 0.50, 'bridge|dumbbell-single': 0.20,
+        'push-h|barbell': 0.30, 'push-h|dumbbell-pair': 0.10, 'push-h|machine-stack': 0.30, 'push-h|machine-plate': 0.20,
+        'push-v|barbell': 0.20, 'push-v|dumbbell-pair': 0.07, 'push-v|machine-stack': 0.20,
+        'pull-h|barbell': 0.30, 'pull-h|dumbbell-pair': 0.10, 'pull-h|dumbbell-single': 0.12,
+        'pull-h|machine-stack': 0.35, 'pull-h|machine-plate': 0.20, 'pull-v|machine-stack': 0.35,
+        'iso-quad|machine-stack': 0.25, 'iso-ham|machine-stack': 0.20,
+        'iso-glute|machine-stack': 0.25, 'iso-glute|cable': 0.05, 'carry|dumbbell-pair': 0.20,
+        'iso-chest|dumbbell-pair': 0.06, 'iso-chest|dumbbell-single': 0.10, 'iso-chest|machine-stack': 0.20, 'iso-chest|cable': 0.08,
+        'iso-back|cable': 0.15,
+        'iso-shoulder-lat|dumbbell-pair': 0.04, 'iso-shoulder-lat|machine-stack': 0.10, 'iso-shoulder-lat|cable': 0.03,
+        'iso-shoulder-lat|ez-bar': 0.20,
+        'iso-shoulder-front|dumbbell-pair': 0.04, 'iso-shoulder-front|cable': 0.05, 'iso-shoulder-front|ez-bar': 0.15,
+        'iso-shoulder-rear|dumbbell-pair': 0.03, 'iso-shoulder-rear|machine-stack': 0.10, 'iso-shoulder-rear|cable': 0.10,
+        'iso-biceps|ez-bar': 0.20, 'iso-biceps|dumbbell-pair': 0.06, 'iso-biceps|dumbbell-single': 0.06,
+        'iso-biceps|cable': 0.12, 'iso-biceps|machine-stack': 0.12,
+        'iso-triceps|ez-bar': 0.20, 'iso-triceps|dumbbell-pair': 0.04, 'iso-triceps|dumbbell-single': 0.10,
+        'iso-triceps|cable': 0.12, 'iso-triceps|machine-stack': 0.25,
+        'iso-calf|machine-stack': 0.50, 'iso-calf|machine-plate': 0.30,
+        'iso-traps|dumbbell-pair': 0.15, 'iso-forearm|dumbbell-pair': 0.05,
+        'core-flex|cable': 0.20, 'core-flex|machine-stack': 0.20, 'core-rot|cable': 0.08
+    },
+    SEED_LEVEL: { beginner: 1, intermediate: 1.4, advanced: 1.7, expert: 1.9 },
+
+    _isMale(gender) {
+        return /^(male|m|uomo|man)$/i.test(String(gender || '').trim());
+    },
+
+    /**
+     * Stima PRUDENTE del primo peso (§10.1): tarata per lasciare ≥4 rep in riserva quasi a tutti.
+     * @returns {{kg:number, rawKg:number, isEstimate:true, aboveSeed:boolean}}
+     */
+    estimateStartingLoad(exerciseId, profile = {}, gym, now = new Date()) {
+        const meta = this.getExerciseMeta(exerciseId);
+        const out = (kg, raw, above = false) => ({ kg, rawKg: Math.round(raw * 100) / 100, isEstimate: true, aboveSeed: above });
+        if (!meta) return out(0, 0);
+        const p = profile || {};
+        const lt = meta.loadType;
+        if (lt === 'bodyweight' || lt === 'bodyweight-loadable') return out(0, 0);
+        const female = this._isFemale(p.gender), male = this._isMale(p.gender);
+        const bw = Number(p.weight) > 0 ? Number(p.weight) : (female ? 62 : (male ? 78 : 70));
+        const lvlF = this.SEED_LEVEL[p.level] || 1;
+        if (lt === 'assisted') {
+            // più assistenza = più prudente
+            const raw = 0.6 * bw * (female ? 1.2 : 1) / lvlF;
+            return out(this.snapLoad(exerciseId, raw, 'ceil', gym), raw);
+        }
+        const sexF = female ? (this.LEG_SEED_PATTERNS.includes(meta.pattern) ? 0.65 : 0.55) : (male ? 1 : 0.8);
+        const ratio = this.SEED_RATIO[`${meta.pattern}|${lt}`];
+        const g = this._gym(gym);
+        if (ratio == null) {
+            const min = this.getLoadLadder(exerciseId, g).find(x => x > 0) || 0;
+            return out(min, min);
+        }
+        const raw = ratio * bw * sexF * lvlF;
+        const bar = this._barFor(meta, g);
+        let kg = this.snapLoad(exerciseId, raw, 'floor', g);
+        if (lt !== 'machine-plate' && bar > 0 && kg < bar) kg = bar;
+        return out(kg, raw, (lt === 'barbell' || lt === 'ez-bar') && bar > raw);
+    },
+
+    /**
+     * "Trova il peso" (§10.2): massimo 3 serie di prova con RIR.
+     * state = { tests: [{kg, reps, rir}], testReps, targetReps, targetRir, level, lo?, seedKg? }
+     * @returns {{done:boolean, nextKg?:number, workingKg?:number, est?:number, lastIsWorkSet?:boolean}}
+     */
+    nextCalibrationStep(exerciseId, state = {}, gym) {
+        const s = state || {};
+        const tests = (Array.isArray(s.tests) ? s.tests : [])
+            .map(t => ({ kg: this._num(t && t.kg), reps: Math.round(this._num(t && t.reps)), rir: this._num(t && t.rir) }))
+            .filter(t => t.kg >= 0 && t.reps > 0);
+        const testReps = Math.round(this._num(s.testReps)) || 10;
+        const targetReps = Number.isFinite(this._num(s.targetReps)) ? this._num(s.targetReps) : testReps;
+        const targetRir = Number.isFinite(this._num(s.targetRir)) ? this._num(s.targetRir) : 2;
+        const level = this._level(s.level);
+        if (!tests.length) {
+            const seed = Number.isFinite(this._num(s.seedKg)) ? this._num(s.seedKg) : this.estimateStartingLoad(exerciseId, { level }, gym).kg;
+            return { done: false, nextKg: seed, testReps };
+        }
+        const last = tests[tests.length - 1];
+        const n = tests.length;
+        let res;
+        if (last.rir >= 4 && last.reps >= testReps) {
+            if (n >= 3) res = { done: true, workingKg: this.snapLoad(exerciseId, last.kg * 1.15, 'nearest', gym) };
+            else {
+                let next = this.snapLoad(exerciseId, last.kg * (n === 1 ? 1.5 : 1.3), 'nearest', gym);
+                if (next <= last.kg) next = this.stepLoad(exerciseId, last.kg, 1, gym);
+                return { done: false, nextKg: next, testReps };
+            }
+        } else {
+            const rir = Number.isFinite(last.rir) ? Math.min(4, Math.max(0, last.rir)) : 2;
+            const q = rir + (this.RIR_BIAS[level] || 0) + (last.reps > 12 ? 0.5 : 0);
+            const est = last.kg * (1 + (last.reps + q) / 30);
+            let w = est / (1 + (targetReps + targetRir) / 30);
+            w = Math.max(last.kg * 0.6, Math.min(last.kg * 1.6, w));
+            res = { done: true, workingKg: this.snapLoad(exerciseId, w, 'floor', gym), est: Math.round(est * 10) / 10 };
+        }
+        // la prova vicina al peso giusto conta come prima serie di lavoro (la principiante non spreca serie)
+        const lo = Number.isFinite(this._num(s.lo)) ? this._num(s.lo) : null;
+        if (lo != null) {
+            const a = Math.min(last.kg, res.workingKg), b = Math.max(last.kg, res.workingKg);
+            res.lastIsWorkSet = last.reps >= lo && this.stepLoad(exerciseId, a, 1, gym) >= b;
+        }
+        return res;
+    },
+
+    // ========================================
+    // v2 — PROGRESSIONE: doppia progressione + RIR (§9)
+    // ========================================
+
+    SUGGESTION_ACTION: {
+        new: 'start', calibrate: 'start', detraining: 'return_deload', refamiliarize: 'refamiliarize',
+        increase_weight: 'weight_up', increase_reps: 'reps_up', maintain: 'consolidate', rir_up: 'weight_up',
+        rir_hold: 'consolidate', rir_down: 'deload_exercise', backoff: 'deload_exercise', variant_up: 'variant_up',
+        variant_down: 'variant_down', add_load: 'weight_up', increase_time: 'reps_up', deload: 'deload'
+    },
+
+    _parseRange(range) {
+        if (Array.isArray(range) && range.length >= 2) {
+            const a = Math.round(this._num(range[0])), b = Math.round(this._num(range[1]));
+            if (a > 0 && b > 0) return [Math.min(a, b), Math.max(a, b)];
+        }
+        if (range && typeof range === 'object' && !Array.isArray(range)) return this._parseRange([range.min, range.max]);
+        if (typeof range === 'number' && range > 0) return [range, range];
+        const m = String(range == null ? '' : range).match(/(\d+)\s*[-–—]\s*(\d+)/);
+        if (m) return this._parseRange([m[1], m[2]]);
+        const one = String(range == null ? '' : range).match(/(\d+)/);
+        if (one && Number(one[1]) > 0) return [Number(one[1]), Number(one[1])];
+        return [8, 12];
+    },
+
+    _daysBetween(a, b) {
+        const x = new Date(a), y = new Date(b);
+        if (isNaN(x.getTime()) || isNaN(y.getTime())) return NaN;
+        return Math.round((Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) - Date.UTC(x.getFullYear(), x.getMonth(), x.getDate())) / 86400000);
+    },
+
+    _reduceReps(reps, factor) {
+        const r = Math.max(1, Math.round(Number(reps) || 1));
+        let t = Math.max(1, Math.floor(r * factor));
+        if (t >= r && r > 1) t = r - 1;
+        return t;
+    },
+
+    /**
+     * Prossimo obiettivo per un esercizio (§9), funzione PURA.
+     * input = { exerciseId, range: [lo, hi], targetRir (della seduta precedente), nextTargetRir,
+     *   level, gym, recorded, sessions: [{date, phase, sets: [{weight, reps, rir, completed, isWarmup,
+     *   isCalibration}]}] (recente prima), personPauseDays, now, profile, phase (della prossima seduta), loadFactor }
+     * @returns Suggestion (§19.2): suggestedWeight SEMPRE un numero, message una riga senza emoji.
+     */
+    computeNextTarget(input = {}) {
+        const id = input.exerciseId;
+        const meta = this._metaOrDefault(id);
+        const gym = this._gym(input.gym);
+        const recorded = Array.isArray(input.recorded) ? input.recorded : [];
+        const [lo, hi] = this._parseRange(input.range);
+        const level = this._level(input.level);
+        const prevRir = Number.isFinite(this._num(input.targetRir)) ? this._num(input.targetRir) : 2;
+        const nextRir = Number.isFinite(this._num(input.nextTargetRir)) ? this._num(input.nextTargetRir) : prevRir;
+        const profile = input.profile || {};
+        const now = input.now ? new Date(input.now) : new Date();
+        const lt = meta.loadType;
+        const metric = meta.metric === 'time' ? 'time' : 'reps';
+        const unit = metric === 'time' ? 's' : 'rep';
+        const fmt = (kg) => this._fmtKg(kg);
+        const step = (kg, n) => this.stepLoad(id, kg, n, gym, recorded);
+        const snap = (kg, mode) => this.snapLoad(id, kg, mode, gym, recorded);
+
+        const weightOf = (s) => {
+            if (lt === 'bodyweight' || (s.isBodyweight && lt === 'bodyweight-loadable')) return 0;
+            const w = this._num(s.weight);
+            return Number.isFinite(w) && w > 0 ? w : 0;
+        };
+        const isWork = (s) => s && s.completed !== false && !s.isWarmup && !s.isCalibration && this._num(s.reps) > 0;
+        const all = (Array.isArray(input.sessions) ? input.sessions : []).map(s => ({
+            date: s && s.date,
+            phase: (s && s.phase) || null,
+            // lo della seduta (lo stesso esercizio può avere range diversi in giorni diversi)
+            lo: s && s.targetReps ? this._parseRange(s.targetReps)[0] : null,
+            work: ((s && Array.isArray(s.sets)) ? s.sets : []).filter(isWork).map(x => ({
+                weight: weightOf(x),
+                reps: Math.round(this._num(x.reps)),
+                rir: Number.isFinite(this._num(x.rir)) ? Math.min(4, Math.max(0, this._num(x.rir))) : null
+            }))
+        })).filter(s => s.work.length);
+        let valid = all.filter(s => s.phase !== 'deload');
+        if (!valid.length && all.length) valid = all.slice();   // solo sedute di scarico: meglio di niente
+        const base = { metric, variantId: null, bigJump: false, rirDelta: null, targetRir: nextRir };
+
+        // 0. nessuna seduta: stima prudente (+ "Trova il peso" per chi comincia)
+        if (!valid.length) {
+            const est = this.estimateStartingLoad(id, { ...profile, level }, gym, now);
+            const testReps = Math.round((lo + hi) / 2);
+            const loaded = !['bodyweight', 'bodyweight-loadable'].includes(lt);
+            const calibrate = loaded && level === 'beginner';
+            return {
+                ...base, status: 'new', action: 'start', suggestedWeight: est.kg, suggestedReps: lo, testReps,
+                isEstimate: true, aboveSeed: est.aboveSeed, calibrate, increment: 0, lastPerformance: null,
+                message: !loaded ? `Prima volta: ${lo}-${hi} ${unit}`
+                    : (calibrate ? `Trova il peso: prova ${fmt(est.kg)} kg × ${testReps}` : `Prima volta: ${fmt(est.kg)} kg, ${lo}-${hi} ${unit}`)
+            };
+        }
+
+        const maxW = (s) => Math.max(...s.work.map(x => x.weight));
+        const firstTop = (s) => { const w = maxW(s); return s.work.find(x => Math.abs(x.weight - w) < 0.01).reps; };
+        const last = valid[0];
+        const W = maxW(last);
+        const top = last.work.filter(x => Math.abs(x.weight - W) < 0.01);
+        const first = top[0].reps;
+        const lastPerformance = { weight: W, reps: last.work.map(x => x.reps), topReps: Math.max(...top.map(x => x.reps)), date: last.date };
+        const mk = (status, w, reps, extra = {}) => ({
+            ...base, status, action: this.SUGGESTION_ACTION[status] || 'consolidate',
+            suggestedWeight: Math.round(w * 100) / 100, suggestedReps: reps,
+            increment: Math.round((w - W) * 100) / 100, lastPerformance, ...extra
+        });
+        const noLoad = lt === 'bodyweight' || !(W > 0);
+
+        // 1. pausa della PERSONA ≥ 21 giorni (invariato v1.26, sulla scala vera)
+        const pause = this._num(input.personPauseDays);
+        if (pause >= 21) {
+            const weeks = pause / 7;
+            const factor = Math.max(0.6, 1 - 0.025 * (weeks - 2));
+            const weeksOff = Math.floor(weeks);
+            let w = W, reduced = false;
+            if (!noLoad) {
+                if (lt === 'assisted') {
+                    w = snap(W * (2 - factor), 'ceil');
+                    if (w <= W) w = step(W, 1);
+                    reduced = w > W;
+                } else {
+                    w = snap(W * factor, 'floor');
+                    if (w >= W) w = step(W, -1);
+                    if (w < W * 0.6 - 1e-9) w = snap(W * 0.6, 'ceil');
+                    reduced = w > 0 && w < W;
+                }
+                if (!reduced) w = W;
+            }
+            const pct = reduced && lt !== 'assisted' ? Math.round((1 - w / W) * 100) : 0;
+            const reps = reduced ? lo : this._reduceReps(lastPerformance.topReps, factor);
+            const msg = reduced
+                ? (lt === 'assisted' ? `Rientro dopo ${weeksOff} settimane: assistenza ${fmt(w)} kg, RIR 3`
+                    : `Rientro dopo ${weeksOff} settimane: ${fmt(w)} kg (−${pct}%), RIR 3`)
+                : (noLoad ? `Rientro dopo ${weeksOff} settimane: ${reps} ${unit}, RIR 3`
+                    : `Rientro dopo ${weeksOff} settimane: ${fmt(W)} kg × ${reps}, RIR 3`);
+            return mk('detraining', w, reps, { rirTarget: 3, targetRir: 3, weeksOff, reductionPct: pct, message: msg });
+        }
+
+        // 2. esercizio assente da ≥ 6 settimane, persona in attività (invariato v1.26)
+        const exDays = this._daysBetween(all[0].date, now);
+        if (Number.isFinite(exDays) && exDays >= 42) {
+            let w = W, reps = lo, reduced = false;
+            if (!noLoad) {
+                const other = step(W, lt === 'assisted' ? 1 : -1);
+                if (lt === 'assisted' ? other > W : (other > 0 && other >= W * 0.6 - 1e-9 && other < W)) { w = other; reduced = true; }
+            }
+            if (!reduced) reps = this._reduceReps(lastPerformance.topReps, 0.85);
+            const weeksAbsent = Math.floor(exDays / 7);
+            const msg = noLoad ? `Non lo fai da ${weeksAbsent} settimane: ${reps} ${unit}, RIR 3`
+                : `Non lo fai da ${weeksAbsent} settimane: ${fmt(w)} kg${reduced ? '' : ` × ${reps}`}, RIR 3`;
+            return mk('refamiliarize', w, reps, { rirTarget: 3, targetRir: 3, weeksAbsent, message: msg });
+        }
+
+        // Scarico: niente progressione, −10% e RIR 4 (§9.7)
+        if (input.phase === 'deload') {
+            const f = Number.isFinite(this._num(input.loadFactor)) && this._num(input.loadFactor) > 0 ? this._num(input.loadFactor) : 0.9;
+            let w = W;
+            if (!noLoad) w = lt === 'assisted' ? snap(W * (2 - f), 'ceil') : snap(W * f, 'floor');
+            return mk('deload', w, lo, { targetRir: 4, message: noLoad ? `Scarico: ${lo} ${unit}, RIR 4` : `Scarico: ${fmt(w)} kg, RIR 4` });
+        }
+
+        const loOf = (s) => (s.lo != null ? s.lo : lo);
+        const struggling = valid.slice(0, 3).filter(s => firstTop(s) < loOf(s)).length >= 2;
+        const allHi = top.every(x => x.reps >= hi);
+        const allLo = top.every(x => x.reps >= lo);
+        const nameOf = (vid) => (this._db(vid) || {}).name || vid;
+
+        // 3. isometrie e cardio a tempo senza carico (§9.4)
+        if (metric === 'time' && noLoad) {
+            const TR = (this.TIME_RANGES[id] || {})[level];
+            const cap = (TR ? TR[1] : hi) + 15;
+            if (allHi) {
+                const next = first + 5;
+                if (next <= cap) return mk('increase_time', W, next, { message: `+5 s: ${next} s` });
+                const v = this._firstAllowed(meta.harder, profile, level);
+                if (v) return mk('variant_up', 0, lo, { variantId: v, message: `Passa a ${nameOf(v)}` });
+                return mk('maintain', W, Math.min(first, cap), { message: `Resta a ${Math.min(first, cap)} s` });
+            }
+            if (struggling) {
+                const r = Math.max(5, Math.min(first, lo) - 5);
+                return mk('backoff', W, r, { message: `−5 s: ${r} s` });
+            }
+            if (allLo) {
+                const next = Math.min(hi, first + 5);
+                return mk('increase_time', W, next, { message: `Punta a ${next} s` });
+            }
+            return mk('maintain', W, lo, { message: `Punta a ${lo} s` });
+        }
+
+        // 4. corpo libero, zavorra a 0, assistite (§9.4)
+        if (lt === 'assisted') {
+            if (allHi) {
+                const next = step(W, -1);
+                if (next < W) return mk('increase_weight', next, lo, { message: `Meno assistenza: ${fmt(next)} kg` });
+                const v = this._firstAllowed(meta.harder, profile, level);
+                if (v) return mk('variant_up', 0, lo, { variantId: v, message: `Passa a ${nameOf(v)}` });
+                return mk('maintain', W, hi, { message: `Resta a ${fmt(W)} kg, ${hi} rep` });
+            }
+            if (struggling) {
+                const more = step(W, 1);
+                return mk('backoff', more, lo, { message: `Più assistenza: ${fmt(more)} kg` });
+            }
+            if (allLo) {
+                const r = Math.min(first + 1, hi);
+                return mk('increase_reps', W, r, { message: `${fmt(W)} kg, punta a ${r}` });
+            }
+            return mk('maintain', W, lo, { message: `Resta a ${fmt(W)} kg, punta a ${lo}` });
+        }
+        if (noLoad) {
+            if (allHi) {
+                const v = this._firstAllowed(meta.harder, profile, level);
+                if (v) return mk('variant_up', 0, lo, { variantId: v, message: `Passa a ${nameOf(v)}` });
+                if (lt === 'bodyweight-loadable') {
+                    const add = this.getLoadLadder(id, gym, recorded).find(x => x > 0);
+                    if (add) return mk('add_load', add, lo, { message: `+${fmt(add)} kg di zavorra` });
+                }
+                // nessuna variante: range esteso fino a hi + 10, una rep alla volta
+                if (first < hi + 10) return mk('increase_reps', 0, first + 1, { message: `Punta a ${first + 1} rep` });
+                return mk('maintain', 0, first, { message: `Resta a ${first} rep` });
+            }
+            if (struggling) {
+                const v = this._firstAllowed(meta.easier, profile, level);
+                if (v) return mk('variant_down', 0, lo, { variantId: v, message: `Passa a ${nameOf(v)}` });
+                return mk('maintain', 0, lo, { message: `Punta a ${lo} rep` });
+            }
+            if (allLo) {
+                const r = Math.min(first + 1, hi);
+                return mk('increase_reps', 0, r, { message: `Punta a ${r} rep`, suggestedRepsPerSet: top.map(x => Math.min(Math.max(x.reps + 1, lo), hi)) });
+            }
+            return mk('maintain', 0, lo, { message: `Punta a ${lo} rep` });
+        }
+
+        // 5. caricati: doppia progressione → correzione RIR → stallo (§9.3, §9.5, §9.6)
+        const J = this.getProgressionJump(id, W, gym, recorded);
+        const need = J ? this.needReps([lo, hi], W, J.nextKg) : hi;
+        let status, w = W, reps = lo;
+        const extra = {};
+        if (J && top.every(x => x.reps >= need)) { status = 'increase_weight'; w = J.nextKg; reps = lo; extra.bigJump = J.bigJump; }
+        else if (allLo) { status = 'increase_reps'; reps = Math.min(first + 1, need); }
+        else { status = 'maintain'; reps = lo; }
+
+        if (W > 0 && metric === 'reps') {
+            const withRir = top.filter(x => x.rir != null);
+            if (withRir.length && withRir.length * 2 >= top.length) {
+                const bias = (this.RIR_BIAS[level] || 0) + (first > 12 ? 0.5 : 0);
+                const rirAdj = withRir.reduce((a, x) => a + x.rir, 0) / withRir.length + bias;
+                const delta = rirAdj - prevRir;
+                extra.rirDelta = Math.round(delta * 100) / 100;
+                const p = 1 / (30 + first);
+                if (delta >= 1.5) {
+                    const Wr = snap(W * (1 + Math.min(0.10, (delta - 0.5) * p)), 'nearest');
+                    if (status !== 'increase_weight') {
+                        const up = Math.max(Wr, step(W, 1));
+                        // un gradino grande (>10%, manubri e cavi leggeri) che il RIR da solo non giustifica
+                        // non si forza: si resta e si guadagnano le rep del salto (§3.6)
+                        if (up > W * 1.10 + 1e-9 && Wr < up) {
+                            if (status === 'increase_reps' || allLo) { status = 'increase_reps'; reps = Math.min(Math.max(first + 1, lo), need); }
+                        } else {
+                            status = 'rir_up'; w = up; reps = Math.min(hi, Math.max(lo, first));
+                        }
+                    } else if (Wr > J.nextKg) {
+                        status = 'rir_up'; w = Wr;
+                    }
+                } else if (delta <= -1.5) {
+                    if (status === 'increase_weight') { status = 'rir_hold'; w = W; reps = first; extra.bigJump = false; }
+                    else if (status === 'increase_reps') { status = 'rir_hold'; reps = first; }
+                    if (delta <= -2.5 && first < lo) {
+                        status = 'rir_down';
+                        w = snap(W * (1 - Math.min(0.10, (-delta - 0.5) * p)), 'floor');
+                        reps = lo;
+                    }
+                }
+            }
+        }
+
+        // stallo: prima serie al top sotto lo allo stesso carico in ≥2 delle ultime 3 sedute valide;
+        // la prima seduta dopo un salto grande (>10%) non conta
+        if (status === 'maintain' || status === 'rir_down') {
+            let stalls = 0;
+            valid.slice(0, 3).forEach((s, i) => {
+                const sw = maxW(s);
+                if (Math.abs(sw - W) >= 0.01 || firstTop(s) >= loOf(s)) return;
+                const prev = valid[i + 1];
+                if (prev) { const pw = maxW(prev); if (pw > 0 && (sw - pw) / pw > 0.10 + 1e-9) return; }
+                stalls++;
+            });
+            if (stalls >= 2) {
+                const b = snap(W * 0.9, 'floor');
+                if (b < W) { status = 'backoff'; w = b; reps = lo; }
+            }
+        }
+
+        // chiaramente troppo leggero (tutte le serie ≥ hi+2 con "4+"): l'interfaccia può proporre "Trova il peso"
+        if (W > 0 && metric === 'reps' && top.every(x => x.reps >= hi + 2) && top.filter(x => x.rir != null).length * 2 >= top.length &&
+            top.filter(x => x.rir != null).every(x => x.rir >= 4) && top.some(x => x.rir != null)) extra.recalibrate = true;
+        const u = metric === 'time' ? ' s' : '';
+        const msg = {
+            increase_weight: `Aumenta a ${fmt(w)} kg`,
+            increase_reps: `${fmt(W)} kg, punta a ${reps}${u}`,
+            maintain: `Resta a ${fmt(W)} kg, punta a ${reps}${u}`,
+            rir_up: `Facile: ${fmt(w)} kg`,
+            rir_hold: `Duro: resta a ${fmt(w)} kg`,
+            rir_down: `Scala a ${fmt(w)} kg`,
+            backoff: `Stallo: scendi a ${fmt(w)} kg`
+        }[status];
+        if (status === 'increase_reps') extra.suggestedRepsPerSet = top.map(x => Math.min(Math.max(x.reps + 1, lo), need));
+        return mk(status, w, reps, { ...extra, message: msg });
+    },
+
+    // ========================================
+    // v2 — RISCALDAMENTO SPECIFICO E RIPOSI (§11, §8.2)
+    // ========================================
+
+    /**
+     * Rampa di riscaldamento del primo multiarticolare (§11) → [{kg, reps, pct}].
+     * Niente rampa per corpo libero, zavorra, assistite, isolamenti, addome.
+     */
+    buildWarmupSets(exerciseId, workingKg, targetReps, goal, gym) {
+        const meta = this.getExerciseMeta(exerciseId);
+        const W = Number(workingKg);
+        if (!meta || !(W > 0)) return [];
+        if (['bodyweight', 'bodyweight-loadable', 'assisted'].includes(meta.loadType)) return [];
+        if (meta.type !== 'compound' || /^core-|^iso-|^carry/.test(meta.pattern || '')) return [];
+        const g = this._gym(gym);
+        const reps = Math.round(this._num(targetReps)) || this._parseRange(targetReps)[0];
+        const scheme = reps <= 6 ? [[0.40, 8], [0.60, 5], [0.80, 3], [0.90, 1]]
+            : (W >= 100 ? [[0.50, 8], [0.70, 5], [0.85, 3]] : [[0.50, 8], [0.80, 5]]);
+        const bar = meta.loadType === 'barbell' ? (Number(meta.barWeight) ? this._barFor(meta, g) : 0)
+            : (meta.loadType === 'ez-bar' ? g.ezBarKg : 0);
+        const out = [];
+        const pct = (kg) => Math.round(kg / W * 100) / 100;
+        if (bar > 0 && 0.5 * W - bar >= 10) out.push({ kg: bar, reps: 10, pct: pct(bar) });
+        scheme.forEach(([p, r]) => {
+            let kg = this.snapLoad(exerciseId, W * p, 'nearest', g);
+            if (bar > 0 && kg < bar) kg = bar;
+            if (kg >= W || (out.length && kg <= out[out.length - 1].kg)) return;
+            out.push({ kg, reps: r, pct: pct(kg) });
+        });
+        if (!out.length) {
+            const kg = this.snapLoad(exerciseId, W * 0.5, 'floor', g);
+            if (kg < W) out.push({ kg, reps: 8, pct: pct(kg) });
+        }
+        return out;
+    },
+
+    REST_V2: {
+        strength: { main: 240, compound: 150, isolation: 90 },
+        hypertrophy: { main: 150, compound: 120, isolation: 75 },
+        recomp: { main: 120, compound: 90, isolation: 60 },
+        endurance: { main: 75, compound: 60, isolation: 45 },
+        toning: { main: 105, compound: 90, isolation: 60 }
+    },
+
+    /** Riposo in secondi (§8.2): donna −15% con pavimenti 90/60/45, arrotondato ai 5 s. */
+    getRestSeconds(exerciseId, role, goal, profile = {}, opts = {}) {
+        if (opts.calibration) return 90;
+        if (opts.ramp) return 60;
+        const R = this.REST_V2[this._normalizeGoal(goal)] || this.REST_V2.hypertrophy;
+        const meta = this._metaOrDefault(exerciseId);
+        const isCore = role === 'core' || /^core-/.test(meta.pattern || '');
+        const kind = role === 'main' ? 'main' : ((role === 'secondary' || role === 'compound') ? 'compound' : 'isolation');
+        let rest = isCore ? 45 : (meta.pattern === 'iso-calf' ? this.REST_CALVES : R[kind]);
+        if (this._isFemale(profile && profile.gender)) {
+            rest *= 0.85;
+            rest = Math.max(rest, isCore ? 45 : { main: 90, compound: 60, isolation: 45 }[kind]);
+        }
+        rest = Math.round(rest / 5) * 5;
+        if (opts.compressed && (isCore || kind === 'isolation')) rest = isCore ? Math.max(45, Math.round(rest * 0.75)) : Math.max(60, Math.round(rest * 0.75));
+        return rest;
+    },
+
+    // ========================================
+    // v2 — ALTERNATIVE IN SEDUTA (§7)
+    // ========================================
+
+    STATION_OVERRIDE: {
+        'lat-pulldown': 'lat-machine', 'lat-pulldown-close': 'lat-machine', 'leg-press': 'leg-press',
+        'leg-press-calf-raise': 'leg-press', 'pec-deck': 'pec-deck', 'reverse-pec-deck': 'pec-deck',
+        'smith-squat': 'smith', 'smith-bench-press': 'smith'
+    },
+
+    _station(exerciseId) {
+        const m = this.getExerciseMeta(exerciseId);
+        if (this.STATION_OVERRIDE[exerciseId]) return this.STATION_OVERRIDE[exerciseId];
+        return m && ['machine-stack', 'machine-plate', 'assisted'].includes(m.loadType) ? exerciseId : null;
+    },
+
+    _isCoreMeta(m) {
+        return /^core-/.test((m && m.pattern) || '');
+    },
+
+    /**
+     * Alternative per l'esercizio in seduta (§7.1): macchina occupata, dolore, non mi piace.
+     * opts = { reason: 'busy'|'pain'|'dislike', sessionExerciseIds, painArea, history, historyWeights, limit, gym, kg }
+     * @returns [{ exerciseId, score, weight: { kg, confidence, mode } }]
+     */
+    getAlternatives(exerciseId, profile = {}, opts = {}) {
+        const orig = this.getExerciseMeta(exerciseId);
+        if (!orig || typeof EXERCISES_DB === 'undefined') return [];
+        const prof = profile || {};
+        const reason = opts.reason || 'dislike';
+        const level = this._level(prof.level);
+        const session = new Set(Array.isArray(opts.sessionExerciseIds) ? opts.sessionExerciseIds : []);
+        const pains = [...new Set([...this._painAreas(prof), opts.painArea].filter(a => ['shoulder', 'elbow', 'knee', 'lowBack'].includes(a)))];
+        const history = new Set(Array.isArray(opts.history) ? opts.history : []);
+        const avoid = new Set(Array.isArray(prof.avoidExercises) ? prof.avoidExercises : []);
+        const eq = this._normalizeEquipment(prof.equipment);
+        const userHasLoad = ['manubri', 'macchine', 'bilanciere', 'cavi'].some(e => eq.has(e));
+        const origLoaded = orig.loadType !== 'bodyweight';
+        const origStation = this._station(exerciseId);
+        const jac = (a, b) => {
+            const A = new Set(a || []), B = new Set(b || []);
+            const union = new Set([...A, ...B]).size;
+            if (!union) return 0;
+            let inter = 0;
+            A.forEach(x => { if (B.has(x)) inter++; });
+            return inter / union;
+        };
+        const out = [];
+        Object.keys(EXERCISES_DB).forEach(id => {
+            if (id === exerciseId || session.has(id) || avoid.has(id)) return;
+            const m = this.getExerciseMeta(id);
+            if (!m || m.hidden) return;
+            if (!this._hasEquipment(m, eq) || !this._difficultyOk(m, level)) return;
+            if (pains.some(a => (m.joint || {})[a] === 2)) return;
+            if (this._isCoreMeta(m) !== this._isCoreMeta(orig)) return;
+            const samePattern = m.pattern === orig.pattern;
+            if (!samePattern && !m.primaryMuscles.some(x => orig.primaryMuscles.includes(x))) return;
+            if (reason === 'busy' && origStation && this._station(id) === origStation) return;
+            let score = samePattern ? 40 : 0;
+            score += Math.round(25 * jac(m.primaryMuscles, orig.primaryMuscles)) + Math.round(10 * jac(m.secondaryMuscles, orig.secondaryMuscles));
+            if (m.family === orig.family) score += 5;
+            if (!!m.unilateral === !!orig.unilateral) score += 3;
+            if (m.stretch && orig.stretch) score += 2;
+            score += ({ 1: 6, 2: 3, 3: 0 })[m.prio] || 0;
+            if (Math.abs((m.tier || 2) - (orig.tier || 2)) >= 2) score -= 10;
+            pains.forEach(a => { if ((m.joint || {})[a] === 1) score -= 8; });
+            if (history.has(id)) score += 8;
+            if (m.loadType === 'bodyweight' && origLoaded && userHasLoad) score -= 15;
+            out.push({ exerciseId: id, score });
+        });
+        out.sort((a, b) => (b.score - a.score) || (a.exerciseId < b.exerciseId ? -1 : 1));
+        const limit = Number.isFinite(Number(opts.limit)) && Number(opts.limit) > 0 ? Number(opts.limit) : 5;
+        const hw = opts.historyWeights && typeof opts.historyWeights === 'object' ? opts.historyWeights : {};
+        return out.slice(0, limit).map(a => {
+            let weight;
+            if (history.has(a.exerciseId)) {
+                const kg = Number.isFinite(Number(hw[a.exerciseId])) ? Number(hw[a.exerciseId]) : null;
+                weight = { kg, confidence: 'alta', mode: 'history' };
+            } else {
+                weight = this.convertLoad(exerciseId, a.exerciseId, opts.kg, opts.gym);
+                if (weight.mode === 'find') weight.seedKg = this.estimateStartingLoad(a.exerciseId, prof, opts.gym).kg;
+            }
+            return { ...a, weight };
+        });
+    },
+
+    /**
+     * Peso dell'alternativa (§7.2): conversione solo dove c'è un dato, altrimenti "Trova il peso".
+     * @returns {{kg:number|null, confidence:'alta'|'media'|'bassa'|'none', mode:'convert'|'find'|'bodyweight', rirAdjust?:number}}
+     */
+    convertLoad(fromId, toId, kg, gym) {
+        const a = this.getExerciseMeta(fromId), b = this.getExerciseMeta(toId);
+        if (!a || !b) return { kg: null, confidence: 'none', mode: 'find' };
+        if (b.loadType === 'bodyweight') return { kg: 0, confidence: 'alta', mode: 'bodyweight' };
+        if (a.pattern !== b.pattern) return { kg: null, confidence: 'none', mode: 'find' };
+        let f = null;
+        const pair = (x, y) => a.loadType === x && b.loadType === y;
+        if (a.pattern === 'push-h' && pair('barbell', 'dumbbell-pair')) f = 0.415;          // Saeterbakken 2011
+        else if (a.pattern === 'push-h' && pair('dumbbell-pair', 'barbell')) f = 1 / 0.415;
+        else if (a.pattern === 'push-v' && pair('barbell', 'dumbbell-pair')) f = 0.465;     // Saeterbakken & Fimland 2013
+        else if (a.pattern === 'push-v' && pair('dumbbell-pair', 'barbell')) f = 1 / 0.465;
+        else if (a.family === b.family && a.loadType === b.loadType && !['machine-stack', 'machine-plate', 'assisted'].includes(a.loadType)) f = 1;
+        const w = Number(kg);
+        if (f == null || !(w > 0)) return { kg: null, confidence: 'bassa', mode: 'find' };
+        return { kg: this.snapLoad(toId, w * f, 'floor', gym), confidence: 'media', mode: 'convert', rirAdjust: 1 };
+    },
+
+    // ========================================
+    // v2 — SEDUTA "HO POCO TEMPO" (§13)
+    // ========================================
+
+    SEC_PER_REP: { strength: 4, hypertrophy: 4.5, recomp: 4.5, toning: 4.5, endurance: 3.5 },
+
+    // Secondi di UNA serie (§13.1): a tempo = metà del range; altrimenti metà del range × s/rep,
+    // fra 20 e 75 s; ×2 per gli unilaterali (si fanno i due lati)
+    _setSecondsV2(exerciseId, reps, goal) {
+        const meta = this._metaOrDefault(exerciseId);
+        const mid = this._avgReps(reps);
+        const t = meta.metric === 'time' ? mid
+            : Math.max(20, Math.min(75, mid * (this.SEC_PER_REP[goal] || this.SEC_PER_REP.hypertrophy)));
+        return t * (meta.unilateral ? 2 : 1);
+    },
+
+    // Ruolo dell'esercizio nella seduta: dal campo `role`, altrimenti derivato (§19.1)
+    _rolesOf(exercises) {
+        let mainSeen = false;
+        return exercises.map(ex => {
+            if (ex && ['main', 'secondary', 'accessory', 'core'].includes(ex.role)) {
+                if (ex.role === 'main') mainSeen = true;
+                return ex.role;
+            }
+            const m = this._metaOrDefault(ex && ex.exerciseId);
+            if (ex && ex.isCore || this._isCoreMeta(m) || (m.primaryMuscles || []).includes('addome')) return 'core';
+            const compound = (ex && ex.type ? ex.type : m.type) === 'compound';
+            if (compound && !mainSeen) { mainSeen = true; return 'main'; }
+            return compound ? 'secondary' : 'accessory';
+        });
+    },
+
+    // Blocchi contigui della seduta: esercizi singoli o superset (stessa lettera)
+    _blocks(exercises) {
+        const blocks = [];
+        exercises.forEach((ex, i) => {
+            const g = ex && ex.supersetGroup;
+            const lastB = blocks[blocks.length - 1];
+            if (g && lastB && lastB.group === g) lastB.idx.push(i);
+            else blocks.push({ group: g || null, idx: [i] });
+        });
+        return blocks;
+    },
+
+    /**
+     * Seduta compressa per chi ha poco tempo (§13.2). Passi in ordine, stima ricalcolata dopo ognuno:
+     * S1 riscaldamento a 5', S2 riposi di accessori e core, S3 superset fra non-main compatibili,
+     * S4 core via se c'è in ≥2 altri giorni, S5 accessori a 2 serie, S6 secondari −1, S7 via gli
+     * accessori (prima quelli non d'enfasi, restano ≥3 esercizi), S8 main −1.
+     * ctx = { goal, emphasis, coreDaysElsewhere, warmupMin, cooldownMin }
+     * @returns {{day, changes, estimatedMinutes, fits}}
+     */
+    compressDay(day, minutes, ctx = {}) {
+        const c = ctx || {};
+        const goal = this._normalizeGoal(c.goal || (day && day.goal) || 'hypertrophy');
+        const work = JSON.parse(JSON.stringify(day || {}));
+        work.exercises = Array.isArray(work.exercises) ? work.exercises.filter(Boolean) : [];
+        const target = Math.max(25, Number(minutes) || 0);
+        const estCtx = { goal };
+        if (c.warmupMin != null) estCtx.warmupMin = Number(c.warmupMin);
+        if (c.cooldownMin != null) estCtx.cooldownMin = Number(c.cooldownMin);
+        if (estCtx.warmupMin == null) estCtx.warmupMin = this._dayWarmupMin(work);
+        const est = () => this.estimateWorkoutDuration(work, estCtx);
+        const changes = [];
+        const done = () => ({ day: work, changes, estimatedMinutes: est(), fits: est() <= target });
+        if (!work.exercises.length || est() <= target) return { day: work, changes: [], estimatedMinutes: est(), fits: est() <= target };
+        work.compressed = true;
+        const roles = () => this._rolesOf(work.exercises);
+        work.exercises.forEach((ex, i) => { if (!ex.role) ex.role = roles()[i]; });
+        const setsOf = (ex) => Math.max(1, parseInt(ex.sets, 10) || 3);
+        const restOf = (ex) => { const r = parseInt(ex.rest, 10); return Number.isFinite(r) && r >= 0 ? r : (ex.type === 'compound' ? 120 : 75); };
+        const RANK = { main: 3, secondary: 2, accessory: 1, core: 0 };
+        const unpair = (ex) => {
+            const g = ex.supersetGroup;
+            if (!g) return;
+            work.exercises.forEach(o => {
+                if (o.supersetGroup === g) { delete o.supersetGroup; delete o.supersetOrder; delete o.supersetRest; delete o.transitionTime; delete o.isGiantSet; }
+            });
+        };
+        const membersOf = (ex) => ex.supersetGroup ? work.exercises.filter(o => o.supersetGroup === ex.supersetGroup) : [ex];
+        const setSets = (ex, n) => membersOf(ex).forEach(o => { o.sets = n; });
+
+        // S1: riscaldamento generale a 5 minuti (la rampa del main resta, al massimo 2 serie)
+        if (!(estCtx.warmupMin <= 5)) {
+            changes.push({ step: 'S1', what: 'warmup', from: estCtx.warmupMin, to: 5 });
+            estCtx.warmupMin = 5;
+            work.warmupMin = 5;
+        }
+        work.exercises.forEach(ex => {
+            if (Array.isArray(ex.warmupSets) && ex.warmupSets.length > 2) { ex.warmupSets = ex.warmupSets.slice(-2); changes.push({ step: 'S1', exerciseId: ex.exerciseId, what: 'ramp', to: 2 }); }
+        });
+        if (est() <= target) return done();
+
+        // S2: riposi più brevi per accessori e core
+        work.exercises.forEach(ex => {
+            if (ex.role !== 'accessory' && ex.role !== 'core') return;
+            const r = restOf(ex);
+            const to = ex.role === 'core' ? Math.max(45, Math.round(r * 0.75)) : Math.max(60, Math.round(r * 0.75));
+            if (to < r) { ex.rest = to; changes.push({ step: 'S2', exerciseId: ex.exerciseId, what: 'rest', from: r, to }); }
+        });
+        work.exercises.forEach(ex => {
+            if (ex.supersetGroup) {
+                const m = membersOf(ex);
+                ex.supersetRest = Math.min(parseInt(ex.supersetRest, 10) || 999, Math.round(Math.max(...m.map(restOf)) * 0.8));
+            }
+        });
+        if (est() <= target) return done();
+
+        // S3: superset fra esercizi non main compatibili (avido nell'ordine della seduta)
+        const UPPER_P = /^(push-|pull-|iso-(chest|back|shoulder|biceps|triceps|traps|forearm))/;
+        const OK = [['push-h', 'pull-h'], ['push-v', 'pull-v'], ['push-h', 'pull-v'], ['push-v', 'pull-h'],
+            ['iso-biceps', 'iso-triceps'], ['iso-quad', 'iso-ham'], ['iso-chest', 'iso-shoulder-rear'],
+            ['iso-shoulder-lat', 'iso-biceps'], ['iso-shoulder-lat', 'iso-triceps']];
+        const FIXED = ['machine-stack', 'machine-plate', 'assisted'];
+        const compatible = (a, b) => {
+            const ma = this._metaOrDefault(a.exerciseId), mb = this._metaOrDefault(b.exerciseId);
+            if ((ma.primaryMuscles || []).some(x => (mb.primaryMuscles || []).includes(x))) return false;
+            if (FIXED.includes(ma.loadType) && FIXED.includes(mb.loadType)) return false;
+            if (Math.abs(setsOf(a) - setsOf(b)) > 1) return false;
+            const pa = ma.pattern || '', pb = mb.pattern || '';
+            if (OK.some(([x, y]) => (pa === x && pb === y) || (pa === y && pb === x))) return true;
+            if ((pa === 'iso-calf' && UPPER_P.test(pb)) || (pb === 'iso-calf' && UPPER_P.test(pa))) return true;
+            return /^core-/.test(pa) || /^core-/.test(pb);
+        };
+        const used = new Set(work.exercises.map(e => e.supersetGroup).filter(Boolean));
+        const letters = 'ABCDEFGHIJKL'.split('').filter(l => !used.has(l));
+        for (let i = 0; i < work.exercises.length; i++) {
+            const a = work.exercises[i];
+            if (a.role === 'main' || a.supersetGroup) continue;
+            const j = work.exercises.findIndex((b, k) => k > i && b.role !== 'main' && !b.supersetGroup && compatible(a, b));
+            if (j < 0 || !letters.length) continue;
+            const b = work.exercises[j];
+            const letter = letters.shift();
+            const ra = RANK[a.role] || 0, rb = RANK[b.role] || 0;
+            const rounds = ra !== rb ? setsOf(ra > rb ? a : b) : Math.max(2, Math.min(setsOf(a), setsOf(b)));
+            work.exercises.splice(j, 1);
+            work.exercises.splice(i + 1, 0, b);
+            const rest = Math.round(Math.max(restOf(a), restOf(b)) * 0.8);
+            [a, b].forEach((x, k) => {
+                x.sets = rounds; x.supersetGroup = letter; x.supersetOrder = k + 1; x.supersetRest = rest; x.transitionTime = 15;
+            });
+            changes.push({ step: 'S3', superset: [a.exerciseId, b.exerciseId], rounds });
+            i++;
+        }
+        if (est() <= target) return done();
+
+        // S4: niente addome oggi se c'è in almeno altri 2 giorni della settimana
+        if ((Number(c.coreDaysElsewhere) || 0) >= 2) {
+            work.exercises.filter(ex => ex.role === 'core').forEach(ex => {
+                unpair(ex);
+                work.exercises.splice(work.exercises.indexOf(ex), 1);
+                changes.push({ step: 'S4', removed: ex.exerciseId });
+            });
+            if (est() <= target) return done();
+        }
+
+        // S5: accessori a 2 serie, dall'ultimo (non quello in superset con un esercizio di ruolo più alto)
+        for (let i = work.exercises.length - 1; i >= 0; i--) {
+            const ex = work.exercises[i];
+            if (ex.role !== 'accessory' || setsOf(ex) <= 2) continue;
+            if (membersOf(ex).some(o => (RANK[o.role] || 0) > RANK.accessory)) continue;
+            changes.push({ step: 'S5', exerciseId: ex.exerciseId, what: 'sets', from: setsOf(ex), to: 2 });
+            setSets(ex, 2);
+            if (est() <= target) return done();
+        }
+
+        // S6: secondari −1 serie (minimo 2), dall'ultimo
+        for (let i = work.exercises.length - 1; i >= 0; i--) {
+            const ex = work.exercises[i];
+            if (ex.role !== 'secondary' || setsOf(ex) <= 2) continue;
+            if (ex.supersetGroup && membersOf(ex)[0] !== ex && membersOf(ex)[0].role === 'secondary') continue; // il gruppo si tocca una volta
+            const n = setsOf(ex) - 1;
+            changes.push({ step: 'S6', exerciseId: ex.exerciseId, what: 'sets', from: n + 1, to: n });
+            setSets(ex, n);
+            if (est() <= target) return done();
+        }
+
+        // S7: via gli accessori dall'ultimo, prima quelli che non sono del muscolo d'enfasi; restano ≥3 esercizi
+        const emph = c.emphasis === 'lower' ? ['glutei'] : (c.emphasis === 'upper' ? ['petto', 'schiena', 'spalle'] : []);
+        const isEmph = (ex) => (this._metaOrDefault(ex.exerciseId).primaryMuscles || []).some(m => emph.includes(m));
+        for (const pass of [false, true]) {
+            for (let i = work.exercises.length - 1; i >= 0; i--) {
+                if (work.exercises.length <= 3) break;
+                const ex = work.exercises[i];
+                if (ex.role !== 'accessory' || isEmph(ex) !== pass) continue;
+                unpair(ex);
+                work.exercises.splice(i, 1);
+                changes.push({ step: 'S7', removed: ex.exerciseId });
+                if (est() <= target) return done();
+            }
+        }
+
+        // S8: main −1 serie (minimo 2)
+        const main = work.exercises.find(ex => ex.role === 'main');
+        if (main && setsOf(main) > 2) {
+            changes.push({ step: 'S8', exerciseId: main.exerciseId, what: 'sets', from: setsOf(main), to: setsOf(main) - 1 });
+            setSets(main, setsOf(main) - 1);
+        }
+        return done();
+    },
+
+    // Minuti di riscaldamento generale che il giorno porta con sé (giorni v2) o della routine intera
+    _dayWarmupMin(day) {
+        const v = Number(day && day.warmupMin);
+        if (Number.isFinite(v) && v >= 0) return v;
+        return this._warmupMinutes(day && day.warmup);
+    },
+
+    // ========================================
+    // v2 — SCARICO ANTICIPATO (§12.4)
+    // ========================================
+
+    /**
+     * Suggerisce uno scarico anticipato (mai lo impone): ≥2 esercizi (≥40% dei valutati) in calo ≥5%
+     * di prestazione stimata, oppure RIR sistematicamente sotto il target nelle ultime 2 sedute.
+     * @returns {{suggest:boolean, reasons:string[], declining:string[]}}
+     */
+    detectEarlyDeload(workouts, program, now = new Date()) {
+        const none = (why) => ({ suggest: false, reasons: why ? [why] : [], declining: [] });
+        const list = (Array.isArray(workouts) ? workouts : []).filter(w => w && !isNaN(new Date(w.date).getTime()))
+            .slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+        if (!list.length) return none();
+        const t = new Date(now).getTime();
+        const cycle = program && program.metadata && program.metadata.cycle;
+        if (cycle && Array.isArray(cycle.phases) && cycle.phases.length) {
+            const week = Math.max(1, parseInt(cycle.currentWeek, 10) || 1);
+            const ph = this.getPhaseForWeek(cycle, week);
+            const next = cycle.phases.find(p => p.week === week + 1);
+            const manual = cycle.manualDeloadUntil && new Date(cycle.manualDeloadUntil).getTime() > t;
+            if (week <= 1) return none('week1');
+            if (manual || (ph && ph.phase === 'deload')) return none('deload_active');
+            if (next && next.phase === 'deload') return none('deload_next');
+        }
+        const days = (d) => (t - new Date(d).getTime()) / 86400000;
+        if (days(list[0].date) >= 10) return none('pause');
+        if (list[1] && this._daysBetween(list[1].date, list[0].date) >= 10) return none('pause');
+
+        const isDeloadW = (w) => w.cyclePhase === 'deload';
+        const work = (s) => s && s.completed !== false && !s.isWarmup && !s.isCalibration && this._num(s.reps) > 0;
+        // indice di prestazione per sessione ed esercizio (caricati, a ripetizioni)
+        const sessions = {};
+        list.filter(w => !isDeloadW(w) && days(w.date) <= 21).forEach(w => {
+            (w.exercises || []).forEach(ex => {
+                const m = this.getExerciseMeta(ex && ex.exerciseId);
+                if (!m || m.metric === 'time' || ['bodyweight', 'bodyweight-loadable', 'assisted'].includes(m.loadType)) return;
+                const tr = this._num(ex.targetRir);
+                let pi = 0;
+                (ex.sets || []).filter(work).forEach(s => {
+                    const kg = this._num(s.weight);
+                    if (!(kg > 0)) return;
+                    const rir = Number.isFinite(this._num(s.rir)) ? this._num(s.rir) : (Number.isFinite(tr) ? tr : 2);
+                    pi = Math.max(pi, kg * (1 + (this._num(s.reps) + rir) / 30));
+                });
+                if (pi > 0) (sessions[ex.exerciseId] = sessions[ex.exerciseId] || []).push({ date: w.date, pi });
+            });
+        });
+        const declining = [];
+        let evaluated = 0;
+        Object.keys(sessions).sort().forEach(id => {
+            const s = sessions[id];
+            if (s.length < 3 || days(s[0].date) > 7) return;
+            evaluated++;
+            const drop = 1 - s[0].pi / ((s[1].pi + s[2].pi) / 2);
+            if (drop >= 0.05 - 1e-9) declining.push(id);
+        });
+        const reasons = [];
+        if (declining.length >= 2 && declining.length / evaluated >= 0.40) reasons.push('performance_drop');
+        // RIR registrato sistematicamente sotto il target nelle ultime 2 sedute
+        const diffs = [];
+        list.slice(0, 2).forEach(w => (w.exercises || []).forEach(ex => {
+            const tr = this._num(ex.targetRir);
+            (ex.sets || []).filter(work).forEach(s => {
+                const r = this._num(s.rir);
+                if (Number.isFinite(r)) diffs.push(r - (Number.isFinite(tr) ? tr : 2));
+            });
+        }));
+        if (diffs.length >= 6 && diffs.reduce((a, x) => a + x, 0) / diffs.length <= -1.5) reasons.push('rir_too_low');
+        return { suggest: reasons.length > 0, reasons, declining };
     },
 
     // ========================================
     // CONDITIONING
     // ========================================
 
+    // Cardio per obiettivo (§16.2): [sessioni, sessioni max, minuti, minuti max] [C, da Schumann 2022,
+    // Murlasits 2018, Wewege 2017, OMS 2020]. HIIT in minuti di LAVORO.
+    CARDIO_V2: {
+        toning: { liss: { beginner: [2, 2, 30, 30], other: [2, 3, 30, 40] }, hiit: { beginner: [0, 0, 0, 0], other: [1, 1, 10, 15] } },
+        recomp: { liss: { beginner: [2, 2, 30, 30], other: [2, 2, 30, 30] }, hiit: { beginner: [0, 0, 0, 0], other: [1, 1, 10, 15] } },
+        hypertrophy: { liss: { beginner: [1, 2, 20, 30], other: [1, 2, 20, 30] }, hiit: { beginner: [0, 1, 10, 15], other: [0, 1, 10, 15] } },
+        strength: { liss: { beginner: [1, 2, 20, 30], other: [1, 2, 20, 30] }, hiit: { beginner: [0, 0, 0, 0], other: [0, 0, 0, 0] } },
+        endurance: { liss: { beginner: [1, 2, 30, 45], other: [1, 2, 30, 45] }, hiit: { beginner: [2, 2, 10, 15], other: [2, 2, 15, 20] } }
+    },
+
     /**
-     * generateConditioningSuggestions(goal, program) — accetta anche la vecchia firma
+     * Cardio della settimana (§16.2). Firma v1.26 + profile facoltativo; accetta anche la vecchia
      * (goal, level, daysPerWeek, programDays).
+     * @returns {{ weekly: [{type:'liss'|'hiit', sessions, sessionsMax, minutes, minutesMax, intensity}],
+     *   rules: string[], notes: string[], ...campi v1.26 (enabled, frequency, preferredType, protocol, legDays, ...) }}
+     * Regole: HIIT_NOT_BEFORE_LEGS, AFTER_LIFTING_OR_3H, HIIT_MAX_2, LOW_IMPACT_FIRST, STEPS.
      */
-    generateConditioningSuggestions(goal, programOrLevel, legacyDays, legacyProgramDays) {
+    generateConditioningSuggestions(goal, programOrLevel, profileOrDays, legacyProgramDays) {
         let level = 'intermediate';
         let programDays = [];
         let daysPerWeek = 4;
-        if (programOrLevel && typeof programOrLevel === 'object') {
-            programDays = Array.isArray(programOrLevel.days) ? programOrLevel.days : [];
-            level = programOrLevel.metadata?.level || level;
-            daysPerWeek = programDays.length || programOrLevel.metadata?.daysPerWeek || daysPerWeek;
-            goal = goal || programOrLevel.metadata?.goal;
-        } else {
-            level = programOrLevel || level;
-            daysPerWeek = legacyDays || daysPerWeek;
+        let profile = null;
+        let program = null;
+        if (typeof programOrLevel === 'string') {
+            level = programOrLevel;
+            daysPerWeek = Number(profileOrDays) || daysPerWeek;
             programDays = Array.isArray(legacyProgramDays) ? legacyProgramDays : [];
+        } else {
+            program = programOrLevel && typeof programOrLevel === 'object' ? programOrLevel : null;
+            profile = profileOrDays && typeof profileOrDays === 'object' ? profileOrDays : null;
+            programDays = program && Array.isArray(program.days) ? program.days : [];
+            level = (profile && profile.level) || (program && program.metadata && program.metadata.level) || level;
+            daysPerWeek = programDays.length || (program && program.metadata && program.metadata.daysPerWeek) || daysPerWeek;
+            goal = goal || (program && program.metadata && program.metadata.goal);
         }
         const g = this._normalizeGoal(goal);
-        const config = (typeof CONDITIONING_BY_GOAL !== 'undefined' && CONDITIONING_BY_GOAL[g])
-            ? CONDITIONING_BY_GOAL[g]
-            : this.getDefaultConditioningConfig(g);
+        const lvl = this._level(level);
+        const T = this.CARDIO_V2[g] || this.CARDIO_V2.hypertrophy;
+        const pick = (t) => t[lvl === 'beginner' ? 'beginner' : 'other'];
+        const weekly = [];
+        const [ls, lsMax, lm, lmMax] = pick(T.liss);
+        if (lsMax > 0) weekly.push({ type: 'liss', sessions: ls, sessionsMax: lsMax, minutes: lm, minutesMax: lmMax, intensity: 'zona 2' });
+        let [hs, hsMax, hm, hmMax] = pick(T.hiit);
+        if (lvl === 'beginner') { hm = Math.min(hm, 15); hmMax = Math.min(hmMax, 15); }
+        if (hsMax > 0) weekly.push({ type: 'hiit', sessions: hs, sessionsMax: hsMax, minutes: hm, minutesMax: hmMax, intensity: 'alta' });
 
-        if (!config || config.frequency === 0) {
-            return {
-                enabled: false,
-                frequency: 0,
-                message: g === 'strength' ? 'Cardio non consigliato per la forza' : 'Cardio non necessario',
-                reason: "Il cardio intenso interferisce con il recupero e gli adattamenti di forza."
-            };
-        }
+        // giorni di gambe: il main è squat/hinge/bridge/lunge (o il nome del giorno lo dice)
+        const legDayIndices = programDays.map((d, i) => {
+            if (d && typeof d === 'object' && Array.isArray(d.exercises) && d.exercises.length) {
+                const first = d.exercises.find(e => e && e.role === 'main') || d.exercises[0];
+                const m = this.getExerciseMeta(first && first.exerciseId);
+                if (m) return this.LEG_PATTERNS.includes(m.pattern) ? i : -1;
+            }
+            const type = (typeof d === 'object' && d ? (d.type || '') : String(d || '')).toLowerCase();
+            return /lower|leg|gambe|glute/.test(type) ? i : -1;
+        }).filter(i => i >= 0);
 
-        const legDayIndices = programDays
-            .map((d, i) => {
-                const type = (typeof d === 'object' && d ? (d.type || '') : String(d || '')).toLowerCase();
-                return /lower|leg|gambe|glute/.test(type) ? i : -1;
-            })
-            .filter(i => i >= 0);
+        const emphasis = (profile && ['lower', 'upper', 'balanced'].includes(profile.emphasis)) ? profile.emphasis : (g === 'toning' ? 'lower' : 'balanced');
+        const rules = [];
+        if (hsMax > 0) rules.push('HIIT_NOT_BEFORE_LEGS');
+        rules.push('AFTER_LIFTING_OR_3H', 'HIIT_MAX_2');
+        if (emphasis === 'lower' || g === 'hypertrophy') rules.push('LOW_IMPACT_FIRST');
+        if (g === 'toning' || g === 'recomp') rules.push('STEPS');
+        const NOTES = {
+            HIIT_NOT_BEFORE_LEGS: 'Niente HIIT il giorno prima delle gambe',
+            AFTER_LIFTING_OR_3H: 'Cardio dopo i pesi o a 3 ore di distanza',
+            HIIT_MAX_2: lvl === 'beginner' ? 'HIIT al massimo 2 volte, 15 minuti' : 'HIIT al massimo 2 volte a settimana',
+            LOW_IMPACT_FIRST: 'Meglio bici, ellittica o camminata in salita',
+            STEPS: '7-10 mila passi al giorno'
+        };
 
-        return {
-            enabled: true,
-            frequency: config.frequency,
-            maxFrequency: config.maxFrequency,
-            preferredType: config.preferredType,
-            hiitAllowed: config.hiitAllowed,
-            duration: config.preferredType === 'HIIT'
-                ? (config.hiitDuration || config.duration)
-                : (config.lissDuration || config.duration),
-            protocol: this.getRecommendedProtocol(g, level),
+        // campi v1.26 (card della dashboard e modale del cardio)
+        const config = (typeof CONDITIONING_BY_GOAL !== 'undefined' && CONDITIONING_BY_GOAL[g]) ? CONDITIONING_BY_GOAL[g] : this.getDefaultConditioningConfig(g);
+        const frequency = ls + hs;
+        const legacy = {
+            enabled: frequency > 0,
+            frequency,
+            maxFrequency: lsMax + hsMax,
+            preferredType: hs > 0 && ls > 0 ? 'mixed' : (hs > 0 ? 'HIIT' : 'LISS'),
+            hiitAllowed: hsMax > 0,
+            duration: hs > 0 && ls === 0 ? hm : lm,
+            protocol: hsMax > 0 ? this.getRecommendedProtocol(g, lvl) : null,
             safeDaysForHIIT: this.calculateSafeDaysForHIIT(daysPerWeek, legDayIndices),
             legDays: legDayIndices,
-            note: config.note,
-            message: this.getConditioningMessage(config, g)
+            note: config && config.note,
+            message: weekly.filter(w => w.sessions > 0).map(w => `${w.sessions}× ${w.type.toUpperCase()} ${w.minutes}'`).join(' + ') || 'Cardio facoltativo'
         };
+        return { ...legacy, weekly, rules, notes: rules.map(r => NOTES[r]) };
     },
 
     // Giorni (indici della scheda) lontani dalle gambe: né il giorno di gambe né quello prima

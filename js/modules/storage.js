@@ -209,6 +209,12 @@ const Storage = {
             if (saved[k] !== undefined) p[k] = saved[k];
         });
         if (!Array.isArray(p.equipment)) p.equipment = def.equipment.slice();
+        // Preferenze v2 (§6.5): liste di id e zone dolenti valide, enfasi '' = automatica
+        ['avoidExercises', 'preferExercises'].forEach(k => {
+            p[k] = Array.isArray(p[k]) ? p[k].filter(x => typeof x === 'string' && x) : [];
+        });
+        p.painAreas = Array.isArray(p.painAreas) ? p.painAreas.filter(a => ['shoulder', 'elbow', 'knee', 'lowBack'].includes(a)) : [];
+        if (!['', 'lower', 'upper', 'balanced'].includes(p.emphasis)) p.emphasis = '';
 
         // Migrazione dell'obiettivo: il vecchio valore resta in _legacyGoal (non si perde)
         const g = typeof p.goal === 'string' ? p.goal : '';
@@ -253,7 +259,12 @@ const Storage = {
             targetBodyFat: null,
             daysPerWeek: 3,
             sessionTime: 60,
-            equipment: ['bilanciere', 'manubri', 'macchine', 'cavi', 'panca', 'sbarra']
+            equipment: ['bilanciere', 'manubri', 'macchine', 'cavi', 'panca', 'sbarra'],
+            // v2: "Non propormelo più", "Tienilo fisso", zone dolenti, enfasi ('' = automatica)
+            avoidExercises: [],
+            preferExercises: [],
+            painAreas: [],
+            emphasis: ''
         };
     },
 
@@ -298,6 +309,29 @@ const Storage = {
             keepAwake: true,
             backgroundAlerts: false
         };
+    },
+
+    // Copia di riserva dei default della palestra (la fonte è TrainingAlgorithm.DEFAULT_GYM, §3.1)
+    _GYM_FALLBACK: {
+        barKg: 20, ezBarKg: 10, plates: [25, 20, 15, 10, 5, 2.5, 1.25], plateCounts: null,
+        dumbbells: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50],
+        stackStepKg: 5, stackMinKg: 5, stackMaxKg: 150, cableStepKg: 2.5, cableMinKg: 2.5, cableMaxKg: 100,
+        assistMaxKg: 70, loadablePlateStep: 2.5, loadableMaxKg: 60
+    },
+
+    /** Palestra (settings.gym): default uniti a quelli salvati, valori non validi ignorati (§3.1). */
+    getGymConfig() {
+        const TA = this._algo('_gym');
+        const saved = (this._getRawSettings() || {}).gym;
+        const g = TA ? TA._gym(this._isObj(saved) ? saved : null) : { ...this._GYM_FALLBACK, ...(this._isObj(saved) ? saved : {}) };
+        return this._clone(g);
+    },
+
+    /** Unisce e salva in settings.gym (es. { barKg: 15 } o { plates: [...] }). */
+    saveGymConfig(partial) {
+        const current = (this._getRawSettings() || {}).gym;
+        const merged = { ...(this._isObj(current) ? current : {}), ...(this._isObj(partial) ? partial : {}) };
+        return this.saveSettings({ gym: merged });
     },
 
     /** Riposo di default (secondi) per un esercizio senza `rest` (allenamento libero, scheda manuale). */
@@ -352,6 +386,12 @@ const Storage = {
         if (w.programId === undefined) w.programId = w.isFreeWorkout ? null : (md.programId ?? null);
         if (w.cycleNumber === undefined) w.cycleNumber = w.isFreeWorkout ? null : (md.cycle ? (md.cycleNumber || 1) : null);
         if (w.cycleWeek === undefined) w.cycleWeek = w.isFreeWorkout ? null : (md.cycle ? (md.cycle.currentWeek || 1) : null);
+        // Fase della seduta (v2 §19.1): le sedute di scarico non contano per la progressione
+        if (w.cyclePhase === undefined) {
+            let ph = null;
+            if (!w.isFreeWorkout) { try { ph = this.getCurrentPhase(); } catch (e) { ph = null; } }
+            w.cyclePhase = ph ? ph.phase : null;
+        }
 
         workouts.unshift(w);
         this._write(this.KEYS.WORKOUTS, workouts);   // lancia se pieno: niente perdite in silenzio
@@ -563,8 +603,71 @@ const Storage = {
         return sec.filter(m => this._LEG_MUSCLES.includes(m)).length >= 2;
     },
 
-    /** Passo minimo di carico: bilanciere 2.5; manubri 1 sotto i 10 kg, poi 2; macchine/cavi 2.5; corpo libero 0. */
+    // TrainingAlgorithm con la funzione richiesta (algorithm.js si carica dopo storage.js; con la cache
+    // del Service Worker a metà aggiornamento potrebbe essere la versione vecchia: si usa il ripiego v1.26)
+    _algo(fn) {
+        try {
+            if (typeof TrainingAlgorithm !== 'undefined' && TrainingAlgorithm && typeof TrainingAlgorithm[fn] === 'function') return TrainingAlgorithm;
+        } catch (e) { /* no-op */ }
+        return null;
+    },
+
+    _loadType(exerciseId) {
+        const ex = this._exercise(exerciseId);
+        return (ex && ex.loadType) || null;
+    },
+
+    /**
+     * Passo di carico (§3.4, involucro su stepLoad): distanza fra `weight` e il gradino sopra sulla
+     * scala vera della palestra (manubri 10 → 12, bilanciere 60 → 62,5, pacco 50 → 55); 0 a corpo libero.
+     * Un peso a un soffio sotto un gradino (lo stepper v1.26 che scende passa peso − 0,01) dà il
+     * gradino sotto: 12 − 0,01 → 2.
+     * L'interfaccia deve usare stepWeight(id, peso, ±1), non peso ± passo.
+     */
     getLoadStep(exerciseId, weight) {
+        const TA = this._algo('stepLoad');
+        if (!TA) return this._loadStepV1(exerciseId, weight);
+        if (this._loadType(exerciseId) === 'bodyweight' || this.isBodyweightExercise(exerciseId) && !this._loadType(exerciseId)) return 0;
+        const w = Math.max(0, this._num(weight));
+        const gym = this.getGymConfig();
+        const rec = this.getRecordedWeights(exerciseId);
+        const up = TA.stepLoad(exerciseId, w, 1, gym, rec);
+        if (up - w > 0 && up - w <= 0.05) {
+            const below = TA.stepLoad(exerciseId, up, -1, gym, rec);
+            if (below < up) return GT.round(up - below, 0.001);
+        }
+        return Math.max(0, GT.round(up - w, 0.001));
+    },
+
+    /** Peso sul gradino `steps` più su (o giù) della scala vera: quello che lo stepper ± deve usare. */
+    stepWeight(exerciseId, weight, steps = 1) {
+        const TA = this._algo('stepLoad');
+        const w = Math.max(0, this._num(weight));
+        if (!TA) {
+            const st = this._loadStepV1(exerciseId, steps > 0 ? w : Math.max(0, w - 0.01));
+            return Math.max(0, GT.round(w + Math.sign(steps) * (st || 0), 0.001));
+        }
+        return TA.stepLoad(exerciseId, w, steps, this.getGymConfig(), this.getRecordedWeights(exerciseId));
+    },
+
+    /** Peso portato sulla scala vera ('floor' | 'ceil' | 'nearest'). */
+    snapWeight(exerciseId, weight, mode = 'nearest') {
+        const TA = this._algo('snapLoad');
+        if (!TA) return Math.max(0, this._num(weight));
+        return TA.snapLoad(exerciseId, Math.max(0, this._num(weight)), mode, this.getGymConfig(), this.getRecordedWeights(exerciseId));
+    },
+
+    /** Salto di progressione (§3.4, involucro su getProgressionJump): 0 se non c'è (corpo libero). */
+    getProgressionIncrement(exerciseId, weight) {
+        const TA = this._algo('getProgressionJump');
+        if (!TA) return this._progressionIncrementV1(exerciseId, weight);
+        const w = Math.max(0, this._num(weight));
+        const j = TA.getProgressionJump(exerciseId, w, this.getGymConfig(), this.getRecordedWeights(exerciseId));
+        return j ? GT.round(j.nextKg - w, 0.001) : 0;
+    },
+
+    /** v1.26 (ripiego): bilanciere 2.5; manubri 1 sotto i 10 kg, poi 2; macchine/cavi 2.5; corpo libero 0. */
+    _loadStepV1(exerciseId, weight) {
         switch (this._equipmentClass(exerciseId)) {
             case 'bilanciere': return 2.5;
             case 'manubri': return this._num(weight) < 10 ? 1 : 2;
@@ -580,8 +683,8 @@ const Storage = {
      * Compound gambe: bilanciere/macchine 5, manubri 2. Compound upper: bilanciere/macchine 2.5,
      * manubri = passo. Isolamento = passo. Corpo libero 0. Sempre multiplo del passo.
      */
-    getProgressionIncrement(exerciseId, weight) {
-        const step = this.getLoadStep(exerciseId, weight);
+    _progressionIncrementV1(exerciseId, weight) {
+        const step = this._loadStepV1(exerciseId, weight);
         if (!step) return 0;
         const cls = this._equipmentClass(exerciseId);
         if (this.getExerciseType(exerciseId) === 'compound') {
@@ -594,7 +697,7 @@ const Storage = {
     /** Carico disponibile subito sotto a `weight` (manubri: 10 → 9, 12 → 10; bilanciere 40 → 37.5). */
     _nextLowerWeight(exerciseId, weight) {
         const w = this._num(weight) - 1e-6;
-        const step = this.getLoadStep(exerciseId, w);
+        const step = this._loadStepV1(exerciseId, w);
         if (!step) return this._num(weight);
         return GT.floorTo(w, step);
     },
@@ -631,18 +734,26 @@ const Storage = {
         return Math.round(e1rm * 10) / 10;
     },
 
-    // Serie completate con peso > 0 e almeno 1 rep, raggruppate per esercizio
+    // Esercizio misurato in secondi (plank, side plank, farmer walk…): niente e1RM, record = secondi
+    _isTimed(exerciseId) {
+        const ex = this._exercise(exerciseId);
+        return !!ex && ex.metric === 'time';
+    },
+
+    // Serie completate con peso > 0 e almeno 1 rep, raggruppate per esercizio. Le serie di
+    // riscaldamento e di prova ("Trova il peso") non contano; quelle a tempo anche senza peso.
     _completedLoadedSets(workout) {
         const out = new Map();
         if (!workout || !Array.isArray(workout.exercises)) return out;
         workout.exercises.forEach(ex => {
             if (!ex || !ex.exerciseId || !Array.isArray(ex.sets)) return;
+            const timed = this._isTimed(ex.exerciseId);
             ex.sets.forEach(s => {
-                if (!s || !s.completed) return;
+                if (!s || !s.completed || s.isWarmup || s.isCalibration) return;
                 const w = this._num(s.weight), r = this._int(s.reps);
-                if (!(w > 0) || !(r > 0)) return;
+                if (!(r > 0) || (!(w > 0) && !timed)) return;
                 if (!out.has(ex.exerciseId)) out.set(ex.exerciseId, []);
-                out.get(ex.exerciseId).push({ weight: w, reps: r, e1rm: this.calculateE1RM(w, r), set: s });
+                out.get(ex.exerciseId).push({ weight: Math.max(0, w), reps: r, e1rm: timed ? 0 : this.calculateE1RM(w, r), set: s });
             });
         });
         return out;
@@ -733,6 +844,13 @@ const Storage = {
     checkForNewPR(exerciseId, weight, reps, earlierSetsThisSession = []) {
         const w = this._num(weight), r = this._int(reps);
         const current = this.getPersonalRecords()[exerciseId];
+        if (this._isTimed(exerciseId)) {
+            // a tempo: record = più secondi (anche nella stessa sessione)
+            const best = Math.max(this._int(current && current.maxReps), ...(Array.isArray(earlierSetsThisSession) ? earlierSetsThisSession : [])
+                .filter(s => s && (!('completed' in s) || s.completed)).map(s => this._int(s.reps)), 0);
+            if (!current || !(this._int(current.maxReps) > 0)) return { isNewPR: false, type: null, isFirstTime: true };
+            return r > best ? { isNewPR: true, type: 'time', isFirstTime: false, oldValue: best, newValue: r } : { isNewPR: false, type: null, isFirstTime: false };
+        }
         const hasRecord = !!(current && (this._num(current.maxWeight) > 0 || this._num(current.estimated1RM) > 0));
 
         if (!hasRecord) return { isNewPR: false, type: null, isFirstTime: true };
@@ -800,7 +918,7 @@ const Storage = {
      * top = serie più pesante (a parità, più reps); workingReps = reps delle serie al peso del top set.
      */
     _sessionsFor(exerciseId, limit = 3) {
-        const bw = this.isBodyweightExercise(exerciseId);
+        const bw = this.isBodyweightExercise(exerciseId) || !this._needsWeight(exerciseId);
         const out = [];
         const workouts = this.getWorkouts();
         for (const workout of workouts) {
@@ -810,7 +928,7 @@ const Storage = {
             workout.exercises.forEach(ex => {
                 if (!ex || ex.exerciseId !== exerciseId || !Array.isArray(ex.sets)) return;
                 ex.sets.forEach(s => {
-                    if (!s || !s.completed) return;
+                    if (!s || !s.completed || s.isWarmup || s.isCalibration) return;
                     const w = this._num(s.weight), r = this._int(s.reps);
                     if (!(r > 0)) return;
                     if (!(w > 0) && !bw) return;
@@ -823,6 +941,101 @@ const Storage = {
             out.push({ date: workout.date, sets, top, workingReps });
         }
         return out;
+    },
+
+    // Peso 0 impossibile per bilanciere, manubri, pacco, cavo e assistite (serie senza peso = dato
+    // mancante); possibile a corpo libero, con la zavorra a 0, alle macchine a dischi e a tempo
+    _needsWeight(exerciseId) {
+        const lt = this._loadType(exerciseId);
+        if (!lt) return !this.isBodyweightExercise(exerciseId);
+        if (this._isTimed(exerciseId) && lt === 'bodyweight') return false;
+        return ['barbell', 'ez-bar', 'dumbbell-pair', 'dumbbell-single', 'machine-stack', 'cable', 'assisted'].includes(lt);
+    },
+
+    // Fase del ciclo in cui è stata fatta una seduta: quella salvata (v2), altrimenti dalla settimana
+    // del ciclo della scheda attiva o dallo storico dei cicli. null se non si sa.
+    _workoutPhase(w, program, history) {
+        if (!w) return null;
+        if (w.cyclePhase) return w.cyclePhase;
+        if (w.isFreeWorkout) return null;
+        const week = this._int(w.cycleWeek);
+        if (!(week > 0)) return null;
+        const md = program && program.metadata;
+        const cyc = this._getCycle(program);
+        if (cyc && (w.programId == null || md.programId == null || String(w.programId) === String(md.programId)) &&
+            (w.cycleNumber == null || this._int(w.cycleNumber) === (this._int(md.cycleNumber) || 1))) {
+            const ph = cyc.phases.find(p => p && p.week === week);
+            return ph ? ph.phase : null;
+        }
+        const h = (history || []).find(c => this._int(c.cycleNumber) === this._int(w.cycleNumber));
+        if (h && Array.isArray(h.phases) && h.phases[week - 1]) return /deload|scarico/i.test(h.phases[week - 1]) ? 'deload' : 'accumulation';
+        return null;
+    },
+
+    /**
+     * Sedute con l'esercizio, dalla più recente (§19.4): [{date, phase, targetReps, targetRir, sets}].
+     * Serie normalizzate {weight, reps, rir, completed, isWarmup, isCalibration, isBodyweight}; restano
+     * solo le sedute con almeno una serie di lavoro.
+     */
+    getExerciseSessions(exerciseId, { limit = 3, excludeDeload = true } = {}) {
+        const out = [];
+        const program = this.getActiveProgram();
+        const history = this.getCycleHistory();
+        const needsW = this._needsWeight(exerciseId);
+        for (const w of this.getWorkouts()) {
+            if (out.length >= limit) break;
+            if (!Array.isArray(w.exercises)) continue;
+            const sets = [];
+            let targetReps = null, targetRir = null;
+            w.exercises.forEach(ex => {
+                if (!ex || ex.exerciseId !== exerciseId || !Array.isArray(ex.sets)) return;
+                if (targetReps == null && ex.targetReps) targetReps = ex.targetReps;
+                if (targetRir == null && Number.isFinite(Number(ex.targetRir)) && ex.targetRir !== '' && ex.targetRir !== null) targetRir = Number(ex.targetRir);
+                ex.sets.forEach(s => {
+                    if (!s) return;
+                    const rir = s.rir === undefined || s.rir === null || s.rir === '' ? null : Number(s.rir);
+                    sets.push({
+                        weight: Math.max(0, this._num(s.weight)), reps: this._int(s.reps),
+                        rir: Number.isFinite(rir) ? rir : null, completed: !!s.completed,
+                        isWarmup: !!s.isWarmup, isCalibration: !!s.isCalibration, isBodyweight: !!s.isBodyweight
+                    });
+                });
+            });
+            const work = sets.filter(s => s.completed && !s.isWarmup && !s.isCalibration && s.reps > 0 && (s.weight > 0 || !needsW));
+            if (!work.length) continue;
+            const phase = this._workoutPhase(w, program, history);
+            if (excludeDeload && phase === 'deload') continue;
+            out.push({ date: w.date, phase, targetReps, targetRir, sets: sets.filter(s => !needsW || s.weight > 0 || !s.completed) });
+        }
+        return out;
+    },
+
+    /** Pesi usati nelle serie di lavoro delle ultime `limit` sedute (insegnano la scala della palestra, §3.2). */
+    getRecordedWeights(exerciseId, limit = 20) {
+        const lt = this._loadType(exerciseId);
+        if (lt === 'bodyweight') return [];
+        const out = new Set();
+        this.getExerciseSessions(exerciseId, { limit, excludeDeload: false }).forEach(s => s.sets.forEach(x => {
+            if (!x.completed || x.isWarmup || x.isCalibration || !(x.reps > 0)) return;
+            if (x.isBodyweight && lt === 'bodyweight-loadable') return;   // v1.25: peso corporeo, non zavorra
+            if (x.weight > 0) out.add(x.weight);
+        }));
+        return [...out].sort((a, b) => a - b);
+    },
+
+    /** Fase del ciclo di oggi (scarico manuale compreso), normalizzata v2; null senza ciclo. */
+    getCurrentPhase() {
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle) return null;
+        const week = Math.max(1, this._int(cycle.currentWeek) || 1);
+        let ph = this._phaseFor(cycle, week);
+        if (this._isManualDeload(cycle) && (!ph || ph.phase !== 'deload')) {
+            const dl = cycle.phases.find(p => p && p.phase === 'deload');
+            ph = { ...(dl || { phase: 'deload', phaseName: 'Deload', rirTarget: { min: 4, max: 5 }, volumeMultiplier: 0.5 }), week };
+        }
+        const TA = this._algo('normalizePhase');
+        return TA ? TA.normalizePhase(ph) : (ph || null);
     },
 
     // Ultima prestazione: top set (serie più pesante) dell'ultima sessione con l'esercizio
@@ -905,12 +1118,49 @@ const Storage = {
     },
 
     /**
-     * Suggerimento per la prossima volta (doppia progressione sul TOP SET).
-     * @returns {{status, action, suggestedWeight, suggestedReps, message, lastPerformance, ...}}
-     *   suggestedWeight è SEMPRE un numero (l'app lo precompila).
-     * status: new | detraining | refamiliarize | increase_weight | increase_reps | backoff | maintain
+     * Suggerimento per la prossima volta (v2, ALGORITMO-V2 §9): raccoglie i dati e chiama la funzione
+     * pura TrainingAlgorithm.computeNextTarget. Firma v1.26 invariata, `opts` facoltativo:
+     * { targetRir (della prossima seduta), level, phase (fase della prossima seduta; default quella di
+     * oggi, scarico manuale compreso), prevTargetRir }.
+     * @returns Suggestion {status, action, suggestedWeight (SEMPRE un numero), suggestedReps, targetRir,
+     *   metric, variantId, bigJump, rirDelta, increment, message, lastPerformance, ...}
+     * status: new | detraining | refamiliarize | increase_weight | increase_reps | maintain | rir_up |
+     *   rir_hold | rir_down | backoff | variant_up | variant_down | add_load | increase_time | deload
      */
-    getProgressionSuggestion(exerciseId, targetRepRange, goal = 'hypertrophy') {
+    getProgressionSuggestion(exerciseId, targetRepRange, goal = 'hypertrophy', opts = {}) {
+        const TA = this._algo('computeNextTarget');
+        if (!TA) return this._progressionSuggestionV1(exerciseId, targetRepRange, goal);
+        const o = opts || {};
+        const profile = this.getProfile();
+        const sessions = this.getExerciseSessions(exerciseId, { limit: 4, excludeDeload: false });
+        const range = this.parseRepRange(targetRepRange || (sessions[0] && sessions[0].targetReps));
+        const phase = o.phase !== undefined ? (o.phase ? TA.normalizePhase(o.phase) : null) : this.getCurrentPhase();
+        const compound = this.getExerciseType(exerciseId) === 'compound';
+        const prev = sessions.find(x => x.phase !== 'deload');
+        const prevRir = Number.isFinite(Number(o.prevTargetRir)) && o.prevTargetRir !== null ? Number(o.prevTargetRir)
+            : (prev && Number.isFinite(prev.targetRir) ? prev.targetRir : 2);
+        let nextRir = Number.isFinite(Number(o.targetRir)) && o.targetRir !== null ? Number(o.targetRir)
+            : (phase && phase.rir ? (phase.phase === 'deload' ? 4 : (compound ? phase.rir.compound : phase.rir.isolation)) : prevRir);
+        if (typeof TA._painTouches === 'function' && TA._painTouches(exerciseId, profile)) nextRir = Math.max(2, nextRir);
+        return TA.computeNextTarget({
+            exerciseId,
+            range: [range.min, range.max],
+            targetRir: prevRir,
+            nextTargetRir: nextRir,
+            level: o.level || profile.level,
+            gym: this.getGymConfig(),
+            recorded: this.getRecordedWeights(exerciseId),
+            sessions,
+            personPauseDays: this.getDaysSinceLastWorkout(),
+            now: new Date(),
+            profile,
+            phase: phase ? phase.phase : null,
+            loadFactor: phase ? phase.loadFactor : undefined
+        });
+    },
+
+    // v1.26 (ripiego se algorithm.js non ha computeNextTarget): doppia progressione sul TOP SET
+    _progressionSuggestionV1(exerciseId, targetRepRange, goal = 'hypertrophy') {
         const range = this.parseRepRange(targetRepRange);
         const sessions = this._sessionsFor(exerciseId, 3);
         const last = sessions[0];
@@ -1091,10 +1341,50 @@ const Storage = {
 
     /**
      * Valuta le serie di una sessione appena fatta (riepilogo di fine allenamento, avviso in sessione).
-     * Stessa logica del suggerimento: top set + getProgressionIncrement.
-     * @returns {{action:'up'|'reps'|'maintain'|null, increment, topWeight, nextWeight}}
+     * Stessa logica del suggerimento (computeNextTarget sulle sole serie di oggi, RIR compreso).
+     * opts = { targetRir } (RIR target di oggi; default quello della fase).
+     * @returns {{action:'up'|'reps'|'maintain'|null, increment, topWeight, nextWeight, status, message, variantId, suggestedReps}}
      */
-    evaluateSets(exerciseId, sets, targetRepRange) {
+    evaluateSets(exerciseId, sets, targetRepRange, opts = {}) {
+        const TA = this._algo('computeNextTarget');
+        if (!TA) return this._evaluateSetsV1(exerciseId, sets, targetRepRange);
+        const norm = (Array.isArray(sets) ? sets : []).filter(Boolean).map(x => ({
+            weight: x.weight, reps: x.reps, completed: !!x.completed, isWarmup: !!x.isWarmup,
+            isCalibration: !!x.isCalibration, isBodyweight: !!x.isBodyweight,
+            rir: x.rir === undefined || x.rir === null || x.rir === '' ? null : x.rir
+        }));
+        const needsW = this._needsWeight(exerciseId);
+        const work = norm.filter(x => x.completed && !x.isWarmup && !x.isCalibration && this._int(x.reps) > 0 && (this._num(x.weight) > 0 || !needsW));
+        if (!work.length) return { action: null, increment: 0, topWeight: 0, nextWeight: 0 };
+        const profile = this.getProfile();
+        const phase = this.getCurrentPhase();
+        const compound = this.getExerciseType(exerciseId) === 'compound';
+        const o = opts || {};
+        const today = Number.isFinite(Number(o.targetRir)) && o.targetRir !== null ? Number(o.targetRir)
+            : (phase && phase.rir && phase.phase !== 'deload' ? (compound ? phase.rir.compound : phase.rir.isolation) : 2);
+        const r = this.parseRepRange(targetRepRange);
+        const s = TA.computeNextTarget({
+            exerciseId, range: [r.min, r.max], targetRir: today, nextTargetRir: today, level: profile.level,
+            gym: this.getGymConfig(), recorded: this.getRecordedWeights(exerciseId),
+            sessions: [{ date: new Date().toISOString(), phase: null, sets: norm }],
+            personPauseDays: 0, now: new Date(), profile
+        });
+        const top = s.lastPerformance ? s.lastPerformance.weight : 0;
+        // seduta di scarico: non dice niente sulla prossima volta
+        if (phase && phase.phase === 'deload') return { action: 'maintain', increment: 0, topWeight: top, nextWeight: top, status: 'deload', message: 'Scarico' };
+        const up = ['increase_weight', 'rir_up', 'add_load'].includes(s.status);
+        const reps = ['increase_reps', 'increase_time', 'variant_up'].includes(s.status);
+        return {
+            action: up ? 'up' : (reps ? 'reps' : 'maintain'),
+            increment: GT.round(s.suggestedWeight - top, 0.001),
+            topWeight: top,
+            nextWeight: s.suggestedWeight,
+            status: s.status, message: s.message, variantId: s.variantId, suggestedReps: s.suggestedReps
+        };
+    },
+
+    // v1.26 (ripiego): top set + incremento
+    _evaluateSetsV1(exerciseId, sets, targetRepRange) {
         const range = this.parseRepRange(targetRepRange);
         const bw = this.isBodyweightExercise(exerciseId);
         const done = (sets || []).filter(s => s && s.completed && this._int(s.reps) > 0 && (this._num(s.weight) > 0 || bw))
@@ -1108,6 +1398,90 @@ const Storage = {
         }
         if (working.every(r => r >= range.min)) return { action: 'reps', increment: inc, topWeight: top.weight, nextWeight: top.weight };
         return { action: 'maintain', increment: inc, topWeight: top.weight, nextWeight: top.weight };
+    },
+
+    // ========================================
+    // v2 — SEDUTA: primo peso, rampa, dischi, alternative, scarico anticipato
+    // Involucri sottili: leggono profilo, palestra e storico e chiamano le funzioni pure.
+    // ========================================
+
+    /** Primo peso prudente per un esercizio mai fatto (§10.1) → {kg, rawKg, isEstimate, aboveSeed}. */
+    getStartingLoad(exerciseId) {
+        const TA = this._algo('estimateStartingLoad');
+        if (!TA) return { kg: this._startingWeight(exerciseId), rawKg: null, isEstimate: true, aboveSeed: false };
+        return TA.estimateStartingLoad(exerciseId, this.getProfile(), this.getGymConfig(), new Date());
+    },
+
+    /** "Trova il peso" (§10.2): state = {tests:[{kg,reps,rir}], testReps, targetReps, targetRir, lo}. */
+    nextCalibrationStep(exerciseId, state = {}) {
+        const TA = this._algo('nextCalibrationStep');
+        if (!TA) return { done: true, workingKg: this._startingWeight(exerciseId) };
+        const st = { level: this.getProfile().level, ...(state || {}) };
+        if (st.seedKg === undefined) st.seedKg = this.getStartingLoad(exerciseId).kg;
+        return TA.nextCalibrationStep(exerciseId, st, this.getGymConfig());
+    },
+
+    /** Rampa di riscaldamento del primo multiarticolare (§11) → [{kg, reps, pct}]. */
+    getWarmupSets(exerciseId, workingKg, targetReps, goal) {
+        const TA = this._algo('buildWarmupSets');
+        return TA ? TA.buildWarmupSets(exerciseId, workingKg, targetReps, goal, this.getGymConfig()) : [];
+    },
+
+    /**
+     * Dischi per lato (§3.5) per gli esercizi col bilanciere o a dischi (non t-bar-row):
+     * {perSide, achieved, exact, belowBar, barKg} oppure null se l'esercizio non si carica a dischi.
+     */
+    getPlates(exerciseId, totalKg) {
+        const TA = this._algo('calcPlates');
+        const ex = this._exercise(exerciseId);
+        if (!TA || !ex || !['barbell', 'ez-bar', 'machine-plate'].includes(ex.loadType) || exerciseId === 't-bar-row') return null;
+        const gym = this.getGymConfig();
+        const barKg = TA._barFor(ex, gym);
+        // macchine a dischi: il peso registrato sono solo i dischi (due lati) → bilanciere 0
+        const res = TA.calcPlates(this._num(totalKg), { barKg, plates: gym.plates, plateCounts: gym.plateCounts });
+        return { ...res, barKg };
+    },
+
+    /** Esercizi fatti nelle ultime `weeks` settimane (per le alternative con peso noto). */
+    _recentExerciseIds(weeks = 8) {
+        const since = Date.now() - weeks * 7 * 86400000;
+        const ids = new Set();
+        this.getWorkouts().forEach(w => {
+            if (!(this._time(w.date) >= since) || !Array.isArray(w.exercises)) return;
+            w.exercises.forEach(ex => { if (ex && ex.exerciseId && Array.isArray(ex.sets) && ex.sets.some(s => s && s.completed)) ids.add(ex.exerciseId); });
+        });
+        return [...ids];
+    },
+
+    /**
+     * Alternative in seduta (§7): opts = { reason: 'busy'|'pain'|'dislike', sessionExerciseIds, painArea,
+     * kg (peso attuale dell'originale), targetReps, limit }.
+     * @returns [{ exerciseId, score, weight: { kg, confidence, mode, seedKg?, rirAdjust? } }]
+     */
+    getAlternatives(exerciseId, opts = {}) {
+        const TA = this._algo('getAlternatives');
+        if (!TA) return [];
+        const o = opts || {};
+        const history = this._recentExerciseIds(8);
+        const profile = this.getProfile();
+        const list = TA.getAlternatives(exerciseId, profile, { ...o, history, gym: this.getGymConfig() });
+        // peso noto: il suggerimento di progressione di quell'esercizio
+        return list.map(a => {
+            if (a.weight && a.weight.mode === 'history') {
+                try {
+                    const sug = this.getProgressionSuggestion(a.exerciseId, o.targetReps, profile.goal);
+                    a.weight.kg = sug.suggestedWeight;
+                } catch (e) { /* resta null: si usa "Trova il peso" */ }
+            }
+            return a;
+        });
+    },
+
+    /** Scarico anticipato da suggerire (§12.4) → {suggest, reasons, declining}. */
+    getEarlyDeloadSuggestion() {
+        const TA = this._algo('detectEarlyDeload');
+        if (!TA) return { suggest: false, reasons: [], declining: [] };
+        return TA.detectEarlyDeload(this.getWorkouts(), this.getActiveProgram(), new Date());
     },
 
     /**

@@ -181,8 +181,14 @@ function makeEnv(opts = {}) {
     ctx.__clock.set(now);
     if (!skipUtils) vm.runInContext(read('js/modules/utils.js'), ctx, { filename: 'utils.js' });
     vm.runInContext(read('js/data/exercises.js'), ctx, { filename: 'exercises.js' });
-    if (algorithm === 'fake') {
-        vm.runInContext(`globalThis.TrainingAlgorithm = {
+    // 'fake' = algoritmo VERO (le funzioni pure della progressione v2 servono allo Storage) con
+    // rotateProgram finta e pilotabile; 'stub' = solo la rotateProgram finta (Storage usa i ripieghi v1.26)
+    if (algorithm === 'fake' || algorithm === 'stub') {
+        if (algorithm === 'fake') {
+            try { vm.runInContext(read('js/data/warmups.js'), ctx, { filename: 'warmups.js' }); } catch (e) { /* facoltativo */ }
+            vm.runInContext(read('js/modules/algorithm.js'), ctx, { filename: 'algorithm.js' });
+        }
+        vm.runInContext(`globalThis.__fakeRotation = {
             mode: 'throw', calls: 0,
             rotateProgram(program, profile) {
                 this.calls++;
@@ -194,7 +200,9 @@ function makeEnv(opts = {}) {
                 p.metadata.programId = 777;
                 return { program: p, added: ['goblet-squat'], removed: [{ id: 'squat' }] };
             }
-        };`, ctx);
+        };
+        if (typeof TrainingAlgorithm !== 'undefined') Object.assign(TrainingAlgorithm, globalThis.__fakeRotation);
+        else globalThis.TrainingAlgorithm = globalThis.__fakeRotation;`, ctx);
     } else if (algorithm === 'real') {
         try { vm.runInContext(read('js/data/warmups.js'), ctx, { filename: 'warmups.js' }); } catch (e) { /* facoltativo */ }
         vm.runInContext(read('js/modules/algorithm.js'), ctx, { filename: 'algorithm.js' });
@@ -311,7 +319,7 @@ test('GT: formatRelativeDay, formatVolume, esc, arrotondamenti', () => {
     eq(GT.floorTo(9.5, 1), 9);
     eq(GT.floorTo(0.3 * 3, 0.1), 0.9, 'virgola mobile');
     eq(GT.num('102,5'), 102.5, 'virgola italiana');
-    eq(GT.APP_VERSION, 'v1.26.0');
+    eq(/^v\d+\.\d+\.\d+$/.test(GT.APP_VERSION), true);
 });
 
 test('getWorkoutsThisWeek e getConditioningThisWeek di DOMENICA', () => {
@@ -416,7 +424,9 @@ test('getLoadStep / getProgressionIncrement per attrezzatura', () => {
     eq(S.getProgressionIncrement('dumbbell-shoulder-press', 8), 1, 'compound upper manubri leggeri = passo');
     eq(S.getProgressionIncrement('dumbbell-shoulder-press', 14), 2, 'compound upper manubri = passo');
     eq(S.getProgressionIncrement('lateral-raise', 4), 1, 'isolamento manubri leggeri');
-    eq(S.getProgressionIncrement('pec-deck', 40), 2.5, 'isolamento macchina');
+    // v2 (ALGORITMO-V2 §3.1): il pacco pesi va a passi di 5 kg di default (stackStepKg), quindi
+    // 40 → 45; con un pacco da 2,5 (gym.stackStepKg) o pesi registrati a 42,5 il salto torna 2,5
+    eq(S.getProgressionIncrement('pec-deck', 40), 5, 'isolamento macchina (pacco a 5 kg)');
     eq(S.getProgressionIncrement('bodyweight-squat', 0), 0, 'corpo libero');
     eq(S.getExerciseType('goblet-squat'), 'compound', 'tipo dal DB');
     eq(S.getExerciseType('leg-press-calf-raise'), 'isolation', 'tipo dal DB, non per sottostringa');
@@ -471,7 +481,8 @@ test('Detraining NO se manca solo l\'esercizio (la persona si allena)', () => {
     eq(S.getDaysSinceLastWorkout(), 3);
     const s = S.getProgressionSuggestion('squat', '6-10');
     ok(s.status !== 'detraining', 'squat assente 4 settimane ma persona attiva: ' + s.status);
-    eq([s.status, s.suggestedWeight], ['increase_weight', 45], 'tutte le serie al massimo → +5');
+    // v2 (§3.6): salti percentuali sulla scala vera, +5% per i multiarticolari di gambe: 40 → 42,5 (non +5 fisso)
+    eq([s.status, s.suggestedWeight], ['increase_weight', 42.5], 'tutte le serie al massimo → +5% = 42,5');
     const s2 = S.getProgressionSuggestion('squat', '8-12');
     eq([s2.status, s2.suggestedWeight, s2.suggestedReps], ['increase_reps', 40, 11], 'nel range → +1 rep');
     const r = detrainEnv(3, 50).S.getProgressionSuggestion('squat', '8-12');
@@ -499,7 +510,8 @@ test('Back-off sul TOP SET (le serie di riscaldamento non ingannano)', () => {
     const lp = S.getLastPerformance('bench-press');
     eq([lp.weight, lp.reps], [60, 6], 'ultima prestazione = top set, non il riscaldamento da 480 kg di volume');
     const s = S.getProgressionSuggestion('bench-press', '8-12');
-    eq([s.status, s.suggestedWeight], ['backoff', 55], 'stallo → −10% arrotondato a 2,5 (54 → 55)');
+    // v2 (§9.6): back-off = 90% portato sulla scala PER DIFETTO (54 → 52,5), non al più vicino
+    eq([s.status, s.suggestedWeight], ['backoff', 52.5], 'stallo → −10% per difetto (54 → 52,5)');
     const one = makeEnv({ now, seed: { gymtracker_workouts: [sess(2), workout(now - 5 * DAY, [['bench-press', [[60, 9], [60, 8]]]])] } })
         .S.getProgressionSuggestion('bench-press', '8-12');
     eq([one.status, one.suggestedWeight], ['maintain', 60], 'una sola sessione sotto il range: si mantiene');
@@ -513,12 +525,84 @@ test('Suggerimento: prima volta, +1 rep, suggestedWeight sempre un numero', () =
     ok(typeof n.suggestedWeight === 'number' && n.suggestedWeight > 0, 'peso iniziale per lo stepper');
     eq(S.getProgressionSuggestion('push-up', '8-12').suggestedWeight, 0, 'corpo libero parte da 0');
     const r = S.getProgressionSuggestion('lateral-raise', '10-15');
-    eq([r.status, r.suggestedWeight, r.suggestedReps], ['increase_reps', 6, 11]);
-    const up = makeEnv({ now, seed: { gymtracker_workouts: [workout(now - 3 * DAY, [['lateral-raise', [[6, 15], [6, 15]]]])] } })
+    // v2 (§9.3): rep = prima serie al top + 1 (12 → 13); per serie: [13, 11]
+    eq([r.status, r.suggestedWeight, r.suggestedReps], ['increase_reps', 6, 13]);
+    eq(r.suggestedRepsPerSet, [13, 11], 'obiettivo per serie');
+    // v2 (§3.6): 6 → 7 kg è +16,7%: prima di salire servono 17 rep (need), con 15 si aggiunge una rep
+    const at15 = makeEnv({ now, seed: { gymtracker_workouts: [workout(now - 3 * DAY, [['lateral-raise', [[6, 15], [6, 15]]]])] } })
+        .S.getProgressionSuggestion('lateral-raise', '10-15');
+    eq([at15.status, at15.suggestedWeight, at15.suggestedReps], ['increase_reps', 6, 16], 'salto grande: prima più rep');
+    const up = makeEnv({ now, seed: { gymtracker_workouts: [workout(now - 3 * DAY, [['lateral-raise', [[6, 17], [6, 17]]]])] } })
         .S.getProgressionSuggestion('lateral-raise', '10-15');
     eq([up.status, up.suggestedWeight], ['increase_weight', 7], 'laterali 6 → 7 (+1, non +1,25)');
     const ev = S.evaluateSets('squat', [{ weight: '100', reps: '12', completed: true }, { weight: '100', reps: '12', completed: true }], '8-12');
     eq([ev.action, ev.increment, ev.nextWeight], ['up', 5, 105], 'evaluateSets usa lo stesso incremento');
+});
+
+test('v2: palestra, stepper sulla scala vera, dischi, sedute di scarico escluse, PR senza riscaldamento', () => {
+    const now = D(2026, 10, 15, 10);
+    const prog = program({ start: D(2026, 9, 14, 0), week: 4, duration: 4 });   // settimana 4 = deload
+    prog.metadata.programId = 77;
+    const seed = {
+        gymtracker_active_program: prog,
+        gymtracker_workouts: [
+            workout(now - 2 * DAY, [['bench-press', [[54, 8, { rir: 4 }], [54, 8]]]], { cyclePhase: 'deload' }),
+            workout(now - 6 * DAY, [['bench-press', [[20, 10, { isWarmup: true }], [60, 10], [60, 10], [60, 9]]], ['plank', [[0, 40], [0, 45]]]]),
+            workout(now - 9 * DAY, [['bench-press', [[60, 9], [60, 9]]], ['plank', [[0, 30]]]])
+        ]
+    };
+    const { S } = makeEnv({ now, seed });
+    // palestra: default + salvataggio che unisce
+    eq([S.getGymConfig().barKg, S.getGymConfig().dumbbells.includes(12)], [20, true]);
+    S.saveGymConfig({ barKg: 15 });
+    S.saveGymConfig({ stackStepKg: 2.5 });
+    eq([S.getGymConfig().barKg, S.getGymConfig().stackStepKg, S.getSettings().restSound], [15, 2.5, 'beep'], 'saveGymConfig unisce');
+    // stepper: manubri 10 → 12, discesa dello stepper v1.26 (peso − 0,01) → 2
+    eq([S.stepWeight('dumbbell-curl', 10, 1), S.stepWeight('dumbbell-curl', 10, -1), S.getLoadStep('dumbbell-curl', 11.99)], [12, 9, 2]);
+    eq(S.getLoadStep('push-up', 0), 0, 'corpo libero');
+    // dischi col bilanciere configurato (15)
+    eq(S.getPlates('squat', 102.5).perSide, [25, 15, 2.5, 1.25], '102,5 col bilanciere da 15');
+    eq([S.getPlates('squat', 100).barKg, S.getPlates('leg-press', 50).barKg, S.getPlates('t-bar-row', 40), S.getPlates('lat-pulldown', 40)], [15, 0, null, null]);
+    // sedute: quella di scarico esclusa dalla progressione, riscaldamento ignorato
+    const ses = S.getExerciseSessions('bench-press', { limit: 5 });
+    eq(ses.map(x => x.sets.filter(y => !y.isWarmup).length), [3, 2], 'scarico escluso, riscaldamento marcato');
+    eq(S.getExerciseSessions('bench-press', { limit: 5, excludeDeload: false }).length, 3);
+    // la settimana corrente è di scarico: il suggerimento è −10% dall'ultima seduta normale (60 → 54:
+    // il 54 è sulla scala perché registrato nella seduta di scarico, §3.2)
+    const sug = S.getProgressionSuggestion('bench-press', '8-12');
+    eq([sug.status, sug.suggestedWeight, sug.targetRir], ['deload', 54, 4]);
+    const normal = S.getProgressionSuggestion('bench-press', '8-12', 'hypertrophy', { phase: { phase: 'accumulation', rir: { compound: 2, isolation: 2 } } });
+    eq([normal.status, normal.suggestedWeight, normal.suggestedReps], ['increase_reps', 60, 11], 'senza scarico: +1 rep');
+    // il workout salvato porta la fase
+    const w = S.saveWorkout({ name: 'Upper A', type: 'Upper A', dayIndex: 0, exercises: [] });
+    eq(w.cyclePhase, 'deload');
+    // PR: riscaldamento escluso, plank a tempo = secondi (niente e1RM)
+    const prs = S.rebuildPersonalRecords();
+    eq([prs['bench-press'].maxWeight, prs.plank.maxReps, prs.plank.estimated1RM], [60, 45, 0]);
+    eq(S.checkForNewPR('plank', 0, 50).type, 'time');
+    // profilo con i campi v2
+    const p = S.getProfile();
+    eq([p.avoidExercises, p.preferExercises, p.painAreas, p.emphasis], [[], [], [], '']);
+    S.saveProfile({ painAreas: ['knee', 'boh'], avoidExercises: ['squat'] });
+    eq([S.getProfile().painAreas, S.getProfile().avoidExercises], [['knee'], ['squat']]);
+    // alternative con peso noto (storico) e convertito
+    const alts = S.getAlternatives('bench-press', { reason: 'busy', kg: 60 });
+    ok(alts.length > 0 && alts.every(a => a.exerciseId !== 'squat' && a.weight), 'alternative con peso');
+    const dbp = alts.find(a => a.exerciseId === 'dumbbell-bench-press');
+    if (dbp) eq(dbp.weight.kg, 24, 'panca 60 → manubri 24 (0,415 × 60 = 24,9 per difetto)');
+    // scarico anticipato: mai durante lo scarico
+    eq(S.getEarlyDeloadSuggestion().suggest, false);
+    eq(S.getStartingLoad('push-up').kg, 0);
+});
+
+test('Ripiego v1.26: con un algorithm.js senza computeNextTarget lo Storage non si rompe', () => {
+    const now = D(2026, 10, 15, 10);
+    const { S } = makeEnv({ now, algorithm: 'stub', seed: { gymtracker_workouts: [workout(now - 3 * DAY, [['squat', [[100, 12], [100, 12]]]])] } });
+    const s = S.getProgressionSuggestion('squat', '8-12');
+    eq([s.status, s.suggestedWeight], ['increase_weight', 105], 'doppia progressione v1.26');
+    eq(S.getLoadStep('lateral-raise', 6), 1, 'passo v1.26');
+    eq(S.stepWeight('dumbbell-curl', 10, 1), 12, 'stepper v1.26: 10 → 12');
+    eq(S.evaluateSets('squat', [{ weight: '100', reps: '12', completed: true }], '8-12').action, 'up');
 });
 
 // ============================================================
@@ -575,7 +659,7 @@ test('Export → import completo (schemaVersion 2) e dati identici', () => {
     a.ls.setItem('gymtracker_futura', JSON.stringify({ x: 1 }));
     const json = a.S.exportAllData();
     const data = JSON.parse(json);
-    eq([data.schemaVersion, data.appVersion, !!data.version], [2, 'v1.26.0', true]);
+    eq([data.schemaVersion, data.appVersion, !!data.version], [2, a.GT.APP_VERSION, true]);
     ok(Array.isArray(data.cycleHistory) && data.cycleHistory.length === 1, 'cycle_history esportata');
     ok(Array.isArray(data.conditioning) && data.conditioning.length === 1, 'conditioning esportato');
     ok(!('gymtracker_active_session' in (data.extra || {})) && !json.includes('inCorso'), 'sessione in corso esclusa');

@@ -1852,28 +1852,200 @@ function searchExercises(query) {
     );
 }
 
-// Muscle groups for UI
+// Gruppi muscolari per l'interfaccia. `icon` = nome del simbolo nello sprite icons.svg della v2
+// (id "i-<icon>"): niente emoji.
 const MUSCLE_GROUPS = [
-    { id: "petto", name: "Petto", icon: "💪" },
-    { id: "schiena", name: "Schiena", icon: "🔙" },
-    { id: "spalle", name: "Spalle", icon: "🎯" },
-    { id: "bicipiti", name: "Bicipiti", icon: "💪" },
-    { id: "tricipiti", name: "Tricipiti", icon: "💪" },
-    { id: "quadricipiti", name: "Quadricipiti", icon: "🦵" },
-    { id: "femorali", name: "Femorali", icon: "🦵" },
-    { id: "glutei", name: "Glutei", icon: "🍑" },
-    { id: "polpacci", name: "Polpacci", icon: "🦶" },
-    { id: "addome", name: "Addome", icon: "🎯" },
-    { id: "avambracci", name: "Avambracci", icon: "💪" },
-    { id: "trapezio", name: "Trapezio", icon: "🔺" }
+    { id: "petto", name: "Petto", icon: "m-chest" },
+    { id: "schiena", name: "Schiena", icon: "m-back" },
+    { id: "spalle", name: "Spalle", icon: "m-shoulders" },
+    { id: "bicipiti", name: "Bicipiti", icon: "m-arms" },
+    { id: "tricipiti", name: "Tricipiti", icon: "m-arms" },
+    { id: "quadricipiti", name: "Quadricipiti", icon: "m-legs" },
+    { id: "femorali", name: "Femorali", icon: "m-legs" },
+    { id: "glutei", name: "Glutei", icon: "m-glutes" },
+    { id: "polpacci", name: "Polpacci", icon: "m-legs" },
+    { id: "addome", name: "Addome", icon: "m-abs" },
+    { id: "avambracci", name: "Avambracci", icon: "m-arms" },
+    { id: "trapezio", name: "Trapezio", icon: "m-back" }
 ];
 
-// Equipment categories
+// Categorie di attrezzatura (icon = simbolo dello sprite, come sopra)
 const EQUIPMENT_CATEGORIES = [
-    { id: "bilanciere", name: "Bilanciere", icon: "🏋️" },
-    { id: "manubri", name: "Manubri", icon: "🔩" },
-    { id: "macchine", name: "Macchine", icon: "⚙️" },
-    { id: "cavi", name: "Cavi", icon: "🔗" },
-    { id: "corpo-libero", name: "Corpo Libero", icon: "🤸" },
-    { id: "accessori", name: "Accessori", icon: "🎒" }
+    { id: "bilanciere", name: "Bilanciere", icon: "barbell" },
+    { id: "manubri", name: "Manubri", icon: "dumbbell" },
+    { id: "macchine", name: "Macchine", icon: "machine" },
+    { id: "cavi", name: "Cavi", icon: "cable" },
+    { id: "corpo-libero", name: "Corpo Libero", icon: "bodyweight" },
+    { id: "accessori", name: "Accessori", icon: "band" }
 ];
+
+// ========================================
+// TAG DEGLI ESERCIZI (algoritmo v2, ALGORITMO-V2.md §2)
+// ========================================
+// Uniti a EXERCISES_DB al caricamento: l'algoritmo non deve più indovinare dal nome.
+// - pattern: schema di movimento (bilancio della settimana, alternative)
+// - loadType: come si carica, e quindi cosa si scrive nel campo peso:
+//     barbell / ez-bar = totale col bilanciere; dumbbell-pair = UN manubrio; dumbbell-single = l'unico
+//     manubrio; machine-stack / cable = numero del pacco; machine-plate = solo i dischi (due lati);
+//     bodyweight = 0; bodyweight-loadable = zavorra in più; assisted = assistenza (più alto = più facile)
+// - barWeight: peso nominale del bilanciere (20 / 10), 0 per i "solo dischi"; il vero è in settings.gym
+// - unilateral (rep per lato), metric ('reps' | 'time' = secondi), tier (1 fondamentale, 2 complementare,
+//   3 accessorio), prio (1 prima scelta), stretch (carico a muscolo allungato), joint (stress articolare
+//   0/1/2 per spalla, gomito, ginocchio, zona lombare: 2 = escluso con quella zona dolente), family
+//   (stesso gesto con attrezzi diversi: max 1 per seduta), easier/harder (catena di varianti).
+const EXERCISE_TAGS = {
+    // PETTO
+    'bench-press': { pattern: 'push-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'bench', easier: [], harder: [] },
+    'incline-bench-press': { pattern: 'push-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'incline-press', easier: [], harder: [] },
+    'decline-bench-press': { pattern: 'push-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'decline-press', easier: [], harder: [] },
+    'dumbbell-bench-press': { pattern: 'push-h', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'bench', easier: [], harder: [] },
+    'dumbbell-incline-press': { pattern: 'push-h', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'incline-press', easier: [], harder: [] },
+    'dumbbell-decline-press': { pattern: 'push-h', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'decline-press', easier: [], harder: [] },
+    'dumbbell-fly': { pattern: 'iso-chest', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: true, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'dumbbell-incline-fly': { pattern: 'iso-chest', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: true, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'dumbbell-pullover': { pattern: 'iso-chest', loadType: 'dumbbell-single', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: true, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'pullover', easier: [], harder: [] },
+    'chest-press-machine': { pattern: 'push-h', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'bench', easier: [], harder: [] },
+    'incline-chest-press-machine': { pattern: 'push-h', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'incline-press', easier: [], harder: [] },
+    'pec-deck': { pattern: 'iso-chest', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'smith-bench-press': { pattern: 'push-h', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'bench', easier: [], harder: [] },
+    'cable-crossover': { pattern: 'iso-chest', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'cable-fly-low': { pattern: 'iso-chest', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'cable-fly-mid': { pattern: 'iso-chest', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'chest-fly', easier: [], harder: [] },
+    'push-up': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'push-up', easier: [], harder: ['decline-push-up'] },
+    'diamond-push-up': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'push-up-close', easier: ['close-grip-push-up'], harder: [] },
+    'wide-push-up': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'push-up', easier: ['push-up'], harder: ['decline-push-up'] },
+    'decline-push-up': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'push-up', easier: ['push-up'], harder: [] },
+    'dips': { pattern: 'push-h', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 2, elbow: 1, knee: 0, lowBack: 0 }, family: 'dip', easier: ['bench-dips'], harder: [] },
+    // SCHIENA
+    'deadlift': { pattern: 'hinge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 2 }, family: 'deadlift', easier: ['romanian-deadlift'], harder: [] },
+    'barbell-row': { pattern: 'pull-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 2 }, family: 'row-bent', easier: [], harder: [] },
+    'pendlay-row': { pattern: 'pull-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 2 }, family: 'row-bent', easier: ['barbell-row'], harder: [] },
+    't-bar-row': { pattern: 'pull-h', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 2 }, family: 'row-tbar', easier: [], harder: [] },
+    'dumbbell-row': { pattern: 'pull-h', loadType: 'dumbbell-single', barWeight: 0, unilateral: true, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'row-single', easier: [], harder: [] },
+    'dumbbell-row-two-arm': { pattern: 'pull-h', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'row-bent', easier: ['dumbbell-row'], harder: [] },
+    'dumbbell-shrug': { pattern: 'iso-traps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'shrug', easier: [], harder: [] },
+    'lat-pulldown': { pattern: 'pull-v', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'pulldown', easier: [], harder: ['chin-up'] },
+    'lat-pulldown-close': { pattern: 'pull-v', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'pulldown', easier: [], harder: ['chin-up'] },
+    'seated-cable-row': { pattern: 'pull-h', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'row-seated', easier: [], harder: [] },
+    'machine-row': { pattern: 'pull-h', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'row-seated', easier: [], harder: [] },
+    'assisted-pull-up': { pattern: 'pull-v', loadType: 'assisted', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'pull-up', easier: [], harder: ['chin-up'] },
+    'hyperextension': { pattern: 'hinge', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'back-extension', easier: ['superman'], harder: [] },
+    'straight-arm-pulldown': { pattern: 'iso-back', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'straight-arm', easier: [], harder: [] },
+    'face-pull': { pattern: 'iso-shoulder-rear', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'face-pull', easier: [], harder: [] },
+    'pull-up': { pattern: 'pull-v', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'pull-up', easier: ['chin-up', 'assisted-pull-up'], harder: [] },
+    'chin-up': { pattern: 'pull-v', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'pull-up', easier: ['assisted-pull-up', 'lat-pulldown'], harder: ['pull-up'] },
+    'neutral-grip-pull-up': { pattern: 'pull-v', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'pull-up', easier: ['assisted-pull-up', 'lat-pulldown'], harder: ['pull-up'] },
+    'inverted-row': { pattern: 'pull-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'inverted-row', easier: [], harder: [] },
+    'superman': { pattern: 'hinge', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'back-extension', easier: [], harder: ['hyperextension'] },
+    // SPALLE
+    'overhead-press': { pattern: 'push-v', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 2, elbow: 0, knee: 0, lowBack: 1 }, family: 'ohp', easier: ['dumbbell-shoulder-press'], harder: [] },
+    'push-press': { pattern: 'push-v', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 2, elbow: 0, knee: 1, lowBack: 1 }, family: 'ohp', easier: ['overhead-press'], harder: [] },
+    'barbell-front-raise': { pattern: 'iso-shoulder-front', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'front-raise', easier: [], harder: [] },
+    'upright-row': { pattern: 'iso-shoulder-lat', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 2, elbow: 1, knee: 0, lowBack: 0 }, family: 'upright-row', easier: [], harder: [] },
+    'dumbbell-shoulder-press': { pattern: 'push-v', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'ohp', easier: ['shoulder-press-machine'], harder: [] },
+    'arnold-press': { pattern: 'push-v', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 2, elbow: 0, knee: 0, lowBack: 0 }, family: 'ohp', easier: ['dumbbell-shoulder-press'], harder: [] },
+    'lateral-raise': { pattern: 'iso-shoulder-lat', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'lateral-raise', easier: [], harder: [] },
+    'front-raise': { pattern: 'iso-shoulder-front', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'front-raise', easier: [], harder: [] },
+    'rear-delt-fly': { pattern: 'iso-shoulder-rear', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'rear-delt', easier: [], harder: [] },
+    'dumbbell-shrug-shoulders': { pattern: 'iso-traps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'shrug', easier: [], harder: [] },
+    'shoulder-press-machine': { pattern: 'push-v', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'ohp', easier: [], harder: [] },
+    'lateral-raise-machine': { pattern: 'iso-shoulder-lat', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'lateral-raise', easier: [], harder: [] },
+    'reverse-pec-deck': { pattern: 'iso-shoulder-rear', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'rear-delt', easier: [], harder: [] },
+    'cable-lateral-raise': { pattern: 'iso-shoulder-lat', loadType: 'cable', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'lateral-raise', easier: [], harder: [] },
+    'cable-front-raise': { pattern: 'iso-shoulder-front', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'front-raise', easier: [], harder: [] },
+    'cable-rear-delt': { pattern: 'iso-shoulder-rear', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'rear-delt', easier: [], harder: [] },
+    'pike-push-up': { pattern: 'push-v', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 2, elbow: 0, knee: 0, lowBack: 0 }, family: 'ohp-bw', easier: [], harder: ['handstand-push-up'] },
+    'handstand-push-up': { pattern: 'push-v', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 2, elbow: 1, knee: 0, lowBack: 0 }, family: 'ohp-bw', easier: ['pike-push-up'], harder: [] },
+    // BICIPITI
+    'barbell-curl': { pattern: 'iso-biceps', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'curl-bar', easier: ['ez-bar-curl'], harder: [] },
+    'ez-bar-curl': { pattern: 'iso-biceps', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-bar', easier: [], harder: [] },
+    'preacher-curl': { pattern: 'iso-biceps', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: true, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'curl-preacher', easier: [], harder: [] },
+    'dumbbell-curl': { pattern: 'iso-biceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-db', easier: [], harder: [] },
+    'hammer-curl': { pattern: 'iso-biceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-hammer', easier: [], harder: [] },
+    'incline-curl': { pattern: 'iso-biceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-db', easier: [], harder: [] },
+    'concentration-curl': { pattern: 'iso-biceps', loadType: 'dumbbell-single', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-db', easier: [], harder: [] },
+    'spider-curl': { pattern: 'iso-biceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-preacher', easier: [], harder: [] },
+    'cable-curl': { pattern: 'iso-biceps', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-cable', easier: [], harder: [] },
+    'cable-hammer-curl': { pattern: 'iso-biceps', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-hammer', easier: [], harder: [] },
+    'bicep-curl-machine': { pattern: 'iso-biceps', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'curl-preacher', easier: [], harder: [] },
+    // TRICIPITI
+    'close-grip-bench': { pattern: 'push-h', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'bench-close', easier: [], harder: [] },
+    'skull-crusher': { pattern: 'iso-triceps', loadType: 'ez-bar', barWeight: 10, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 2, knee: 0, lowBack: 0 }, family: 'triceps-lying', easier: [], harder: [] },
+    'dumbbell-tricep-extension': { pattern: 'iso-triceps', loadType: 'dumbbell-single', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'triceps-overhead', easier: [], harder: [] },
+    'dumbbell-kickback': { pattern: 'iso-triceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'kickback', easier: [], harder: [] },
+    'tate-press': { pattern: 'iso-triceps', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 2, knee: 0, lowBack: 0 }, family: 'triceps-lying', easier: [], harder: [] },
+    'tricep-pushdown': { pattern: 'iso-triceps', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'pushdown', easier: [], harder: [] },
+    'rope-pushdown': { pattern: 'iso-triceps', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'pushdown', easier: [], harder: [] },
+    'overhead-cable-extension': { pattern: 'iso-triceps', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'triceps-overhead', easier: [], harder: [] },
+    'bench-dips': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 2, elbow: 1, knee: 0, lowBack: 0 }, family: 'dip', easier: [], harder: ['dips'] },
+    'close-grip-push-up': { pattern: 'push-h', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'push-up-close', easier: [], harder: ['diamond-push-up'] },
+    'tricep-dip-machine': { pattern: 'iso-triceps', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'dip', easier: [], harder: [] },
+    // QUADRICIPITI
+    'squat': { pattern: 'squat', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 1 }, family: 'squat-bb', easier: ['goblet-squat'], harder: [] },
+    'front-squat': { pattern: 'squat', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 1 }, family: 'squat-bb', easier: ['goblet-squat'], harder: [] },
+    'bulgarian-split-squat-bb': { pattern: 'lunge', loadType: 'barbell', barWeight: 20, unilateral: true, metric: 'reps', tier: 2, prio: 3, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'bulgarian', easier: ['bulgarian-split-squat'], harder: [] },
+    'goblet-squat': { pattern: 'squat', loadType: 'dumbbell-single', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'squat-db', easier: ['bodyweight-squat'], harder: [] },
+    'dumbbell-lunge': { pattern: 'lunge', loadType: 'dumbbell-pair', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'lunge', easier: ['walking-lunge'], harder: ['bulgarian-split-squat'] },
+    'bulgarian-split-squat': { pattern: 'lunge', loadType: 'dumbbell-pair', barWeight: 0, unilateral: true, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'bulgarian', easier: ['dumbbell-lunge'], harder: [] },
+    'step-up': { pattern: 'lunge', loadType: 'dumbbell-pair', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'step-up', easier: [], harder: [] },
+    'leg-press': { pattern: 'squat', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 1 }, family: 'leg-press', easier: [], harder: [] },
+    'hack-squat': { pattern: 'squat', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'hack', easier: [], harder: [] },
+    'leg-extension': { pattern: 'iso-quad', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'leg-ext', easier: [], harder: [] },
+    'smith-squat': { pattern: 'squat', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 1 }, family: 'squat-smith', easier: [], harder: [] },
+    'bodyweight-squat': { pattern: 'squat', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'squat-bw', easier: [], harder: ['goblet-squat', 'jump-squat'] },
+    'jump-squat': { pattern: 'squat', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 2, lowBack: 0 }, family: 'squat-bw', easier: ['bodyweight-squat'], harder: [] },
+    'walking-lunge': { pattern: 'lunge', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'lunge', easier: [], harder: ['dumbbell-lunge', 'bulgarian-split-squat'] },
+    'pistol-squat': { pattern: 'lunge', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 2, lowBack: 0 }, family: 'pistol', easier: ['bulgarian-split-squat', 'walking-lunge'], harder: [] },
+    // FEMORALI
+    'romanian-deadlift': { pattern: 'hinge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'rdl', easier: ['dumbbell-rdl'], harder: [] },
+    'stiff-leg-deadlift': { pattern: 'hinge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 2, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'rdl', easier: ['dumbbell-rdl'], harder: [] },
+    'good-morning': { pattern: 'hinge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 2, prio: 3, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 2 }, family: 'good-morning', easier: ['romanian-deadlift'], harder: [] },
+    'dumbbell-rdl': { pattern: 'hinge', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'rdl', easier: [], harder: ['romanian-deadlift'] },
+    'single-leg-rdl': { pattern: 'hinge', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 2, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'rdl-single', easier: ['dumbbell-rdl'], harder: [] },
+    'leg-curl-lying': { pattern: 'iso-ham', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'leg-curl', easier: [], harder: [] },
+    'leg-curl-seated': { pattern: 'iso-ham', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'leg-curl', easier: [], harder: [] },
+    'nordic-curl': { pattern: 'iso-ham', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'nordic', easier: ['leg-curl-seated'], harder: [] },
+    'glute-ham-raise': { pattern: 'iso-ham', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 0 }, family: 'nordic', easier: ['leg-curl-seated'], harder: [] },
+    // GLUTEI
+    'hip-thrust': { pattern: 'bridge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'hip-thrust', easier: ['dumbbell-hip-thrust'], harder: [] },
+    'sumo-deadlift': { pattern: 'hinge', loadType: 'barbell', barWeight: 20, unilateral: false, metric: 'reps', tier: 1, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 1, lowBack: 2 }, family: 'deadlift', easier: ['dumbbell-rdl'], harder: [] },
+    'dumbbell-hip-thrust': { pattern: 'bridge', loadType: 'dumbbell-single', barWeight: 0, unilateral: false, metric: 'reps', tier: 1, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'hip-thrust', easier: ['glute-bridge'], harder: ['hip-thrust'] },
+    'glute-kickback-machine': { pattern: 'iso-glute', loadType: 'machine-stack', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'glute-kickback', easier: [], harder: [] },
+    'hip-abduction': { pattern: 'iso-glute', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'abduction', easier: [], harder: [] },
+    'cable-kickback': { pattern: 'iso-glute', loadType: 'cable', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'glute-kickback', easier: [], harder: [] },
+    'glute-bridge': { pattern: 'bridge', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 2, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'glute-bridge', easier: [], harder: ['single-leg-glute-bridge', 'dumbbell-hip-thrust'] },
+    'single-leg-glute-bridge': { pattern: 'bridge', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'reps', tier: 2, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'glute-bridge', easier: ['glute-bridge'], harder: ['dumbbell-hip-thrust', 'hip-thrust'] },
+    'donkey-kick': { pattern: 'iso-glute', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'glute-kickback', easier: [], harder: ['cable-kickback'] },
+    'fire-hydrant': { pattern: 'iso-glute', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'abduction', easier: [], harder: ['hip-abduction'] },
+    // POLPACCI
+    'seated-calf-raise': { pattern: 'iso-calf', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'calf-seated', easier: [], harder: [] },
+    'standing-calf-raise': { pattern: 'iso-calf', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'calf-standing', easier: [], harder: [] },
+    'leg-press-calf-raise': { pattern: 'iso-calf', loadType: 'machine-plate', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'calf-standing', easier: [], harder: [] },
+    'bodyweight-calf-raise': { pattern: 'iso-calf', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'calf-standing', easier: [], harder: ['single-leg-calf-raise'] },
+    'single-leg-calf-raise': { pattern: 'iso-calf', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 1, stretch: true, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'calf-standing', easier: ['bodyweight-calf-raise'], harder: [] },
+    // ADDOME
+    'crunch': { pattern: 'core-flex', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'crunch', easier: [], harder: [] },
+    'reverse-crunch': { pattern: 'core-flex', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'reverse-crunch', easier: [], harder: ['leg-raise'] },
+    'plank': { pattern: 'core-antiext', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'time', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'plank', easier: ['dead-bug'], harder: ['ab-wheel-rollout'] },
+    'side-plank': { pattern: 'core-antilat', loadType: 'bodyweight', barWeight: 0, unilateral: true, metric: 'time', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'side-plank', easier: [], harder: [] },
+    'mountain-climber': { pattern: 'core-antiext', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'time', tier: 3, prio: 3, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 0 }, family: 'mountain-climber', easier: ['plank'], harder: [] },
+    'leg-raise': { pattern: 'core-flex', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'leg-raise', easier: ['reverse-crunch'], harder: ['hanging-leg-raise'] },
+    'hanging-leg-raise': { pattern: 'core-flex', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 1 }, family: 'leg-raise', easier: ['leg-raise'], harder: [] },
+    'bicycle-crunch': { pattern: 'core-rot', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'crunch-rot', easier: [], harder: [] },
+    'dead-bug': { pattern: 'core-antiext', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'dead-bug', easier: [], harder: ['plank'] },
+    'russian-twist': { pattern: 'core-rot', loadType: 'bodyweight-loadable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 2 }, family: 'crunch-rot', easier: [], harder: [] },
+    'v-up': { pattern: 'core-flex', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'v-up', easier: ['reverse-crunch'], harder: [] },
+    'ab-wheel-rollout': { pattern: 'core-antiext', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 1, elbow: 0, knee: 0, lowBack: 2 }, family: 'ab-wheel', easier: ['plank'], harder: [] },
+    'cable-crunch': { pattern: 'core-flex', loadType: 'cable', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'crunch-loaded', easier: [], harder: [] },
+    'cable-woodchop': { pattern: 'core-rot', loadType: 'cable', barWeight: 0, unilateral: true, metric: 'reps', tier: 3, prio: 1, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 1 }, family: 'woodchop', easier: [], harder: [] },
+    'ab-crunch-machine': { pattern: 'core-flex', loadType: 'machine-stack', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 0, knee: 0, lowBack: 0 }, family: 'crunch-loaded', easier: [], harder: [] },
+    // AVAMBRACCI
+    'wrist-curl': { pattern: 'iso-forearm', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'wrist', easier: [], harder: [] },
+    'reverse-wrist-curl': { pattern: 'iso-forearm', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'reps', tier: 3, prio: 3, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 0 }, family: 'wrist', easier: [], harder: [] },
+    'farmer-walk': { pattern: 'carry', loadType: 'dumbbell-pair', barWeight: 0, unilateral: false, metric: 'time', tier: 3, prio: 2, stretch: false, joint: { shoulder: 0, elbow: 1, knee: 0, lowBack: 1 }, family: 'carry', easier: [], harder: [] },
+    'dead-hang': { pattern: 'iso-forearm', loadType: 'bodyweight', barWeight: 0, unilateral: false, metric: 'time', tier: 3, prio: 3, stretch: false, joint: { shoulder: 1, elbow: 1, knee: 0, lowBack: 0 }, family: 'hang', easier: [], harder: [] },
+};
+
+Object.keys(EXERCISE_TAGS).forEach(id => {
+    if (EXERCISES_DB[id]) Object.assign(EXERCISES_DB[id], EXERCISE_TAGS[id]);
+});

@@ -349,6 +349,7 @@ for (const goal of GOALS) for (const days of DAYS) for (const split of SPLITS) {
         const perSex = {};
         for (const sex of SEXES) {
             const totalsByDur = {};
+            const minutesByDur = {};
             for (const dur of DURS) {
                 configs++;
                 const cfg = { goal, days, split, level, dur, en, eq: EQUIP[en], sex };
@@ -363,6 +364,7 @@ for (const goal of GOALS) for (const days of DAYS) for (const split of SPLITS) {
                 }
                 checkProgram(p, cfg, 'gen');
                 totalsByDur[dur] = p.days.reduce((a, d) => a + d.exercises.reduce((b, e) => b + e.sets, 0), 0);
+                minutesByDur[dur] = p.days.reduce((a, d) => a + TA.estimateWorkoutDuration(d), 0);
                 if (dur === 75 || dur === 90) byKey[`${goal}|${days}|${split}|${level}|${en}|${sex}|${dur}`] = p;
                 perSex[`${dur}`] = perSex[`${dur}`] || {};
                 perSex[`${dur}`][sex] = p;
@@ -396,10 +398,14 @@ for (const goal of GOALS) for (const days of DAYS) for (const split of SPLITS) {
                 }
             }
             // la durata deve contare: serie totali che crescono (tolleranza di 2 serie o del 3% fra durate
-            // vicine, dove cambiano anche i riposi), 90' sempre sopra 45', 75' ≠ 90'
+            // vicine, dove cambiano anche i riposi), 90' sempre sopra 45', 75' ≠ 90'.
+            // v2: col riscaldamento proporzionale alla durata, 45' bastano già per il volume pieno di
+            // un principiante su 5-6 giorni; a 90' la durata si vede allora nei riposi più lunghi
+            // (seduta stimata ≥ +15%), non in serie oltre il massimo del livello.
             const T = DURS.map(d => totalsByDur[d]);
             if (T.some((x, i) => i && x < T[i - 1])) pairs75vs90.setsDown++;
-            if (!LEGACY && (T.some((x, i) => i && x < T[i - 1] - Math.max(2, Math.round(T[i - 1] * 0.03))) || T[3] <= T[0])) {
+            const ninetyNotLonger = T[3] <= T[0] && minutesByDur[90] < minutesByDur[45] * 1.15;
+            if (!LEGACY && (T.some((x, i) => i && x < T[i - 1] - Math.max(2, Math.round(T[i - 1] * 0.03))) || ninetyNotLonger)) {
                 fail('serie che calano allungando la durata', `${goal} ${split} ${days}gg ${level} ${en} ${sex}: ${T}`);
             }
             const k75 = byKey[`${goal}|${days}|${split}|${level}|${en}|${sex}|75`], k90 = byKey[`${goal}|${days}|${split}|${level}|${en}|${sex}|90`];
@@ -432,35 +438,51 @@ if (!LEGACY) {
         return true;
     });
     unit('getPhaseForWeek', () => {
-        const c = TA.buildCycle('hypertrophy', 'intermediate'); // 5 settimane
+        // v2 (ALGORITMO-V2 §12.1): intermedio = 6 settimane (5 di lavoro + scarico), non più 5
+        const c = TA.buildCycle('hypertrophy', 'intermediate');
+        if (c.duration !== 6) return 'durata intermedio ' + c.duration;
         if (TA.getPhaseForWeek(c, 1).phase !== 'accumulation') return 'settimana 1';
-        if (TA.getPhaseForWeek(c, 5).phase !== 'deload') return 'settimana 5';
+        if (TA.getPhaseForWeek(c, 5).phase !== 'intensification') return 'settimana 5';
+        if (TA.getPhaseForWeek(c, 6).phase !== 'deload') return 'settimana 6';
         if (TA.getPhaseForWeek(c, 9).phase !== 'deload') return 'oltre la fine';
         if (TA.getPhaseForWeek(null, 1) !== null) return 'ciclo nullo';
         return true;
     });
     unit('getVolumeMultiplier', () => {
-        return TA.getVolumeMultiplier('accumulation') === 1 && TA.getVolumeMultiplier({ phase: 'intensification' }) === 0.9 &&
+        // v2 (§12.2): il moltiplicatore 0,9 dell'intensificazione v1.26 non aveva basi → 1; scarico 0,5
+        return TA.getVolumeMultiplier('accumulation') === 1 && TA.getVolumeMultiplier({ phase: 'intensification' }) === 1 &&
             TA.getVolumeMultiplier('deload') === 0.5 && TA.getVolumeMultiplier(null) === 1 || 'valori';
     });
-    unit('applyPhaseToDay', () => {
+    unit('applyPhaseToDay (v2 §12.2: lavoro invariato + RIR per esercizio, scarico ÷2 e RIR 4)', () => {
         const p = TA.generateProgram({ level: 'intermediate', gender: 'female', equipment: EQUIP.default }, { goal: 'hypertrophy', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 75 });
         const day = p.days[0];
         const before = JSON.stringify(day);
         const c = TA.buildCycle('hypertrophy', 'intermediate');
-        const del = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 5));
-        const inten = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 3));
+        const del = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 6));
+        const inten = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 5));
         const acc = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 1));
         if (JSON.stringify(day) !== before) return 'il giorno originale è stato modificato';
         const tot = d => d.exercises.reduce((a, e) => a + e.sets, 0);
-        if (!del.exercises.every((e, i) => e.sets === Math.min(day.exercises[i].sets, Math.max(2, Math.round(day.exercises[i].sets * 0.5))))) return 'deload: serie sbagliate';
-        if (tot(inten) >= tot(day) && day.exercises.some(e => e.type === 'isolation' && !e.supersetGroup && !e.isCore && e.sets >= 3)) return 'intensificazione: nessuna serie tolta';
-        if (tot(inten) < Math.round(tot(day) * 0.9) - 1) return 'intensificazione: tolte troppe serie';
-        if (tot(acc) !== tot(day)) return 'accumulo: serie cambiate';
-        if (!del.rirTarget || del.rirTarget.min !== 4 || inten.rirTarget.max !== 2) return 'RIR della fase';
+        if (!del.exercises.every((e, i) => e.sets === Math.max(1, Math.ceil(day.exercises[i].sets / 2)) || e.supersetGroup)) return 'scarico: serie sbagliate';
+        if (tot(inten) !== tot(day) || tot(acc) !== tot(day)) return 'lavoro (intermedio): serie cambiate';
+        if (!del.exercises.every(e => e.targetRir === 4) || del.loadFactor !== 0.9) return 'scarico: RIR 4 e carico −10%';
+        const comp = acc.exercises.filter(e => e.type === 'compound' && !e.isCore);
+        const iso = acc.exercises.filter(e => e.type === 'isolation' && !e.isCore);
+        if (!comp.every(e => e.targetRir === 3) || !iso.every(e => e.targetRir === 2)) return 'settimana 1: RIR 3 multiarticolari, 2 isolamenti';
+        if (!inten.exercises.filter(e => e.type === 'compound' && !e.isCore).every(e => e.targetRir === 1)) return 'settimana 5: RIR 1';
         const groups = {};
         del.exercises.forEach(e => { if (e.supersetGroup) (groups[e.supersetGroup] = groups[e.supersetGroup] || new Set()).add(e.sets); });
         if (Object.values(groups).some(s => s.size > 1)) return 'superset non pareggiati';
+        // avanzato: +1 serie nelle settimane 3-4 sul primo accessorio di ogni muscolo grande
+        const ca = TA.buildCycle('hypertrophy', 'advanced');
+        const w3 = TA.applyPhaseToDay(day, TA.getPhaseForWeek(ca, 3));
+        if (!(tot(w3) > tot(day))) return 'avanzato settimana 3: nessuna serie in più';
+        // scheda salvata dalla v1.26 (fase senza rir/setsDelta/loadFactor): default
+        const old = TA.applyPhaseToDay(day, { week: 2, phase: 'intensification', rirTarget: { min: 0, max: 2 }, volumeMultiplier: 0.9 });
+        if (tot(old) !== tot(day) || old.exercises.some(e => e.targetRir !== 0)) return 'fase v1.26: default';
+        // zona dolente: RIR minimo 2 sugli esercizi che la sollecitano
+        const pain = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 5), { painAreas: ['shoulder'] });
+        if (pain.exercises.some(e => (DB[e.exerciseId].joint.shoulder >= 1) && e.targetRir < 2)) return 'zona dolente: RIR < 2';
         return true;
     });
     unit('getNextDayIndex', () => {
@@ -479,7 +501,9 @@ if (!LEGACY) {
         if (TA.getNextDayIndex({ days: [] }, []) !== 0) return 'scheda vuota';
         return true;
     });
-    unit('estimateWorkoutDuration: riscaldamento e defaticamento reali (Warmups), ripiego 8\'/5\'', () => {
+    unit('estimateWorkoutDuration (v2 §13.1): riscaldamento ridotto alla durata, defaticamento 5\' di ripiego', () => {
+        // Formula cambiata con la v2 (ALGORITMO-V2 §13.1): tempo della serie = metà range × 4,5 s
+        // (ipertrofia), riposo dopo ogni serie meno quello dell'ultimo blocco, 30 s fra i blocchi.
         const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
         const mk = (warmupsSrc) => {
             const c = { console };
@@ -488,13 +512,15 @@ if (!LEGACY) {
             return c.TA;
         };
         const day = { warmup: 'lower', exercises: [{ exerciseId: 'squat', sets: 3, reps: '8-12', rest: 120 }] };
-        // squat 3×10: 3 × (10×4+5 s) + 2 riposi da 120 s + 30 s di cambio = 405 s
+        // squat 3×10: 3 × 45 s + 3 riposi da 120 s − l'ultimo = 375 s
         const stub = mk('var Warmups = { getWarmupDurationMin: () => 20, getCooldownDurationMin: () => 7 };');
         const none = mk('');
-        const withStub = stub.estimateWorkoutDuration(day);
-        const fallback = none.estimateWorkoutDuration(day);
-        if (withStub !== Math.round((20 * 60 + 7 * 60 + 405) / 60)) return `con Warmups: ${withStub}`;
-        if (fallback !== Math.round((8 * 60 + 5 * 60 + 405) / 60)) return `ripiego 8'/5': ${fallback}`;
+        if (stub.estimateWorkoutDuration(day) !== Math.round((20 * 60 + 375 + 300) / 60)) return `routine intera: ${stub.estimateWorkoutDuration(day)}`;
+        if (none.estimateWorkoutDuration(day) !== Math.round((8 * 60 + 375 + 300) / 60)) return `ripiego 8': ${none.estimateWorkoutDuration(day)}`;
+        // con la durata scelta: tetto 6' + 3' a 45' (la routine da 20' si riduce)
+        if (stub.estimateWorkoutDuration(day, { minutes: 45 }) !== Math.round((6 * 60 + 375 + 3 * 60) / 60)) return `45': ${stub.estimateWorkoutDuration(day, { minutes: 45 })}`;
+        // il giorno generato porta i suoi minuti
+        if (TA.estimateWorkoutDuration({ ...day, warmupMin: 7, cooldownMin: 4 }) !== Math.round((7 * 60 + 375 + 240) / 60)) return 'warmupMin del giorno';
         if (TA.estimateWorkoutDuration({ exercises: [] }) !== 0) return 'giorno vuoto ≠ 0';
         // superset: riposo solo fra i giri
         const ss = { warmup: 'upper', exercises: [
@@ -502,6 +528,15 @@ if (!LEGACY) {
             { exerciseId: 'dumbbell-tricep-extension', sets: 3, reps: '10-12', rest: 75, supersetGroup: 'A', supersetOrder: 2, supersetRest: 60, transitionTime: 5 }] };
         const sep = { warmup: 'upper', exercises: ss.exercises.map(e => ({ exerciseId: e.exerciseId, sets: 3, reps: '10-12', rest: 75 })) };
         if (TA.estimateWorkoutDuration(ss) >= TA.estimateWorkoutDuration(sep)) return 'il superset non fa risparmiare tempo';
+        // routine ridotte: durata vera entro il tetto, prima gli esercizi più utili
+        if (C.WU && typeof C.WU.getWarmupForDuration === 'function') {
+            for (const m of [45, 60, 75, 90]) for (const k of Object.keys(C.WU.WARMUPS_DB)) {
+                const w = C.WU.getWarmupForDuration(k, m), cd = C.WU.getCooldownForDuration(k, m);
+                if (!(w.durationMin <= C.WU.getWarmupBudgetMin(m)) || !w.exercises.length) return `riscaldamento ${k} ${m}': ${w.durationMin}`;
+                if (!(cd.durationMin <= C.WU.getCooldownBudgetMin(m)) || !cd.exercises.length) return `defaticamento ${k} ${m}': ${cd.durationMin}`;
+            }
+            if (C.WU.WARMUPS_DB.lower.exercises.length !== 9) return 'il database delle routine è stato modificato';
+        }
         return true;
     });
     unit('generateConditioningSuggestions (toning, firma nuova e vecchia)', () => {
@@ -510,11 +545,16 @@ if (!LEGACY) {
         if (!s.enabled || !(s.frequency >= 1)) return 'toning disabilitato';
         if (/Forza/i.test(s.message || '')) return 'messaggio della forza';
         if (!s.legDays.length) return 'giorni di gambe non trovati da program.days';
-        if (!s.protocol || !s.protocol.name) return 'protocollo mancante';
+        // v2 (§16.2): niente HIIT per i principianti → nessun protocollo; dagli intermedi in su sì
+        if (s.protocol || !s.weekly || s.weekly.some(w => w.type === 'hiit')) return 'principiante: niente HIIT';
+        const pi = TA.generateProgram({ level: 'intermediate', gender: 'female', equipment: EQUIP.default }, { goal: 'toning', daysPerWeek: 3, split: 'upper-lower', sessionDuration: 60 });
+        const si = TA.generateConditioningSuggestions('toning', pi);
+        if (!si.protocol || !si.protocol.name) return 'protocollo mancante';
         const old = TA.generateConditioningSuggestions('recomp', 'intermediate', 4, []);
         if (!old.enabled) return 'vecchia firma';
         const st = TA.generateConditioningSuggestions('strength', p);
-        if (st.enabled) return 'forza abilitata';
+        // v2 (§16.2): nella forza 1-2 LISS da 20-30' per la salute, mai HIIT
+        if (st.hiitAllowed || st.weekly.some(w => w.type === 'hiit')) return 'forza con HIIT';
         return true;
     });
     unit('rotateProgram: schede manuali restituite identiche', () => {

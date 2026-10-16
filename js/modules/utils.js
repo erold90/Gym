@@ -5,7 +5,7 @@
  */
 
 const GT = {
-    APP_VERSION: 'v1.26.0',
+    APP_VERSION: 'v2.0.0',
 
     // Mesi abbreviati in italiano: scritti a mano per non dipendere dall'ICU del browser
     _MESI: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
