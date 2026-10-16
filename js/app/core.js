@@ -564,7 +564,13 @@ const App = {
     // Numero all'italiana: 102,5 · 8.420 (DESIGN.md §3)
     fmt(n, digits = 2) {
         const v = Number(n);
-        return Number.isFinite(v) ? v.toLocaleString('it-IT', { maximumFractionDigits: digits }) : '';
+        if (!Number.isFinite(v)) return '';
+        // it-IT non raggruppa sotto 10.000 ("8420"): il punto delle migliaia si mette a mano
+        let s = Math.abs(v).toFixed(Math.max(0, digits));
+        if (s.includes('.')) s = s.replace(/0+$/, '').replace(/\.$/, '');
+        const [int, dec] = s.split('.');
+        const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return (v < 0 ? '−' : '') + grouped + (dec ? ',' + dec : '');
     },
 
     _setText(id, text) {

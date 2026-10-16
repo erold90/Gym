@@ -76,8 +76,8 @@
   --z-sticky: 10; --z-dock: 20; --z-tabbar: 30; --z-scrim: 40; --z-sheet: 50; --z-toast: 60;
 
   /* ombre: solo nel tema chiaro (nello scuro la profondità è la luminosità) */
-  --shadow-1: none;
-  --shadow-2: none;
+  --shadow-1: 0 0 #0000;
+  --shadow-2: 0 0 #0000;
   --scrim: rgb(5 5 3 / 0.62);
   --media-plate: #ECEAE3;     /* lastra chiara sotto le GIF (hanno fondo bianco) */
   --media-dim: brightness(0.9) contrast(1.02);

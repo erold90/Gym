@@ -1,46 +1,149 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/seduta.css: seduta a tutto schermo: esercizio, serie, dock con il recupero.
-   Fonte: proto.css sezione 6. File dell'area Seduta (js/app/seduta.js).
+   GymTracker 2.0 — pages/seduta.css: seduta a tutto schermo (esercizio, serie, dock con il
+   recupero) e i suoi fogli (defaticamento, seduta libera, azioni, Scambia, Nota, Dischi).
+   Fonte: proto.css sezione 6 + componenti nuovi dell'area. File dell'area Seduta (js/app/seduta.js).
    ===================================================================== */
 
-/* Seduta */
+/* ---------- guscio: #workout-active (il codice lo mostra e nasconde con style.display) ---------- */
+.seduta > .topbar { margin-bottom: var(--s-2); }
+.seduta__body { display: flex; flex-direction: column; gap: var(--s-6); }
+.seduta__progress { display: flex; flex-direction: column; gap: var(--s-2); }
+.seduta__phase { font-size: var(--fs-sm); color: var(--text-2); }
+.seduta__phase .phase { font-size: var(--fs-sm); }
+
+/* ---------- esercizio ---------- */
 .ex, .wide > .col.ex { display: flex; flex-direction: column; gap: var(--s-4); }
 .ex__top { display: flex; gap: var(--s-4); align-items: flex-start; }
 .ex__title { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding-top: 2px; }
-.ex__title h1 { font-size: 1.4375rem; line-height: 1.1; }
+.ex__title h1 { font-size: 1.4375rem; line-height: 1.1; overflow-wrap: anywhere; }
 .ex__muscles { font-size: var(--fs-sm); color: var(--text-2); }
 .ex__goal { display: flex; flex-wrap: wrap; gap: 6px; }
 .ex__goal .tag { height: 30px; font-size: var(--fs-body); font-weight: 700; color: var(--text); font-stretch: var(--narrow); }
 .ex__goal .tag small { font-size: var(--fs-cap); color: var(--text-3); font-weight: 600; font-stretch: 100%; margin-right: 2px; }
-.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 0; }
+.ex__goal .tag .num + small { margin: 0 0 0 2px; }
 .ss-badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 650; color: var(--accent-text); }
 .ss-badge .ico { width: 18px; height: 18px; }
 .ex-letter { display: inline-grid; place-items: center; min-width: 30px; height: 24px; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-cap); font-weight: 800; font-stretch: var(--narrow); letter-spacing: 0.02em; vertical-align: 3px; margin-right: 6px; }
 .media-full { border-radius: var(--r-lg); background: var(--media-plate); overflow: hidden; aspect-ratio: 1; max-height: 360px; }
 .media-full img { width: 100%; height: 100%; object-fit: contain; filter: var(--media-dim); }
 
-/* Guscio della seduta: #workout-active (il codice lo mostra e nasconde con style.display) */
-.seduta > .topbar { margin-bottom: var(--s-2); }
-.seduta__body { display: flex; flex-direction: column; gap: var(--s-6); }
+/* miniatura: è un bottone che ingrandisce l'esecuzione sul posto; senza GIF, l'icona dell'attrezzo */
+button.thumb { display: block; padding: 0; cursor: pointer; }
+button.thumb:active { transform: scale(0.98); }
+.thumb--icon { display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
+.thumb--icon img { display: none; }
 
-/* Recupero nel dock: #rest-bar.rest. Classi messe da _renderRestBar():
-   is-warning (ultimi 10 s, come .is-last) · is-done (tempo in più, verde) · is-transition (cambio nel superset) */
-.rest.is-warning { background: var(--accent); color: var(--on-accent); }
-.rest.is-warning .rest__label { color: var(--on-accent); }
-.rest.is-warning .rest__btn { background: rgb(0 0 0 / 0.1); }
-.rest.is-warning .rest__time { font-size: var(--fn-2xl); }
-.rest.is-warning .rest__track { background: rgb(0 0 0 / 0.12); }
-.rest.is-warning .rest__fill { background: var(--on-accent); }
-.rest.is-done { background: var(--ok); color: var(--on-color); }
-.rest.is-done .rest__label { color: var(--on-color); }
-.rest.is-done .rest__btn { background: rgb(0 0 0 / 0.1); }
-.rest.is-done .rest__fill { background: var(--on-color); }
-.rest.is-transition { background: var(--accent-soft); }
+/* esecuzione ingrandita: titolo, GIF grande, i primi passi, Riduci */
+.ex__media { display: flex; flex-direction: column; gap: var(--s-3); }
+.ex__media .media-full { max-height: none; }
+.ex__media .steps-list { counter-reset: s; display: flex; flex-direction: column; gap: var(--s-3); font-size: var(--fs-sm); }
+.ex__media .steps-list li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: var(--s-3); align-items: start; line-height: 1.4; }
+.ex__media .steps-list li::before { content: counter(s); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 760; font-stretch: var(--narrow); font-size: var(--fs-sm); }
+.ex__media .btn { min-height: var(--tap); }
+
+/* una riga: suggerimento della progressione o "Trova il peso"; la nota dell'esercizio */
+.ex__hint { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--text-2); min-width: 0; margin-top: calc(var(--s-1) * -1); }
+.ex__hint > .ico { color: var(--text-3); flex: none; }
+.ex__find { flex: none; margin-left: auto; min-height: var(--tap); padding: 0 var(--s-2); color: var(--accent-text); font-weight: 680; font-size: var(--fs-sm); border-radius: var(--r-sm); }
+.ex__find:active { background: var(--surface-2); }
+.ex__note { display: flex; align-items: flex-start; gap: var(--s-2); padding: 10px var(--s-3); border-radius: var(--r-sm); background: var(--surface-1); border: 1px solid var(--line); font-size: var(--fs-sm); color: var(--text); overflow-wrap: anywhere; }
+.ex__note .ico { color: var(--accent-text); flex: none; margin-top: 1px; }
+
+/* strumenti: Scambia, Nota, Dischi (solo bilanciere), Come si fa — colonne quante sono */
+.tools { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 0; }
+
+/* ---------- serie: rampa di riscaldamento (grigia) e prove di "Trova il peso" ---------- */
+.ex-sets { display: flex; flex-direction: column; gap: var(--s-5); }
+.set--todo.set--warm .set__n { border-style: dashed; color: var(--text-3); }
+.set--todo.set--warm .set__val { color: var(--text-3); }
+.set--done.set--warm { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.set--done.set--warm .set__n { background: var(--surface-3); border-color: var(--surface-3); color: var(--text-2); }
+.set--done.set--warm .set__val { color: var(--text-2); }
+.set--calib .set__n { color: var(--accent-text); border-color: var(--accent-mark); }
+.set__pct { font-size: var(--fs-sm); color: var(--text-3); }
+.set__tag { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-cap); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.set__prev .set__tag, .set__end .set__tag { flex: none; }
+.set--todo:active, .set--done:active { transform: scale(0.99); }
+.set__val small { white-space: nowrap; }
+
+/* serie aperta: anello giallo in entrambi i temi (in components.css la lista "inset …, var(--shadow-1)"
+   è invalida nel tema scuro, dove --shadow-1 vale none) e margini per restare sopra il dock */
+#ex-sets .set--active { box-shadow: inset 0 0 0 2px var(--accent-mark); scroll-margin-top: calc(var(--topbar-h, 56px) + var(--safe-t, 0px) + var(--s-3)); scroll-margin-bottom: calc(var(--dock-space, 104px) + var(--s-4)); }
+
+/* prossimo esercizio: anticipa senza distrarre */
+.next-row { padding-left: 0; padding-right: 0; min-height: 64px; }
+.next-row .row__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.next-row .row__title .num { font-weight: 600; }
+
+/* ---------- riscaldamento generale (in pagina) e defaticamento (foglio) ---------- */
+.warm { background: var(--surface-1); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: hidden; }
+.warm__h { font-size: inherit; font-weight: inherit; }
+.warm__head { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 64px; padding: var(--s-3) var(--s-4); text-align: left; }
+.warm__icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--text); flex: none; }
+.warm__titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.warm__title { font-weight: 700; }
+.warm__sub { font-size: var(--fs-sm); color: var(--text-2); }
+.warm__chev { color: var(--text-3); display: grid; transition: transform var(--dur-2) var(--ease-out); transform: rotate(180deg); }
+.warm.collapsed .warm__chev { transform: none; }
+.warm.collapsed .warm__body { display: none; }
+.warm__body { display: flex; flex-direction: column; gap: var(--s-3); padding: 0 var(--s-4) var(--s-4); }
+.warm__list { display: flex; flex-direction: column; }
+.warm__item { display: grid; grid-template-columns: minmax(0, 1fr) auto var(--tap); align-items: center; gap: var(--s-3); min-height: 52px; }
+.warm__item + .warm__item { border-top: 1px solid var(--line); }
+.warm__name { font-weight: 560; line-height: 1.3; }
+.warm__dose { color: var(--text-2); font-size: var(--fs-body); white-space: nowrap; }
+.warm__info { color: var(--text-2); margin-right: calc(var(--s-2) * -1); }
+
+/* ---------- dock: recupero e azione principale ---------- */
 .rest__btn[disabled] { opacity: 0.45; pointer-events: none; }
+.rest-over .ico { flex: none; }
+.rest-over span:not(.num) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rest-ss span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rest-ss .ico { flex: none; }
+.seduta-dock .dock__row .btn--primary { min-width: 0; }
+.seduta-dock .dock__row .btn--primary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ---------- fogli ---------- */
+/* Scambia */
+.swap { display: flex; flex-direction: column; gap: var(--s-4); }
+.swap .group { box-shadow: none; background: var(--surface-2); }
+.swap .row { min-height: 64px; }
+.swap .row__end { color: var(--text-2); }
+.swap .empty { padding: var(--s-4) 0; }
+
+/* Nota */
+.note__text { min-height: 104px; padding: var(--s-3) var(--s-4); line-height: 1.4; resize: vertical; }
+
+/* Dischi */
+.plates__note { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--warn-text); }
+.plate[data-kg="x"] { --pc: var(--surface-3); --h: 40px; --w: 10px; color: var(--text); font-size: 0; }
+.plates__formula { font-size: var(--fs-sm); }
+
+/* Azioni della seduta: l'esercizio attuale si riconosce */
+#session-ex-list:empty { display: none; }
+#session-ex-list .row[aria-current="step"] { box-shadow: inset 3px 0 0 var(--accent-mark); }
+#session-ex-list .row[aria-current="step"] .row__title { font-weight: 700; }
+.row__icon--ok { background: var(--ok); color: var(--on-color); }
+.row__icon .num { font-weight: 700; font-size: var(--fs-sm); }
+
+/* Seduta libera */
+.free-list { display: flex; flex-direction: column; }
+.free-list__empty { padding: var(--s-2) 0; font-size: var(--fs-sm); }
+.free-row { padding-left: 0; padding-right: 0; }
+.free-list .row + .row::before { left: 0; }
+.free-sel { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3) 0; }
+.free-sel + .free-sel { border-top: 1px solid var(--line); }
+.free-sel__top { display: flex; align-items: center; gap: var(--s-2); justify-content: space-between; }
+.free-sel__params { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+.free-sel__params .input { min-height: var(--tap-min); padding: 0 var(--s-3); }
+.free-sel__params .label { font-size: var(--fs-cap); }
+
+/* ---------- desktop (>= 960 px): esecuzione grande a sinistra, serie e dock a destra ---------- */
 @media (min-width: 960px) {
   .session .ex__top .thumb { display: none; }
+  .seduta__body > .warm { max-width: calc((100% - var(--s-12)) * 1.15 / 2.15); }   /* larga come la colonna dell'esercizio */
 }
 
-/* Riscaldamento apri/chiudi: _setWarmupCollapsed() mette .collapsed */
-.warmup-section.collapsed .warmup-content { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .warm__chev { transition: none; }
+}

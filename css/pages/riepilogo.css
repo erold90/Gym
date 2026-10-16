@@ -23,3 +23,11 @@
 .cmp__now { font-size: var(--fn-sm); text-align: right; line-height: 1; }
 .cmp__was { grid-column: 1 / 3; font-size: var(--fs-sm); color: var(--text-3); }
 .cmp .delta { grid-column: 3; grid-row: 1 / 3; justify-content: flex-end; min-width: 76px; }
+
+/* Pagina #riepilogo (js/app/seduta.js: htmlRiepilogo, _renderSummary) */
+.riep { display: flex; flex-direction: column; gap: var(--s-8); }
+.riep .stat__k { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.record__v .delta { justify-content: flex-end; }
+.cmp__name { overflow-wrap: anywhere; }
+.riep__next { font-size: var(--fs-sm); }
+.riep__next b { color: var(--text-2); font-weight: 600; }

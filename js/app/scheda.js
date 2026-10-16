@@ -53,9 +53,6 @@ Object.assign(App, {
                 </div>
             </div>
 
-            <!-- compatibilità: la seduta v1 accende/spegne questi due; restano vuoti e nascosti -->
-            <div id="workout-not-started" hidden></div>
-            <div id="workout-preview" hidden></div>
         `;
     },
 
