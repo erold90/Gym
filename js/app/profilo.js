@@ -1,444 +1,914 @@
 /**
- * GymTracker 2.0 — area PROFILO (profilo + impostazioni in una pagina): dati, impostazioni,
- * backup (esporta/importa), simulazione.
+ * GymTracker 2.0 — area PROFILO (profilo + impostazioni in una pagina): dati personali (foglio),
+ * obiettivo, esperienza, giorni e durata, rigenera scheda, attrezzatura, preferenze (zone dolenti,
+ * esercizi da evitare), palestra (bilanciere e dischi), seduta (suono, vibrazione, notifiche, schermo,
+ * avvisi in background, recupero di base), tema, backup (condividi, esporta, importa), versione.
+ * Gli strumenti di prova (simula, aggiorna l'app, cancella) compaiono dopo 7 tocchi sulla versione.
+ *
+ * Tutto si salva al tocco (niente bottone "Salva" della pagina); il foglio dei dati ha il suo "Salva".
+ * settings.lastBackupAt (ISO) si scrive a ogni backup condiviso o esportato: lo legge anche Oggi.
  */
 
 Object.assign(App, {
+    PF_GOALS: [
+        ['hypertrophy', 'Ipertrofia', 'Più massa muscolare', 'm-arms'],
+        ['strength', 'Forza', 'Carichi più alti, poche ripetizioni', 'barbell'],
+        ['recomp', 'Ricomposizione', 'Meno grasso, stesso muscolo', 'cycle'],
+        ['toning', 'Tonificazione', 'Glutei e gambe in primo piano', 'm-glutes'],
+        ['endurance', 'Resistenza', 'Tante ripetizioni, recuperi brevi', 'heart']
+    ],
+    PF_LEVELS: [
+        ['beginner', 'Principiante', 'meno di 1 anno', '0-1 anni'],
+        ['intermediate', 'Intermedio', 'da 1 a 3 anni', '1-3 anni'],
+        ['advanced', 'Avanzato', 'da 3 a 5 anni', '3-5 anni'],
+        ['expert', 'Esperto', 'più di 5 anni', '5+ anni']
+    ],
+    PF_BACKGROUNDS: [['none', 'Nessuna'], ['bodybuilding', 'Bodybuilding'], ['powerlifting', 'Powerlifting'], ['crossfit', 'CrossFit'], ['calisthenics', 'Calisthenics'], ['sport', 'Altro sport']],
+    PF_EQUIPMENT: [
+        ['bilanciere', 'Bilanciere', 'barbell'], ['manubri', 'Manubri', 'dumbbell'], ['macchine', 'Macchine', 'machine'],
+        ['cavi', 'Cavi', 'cable'], ['panca', 'Panca', 'bench'], ['sbarra', 'Sbarra', 'pullup'],
+        ['parallele', 'Parallele', 'bodyweight'], ['accessori', 'Accessori', 'band']
+    ],
+    PF_PAIN: [['shoulder', 'Spalla'], ['elbow', 'Gomito'], ['knee', 'Ginocchio'], ['lowBack', 'Zona lombare']],
+    PF_PLATES: [25, 20, 15, 10, 5, 2.5, 1.25],
+
     // ========================================
-    // GUSCIO DELL'AREA: markup della pagina, listener, ingresso nella pagina
+    // GUSCIO DELL'AREA
     // ========================================
 
-    // Pagina #profilo: profilo e impostazioni insieme (la v1 aveva due pagine)
     htmlProfilo() {
-        const field = (id, label, input) => `<div class="field"><label for="${id}">${label}</label>${input}</div>`;
-        const opts = (list, sel) => list.map(([v, t]) => `<option value="${v}"${v === sel ? ' selected' : ''}>${t}</option>`).join('');
-        const eq = (value, label, icon, checked) => `
-            <label class="chip chip--lg">
-                <input type="checkbox" name="equipment" value="${value}"${checked ? ' checked' : ''}>
-                ${icon ? this.ico(icon) : ''}${label}
-            </label>`;
-        const toggle = (id, title, sub = '', checked = false) => `
-            <label class="row setting-toggle" for="${id}">
-                <span class="row__body"><span class="row__title">${title}</span>${sub ? `<span class="row__sub">${sub}</span>` : ''}</span>
-                <input type="checkbox" class="switch" id="${id}" role="switch"${checked ? ' checked' : ''}>
-            </label>`;
+        const row = (id, icon, title, end = '') => `
+            <button type="button" class="row" id="${id}">
+                <span class="row__icon">${this.ico(icon)}</span>
+                <span class="row__body"><span class="row__title">${title}</span></span>
+                <span class="row__end"><span id="${id}-val">${end}</span>${this.ico('next')}</span>
+            </button>`;
+        const sw = (id, icon, title, sub = '') => `
+            <div class="row">
+                <span class="row__icon">${this.ico(icon)}</span>
+                <span class="row__body"><span class="row__title" id="${id}-t">${title}</span>${sub ? `<span class="row__sub" id="${id}-s">${sub}</span>` : ''}</span>
+                <button type="button" class="switch" role="switch" aria-checked="false" id="${id}" aria-labelledby="${id}-t"${sub ? ` aria-describedby="${id}-s"` : ''}></button>
+            </div>`;
+        const restStep = (key, label) => `
+            <div class="pf-rest">
+                <span class="pf-rest__k" id="pf-rest-${key}-k">${label}</span>
+                <div class="pf-rest__box" role="group" aria-labelledby="pf-rest-${key}-k">
+                    <button type="button" class="btn btn--ghost btn--icon" data-rest="${key}" data-by="-15" aria-label="${label}: meno 15 secondi">${this.ico('minus')}</button>
+                    <output class="num pf-rest__v" id="setting-rest-${key}" aria-live="polite">2:00</output>
+                    <button type="button" class="btn btn--ghost btn--icon" data-rest="${key}" data-by="15" aria-label="${label}: più 15 secondi">${this.ico('plus')}</button>
+                </div>
+            </div>`;
         return `
-            <header class="head"><h1>Profilo</h1></header>
-
-            <form id="profile-form" class="section" novalidate>
-                <section class="section" aria-labelledby="pf-personal">
-                    <h2 class="cap" id="pf-personal">Dati personali</h2>
-                    ${field('profile-name', 'Nome', '<input class="input" type="text" id="profile-name" autocomplete="given-name">')}
-                    ${field('profile-gender', 'Sesso', `<select class="input" id="profile-gender">${opts([['', '—'], ['male', 'Uomo'], ['female', 'Donna']], '')}</select>`)}
-                    ${field('profile-birthdate', 'Data di nascita', '<input class="input" type="date" id="profile-birthdate">')}
-                    ${field('profile-height', 'Altezza (cm)', '<input class="input" type="number" id="profile-height" inputmode="numeric">')}
-                    ${field('profile-weight', 'Peso (kg)', '<input class="input" type="number" step="0.1" id="profile-weight" inputmode="decimal">')}
-                    ${field('profile-bodyfat', 'Grasso (%)', '<input class="input" type="number" step="0.1" id="profile-bodyfat" inputmode="decimal">')}
-                </section>
-
-                <section class="section" aria-labelledby="pf-exp">
-                    <h2 class="cap" id="pf-exp">Esperienza</h2>
-                    ${field('profile-level', 'Livello', `<select class="input" id="profile-level">${opts([['beginner', 'Principiante (0-1 anni)'], ['intermediate', 'Intermedio (1-3 anni)'], ['advanced', 'Avanzato (3-5 anni)'], ['expert', 'Esperto (5+ anni)']], 'beginner')}</select>`)}
-                    ${field('profile-background', 'Provenienza', `<select class="input" id="profile-background">${opts([['none', 'Nessuna'], ['bodybuilding', 'Bodybuilding'], ['powerlifting', 'Powerlifting'], ['crossfit', 'CrossFit'], ['calisthenics', 'Calisthenics'], ['sport', 'Altro sport']], 'none')}</select>`)}
-                </section>
-
-                <section class="section" aria-labelledby="pf-goal">
-                    <h2 class="cap" id="pf-goal">Obiettivi</h2>
-                    ${field('profile-goal', 'Obiettivo', `<select class="input" id="profile-goal">${opts([['hypertrophy', 'Ipertrofia'], ['strength', 'Forza'], ['recomp', 'Ricomposizione'], ['endurance', 'Resistenza'], ['toning', 'Tonificazione']], 'hypertrophy')}</select>`)}
-                    ${field('profile-target-weight', 'Peso obiettivo (kg)', '<input class="input" type="number" step="0.1" id="profile-target-weight" inputmode="decimal">')}
-                    ${field('profile-target-bf', 'Grasso obiettivo (%)', '<input class="input" type="number" step="0.1" id="profile-target-bf" inputmode="decimal">')}
-                </section>
-
-                <section class="section" aria-labelledby="pf-time">
-                    <h2 class="cap" id="pf-time">Disponibilità</h2>
-                    ${field('profile-days', 'Giorni a settimana', `<select class="input" id="profile-days">${opts([['2', '2 giorni'], ['3', '3 giorni'], ['4', '4 giorni'], ['5', '5 giorni'], ['6', '6 giorni']], '3')}</select>`)}
-                    ${field('profile-session-time', 'Durata', `<select class="input" id="profile-session-time">${opts([['45', '45 minuti'], ['60', '60 minuti'], ['75', '75 minuti'], ['90', '90 minuti']], '60')}</select>`)}
-                </section>
-
-                <section class="section" aria-labelledby="pf-eq">
-                    <h2 class="cap" id="pf-eq">Attrezzatura</h2>
-                    <div class="chips equipment-checkboxes" id="equipment-checkboxes">
-                        ${eq('bilanciere', 'Bilanciere', 'barbell', true)}
-                        ${eq('manubri', 'Manubri', 'dumbbell', true)}
-                        ${eq('macchine', 'Macchine', 'machine', true)}
-                        ${eq('cavi', 'Cavi', 'cable', true)}
-                        ${eq('panca', 'Panca', 'bench', true)}
-                        ${eq('sbarra', 'Sbarra trazioni', 'pullup', true)}
-                        ${eq('parallele', 'Parallele', '', false)}
-                        ${eq('accessori', 'Accessori', 'band', false)}
-                    </div>
-                </section>
-
-                <button type="submit" class="btn btn--primary btn--xl btn--block">${this.ico('check')}Salva il profilo</button>
-            </form>
-
-            <section class="section" aria-labelledby="st-train">
-                <h2 class="cap" id="st-train">Durante la seduta</h2>
-                <div class="group">
-                    <div class="row">
-                        <label class="row__body" for="setting-rest-compound"><span class="row__title">Recupero esercizi multiarticolari (s)</span></label>
-                        <input class="input" style="width: 96px" type="number" id="setting-rest-compound" value="120" min="30" max="300" step="15" inputmode="numeric">
-                    </div>
-                    <div class="row">
-                        <label class="row__body" for="setting-rest-isolation"><span class="row__title">Recupero esercizi di isolamento (s)</span></label>
-                        <input class="input" style="width: 96px" type="number" id="setting-rest-isolation" value="75" min="30" max="180" step="15" inputmode="numeric">
-                    </div>
-                    <div class="row">
-                        <label class="row__body" for="setting-rest-sound"><span class="row__title">Suono a fine recupero</span></label>
-                        <select class="input" style="width: 150px" id="setting-rest-sound">${opts([['beep', 'Beep'], ['bell', 'Campana'], ['none', 'Nessuno']], 'beep')}</select>
-                    </div>
-                    ${toggle('setting-vibration', 'Vibrazione', '', true)}
-                    ${toggle('setting-keep-awake', 'Schermo sempre acceso', '', true)}
-                    ${toggle('setting-notifications', 'Notifica a fine recupero')}
-                    ${toggle('setting-background-alerts', 'Suono con app in background', 'Può interrompere la musica')}
+            <div class="me">
+                <span class="avatar" aria-hidden="true" id="pf-avatar">G</span>
+                <div class="me__text">
+                    <h1 class="me__name" id="pf-name">Profilo</h1>
+                    <p class="me__sub" id="pf-sub"></p>
                 </div>
-            </section>
+                <button type="button" class="btn btn--ghost btn--icon" id="pf-edit" aria-label="Modifica i dati personali">${this.ico('edit')}</button>
+            </div>
 
-            <section class="section" aria-labelledby="st-look">
-                <h2 class="cap" id="st-look">Aspetto</h2>
-                <div class="group">
-                    <div class="row">
-                        <label class="row__body" for="setting-theme"><span class="row__title">Tema</span></label>
-                        <select class="input" style="width: 150px" id="setting-theme">${opts([['dark', 'Scuro'], ['light', 'Chiaro'], ['auto', 'Automatico']], 'dark')}</select>
+            <div class="wide">
+                <div class="col">
+                    <section class="section" aria-labelledby="pf-plan-t">
+                        <h2 class="cap" id="pf-plan-t">Allenamento</h2>
+                        <div class="group">
+                            ${row('pf-goal', 'target', 'Obiettivo')}
+                            ${row('pf-level', 'trend-up', 'Esperienza')}
+                            ${row('pf-days', 'calendar', 'Giorni e durata')}
+                            <button type="button" class="row" id="pf-regen">
+                                <span class="row__icon">${this.ico('cycle')}</span>
+                                <span class="row__body"><span class="row__title">Rigenera scheda</span><span class="row__sub">Storico e record restano</span></span>
+                                <span class="row__end">${this.ico('next')}</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pf-eq-t">
+                        <div class="section__head"><h2 class="cap" id="pf-eq-t">Attrezzatura</h2><span class="count" id="pf-eq-count"></span></div>
+                        <div class="chips" role="group" aria-labelledby="pf-eq-t" id="equipment-checkboxes">
+                            ${this.PF_EQUIPMENT.map(([v, l, i]) => `<button type="button" class="chip chip--lg" aria-pressed="false" data-eq="${v}">${this.ico(i)}${l}</button>`).join('')}
+                        </div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pf-pref-t">
+                        <h2 class="cap" id="pf-pref-t">Preferenze</h2>
+                        <div class="group pf-pref">
+                            <div class="row pf-row-wrap">
+                                <span class="row__icon">${this.ico('alert')}</span>
+                                <span class="row__body"><span class="row__title" id="pf-pain-t">Zone dolenti</span><span class="row__sub">Niente esercizi che le caricano</span></span>
+                                <div class="chips pf-full" role="group" aria-labelledby="pf-pain-t" id="pf-pain">
+                                    ${this.PF_PAIN.map(([v, l]) => `<button type="button" class="chip" aria-pressed="false" data-pain="${v}">${l}</button>`).join('')}
+                                </div>
+                            </div>
+                            ${row('pf-avoid', 'close', 'Esercizi da evitare')}
+                        </div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pf-gym-t">
+                        <h2 class="cap" id="pf-gym-t">Palestra</h2>
+                        <div class="group">
+                            <div class="row pf-row-wrap">
+                                <span class="row__icon">${this.ico('barbell')}</span>
+                                <span class="row__body"><span class="row__title" id="pf-bar-t">Bilanciere</span></span>
+                                <div class="seg pf-full" role="radiogroup" aria-labelledby="pf-bar-t" id="pf-bar">
+                                    <button type="button" role="radio" aria-checked="true" data-val="20"><span><span class="num">20</span> kg</span></button>
+                                    <button type="button" role="radio" aria-checked="false" data-val="15"><span><span class="num">15</span> kg</span></button>
+                                </div>
+                            </div>
+                            <div class="row pf-row-wrap">
+                                <span class="row__icon">${this.ico('plate')}</span>
+                                <span class="row__body"><span class="row__title" id="pf-plates-t">Dischi per lato</span></span>
+                                <div class="chips pf-full" role="group" aria-labelledby="pf-plates-t" id="pf-plates">
+                                    ${this.PF_PLATES.map(p => `<button type="button" class="chip pf-plate" aria-pressed="true" data-plate="${p}"><span class="num">${this.fmt(p)}</span></button>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+
+                <div class="col">
+                    <section class="section" aria-labelledby="pf-ses-t">
+                        <h2 class="cap" id="pf-ses-t">Durante la seduta</h2>
+                        <div class="group">
+                            <div class="row pf-row-wrap">
+                                <span class="row__icon">${this.ico('sound')}</span>
+                                <span class="row__body"><span class="row__title" id="pf-snd-t">Suono a fine recupero</span></span>
+                                <div class="seg pf-full" role="radiogroup" aria-labelledby="pf-snd-t" id="setting-rest-sound">
+                                    <button type="button" role="radio" aria-checked="true" data-val="beep">Beep</button>
+                                    <button type="button" role="radio" aria-checked="false" data-val="bell">Campana</button>
+                                    <button type="button" role="radio" aria-checked="false" data-val="none">Nessuno</button>
+                                </div>
+                            </div>
+                            ${sw('setting-vibration', 'vibrate', 'Vibrazione')}
+                            ${sw('setting-notifications', 'bell', 'Notifica a schermo spento')}
+                            ${sw('setting-keep-awake', 'wakelock', 'Schermo sempre acceso')}
+                            ${sw('setting-background-alerts', 'mute', 'Suono con app chiusa', 'Può fermare la musica')}
+                            <div class="row pf-row-wrap">
+                                <span class="row__icon">${this.ico('timer')}</span>
+                                <span class="row__body"><span class="row__title">Recupero di base</span><span class="row__sub">Per gli esercizi senza un recupero</span></span>
+                                <div class="pf-rests pf-full">${restStep('compound', 'Multiarticolari')}${restStep('isolation', 'Isolamento')}</div>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="section" aria-labelledby="pf-th-t">
+                        <h2 class="cap" id="pf-th-t">Tema</h2>
+                        <div class="seg" role="radiogroup" aria-labelledby="pf-th-t" id="setting-theme">
+                            <button type="button" role="radio" aria-checked="false" data-val="auto">${this.ico('theme-auto')}Auto</button>
+                            <button type="button" role="radio" aria-checked="true" data-val="dark">${this.ico('moon')}Scuro</button>
+                            <button type="button" role="radio" aria-checked="false" data-val="light">${this.ico('sun')}Chiaro</button>
+                        </div>
+                    </section>
+
+                    <section class="section" id="pf-backup" aria-labelledby="pf-bk-t">
+                        <h2 class="cap" id="pf-bk-t">Backup</h2>
+                        <div class="group backup">
+                            <div class="backup__state">
+                                <span class="row__icon" id="pf-bk-icon">${this.ico('shield')}</span>
+                                <span class="row__body"><span class="row__title" id="pf-bk-title">Backup</span><span class="row__sub" id="pf-bk-sub"></span></span>
+                            </div>
+                            <div class="backup__btns">
+                                <button type="button" class="btn btn--primary" id="share-data-btn">${this.ico('share')}Condividi</button>
+                                <button type="button" class="btn btn--secondary" id="export-data-btn">${this.ico('download')}Esporta</button>
+                                <button type="button" class="btn btn--secondary" id="import-data-btn">${this.ico('upload')}Importa</button>
+                            </div>
+                            <input type="file" id="import-file-input" accept=".json,application/json" hidden>
+                        </div>
+                    </section>
+
+                    <section class="section" id="pf-tools" aria-labelledby="pf-tools-t" hidden>
+                        <h2 class="cap" id="pf-tools-t">Strumenti di prova</h2>
+                        <div class="group">
+                            <button type="button" class="row" id="simulate-workout-btn">
+                                <span class="row__icon">${this.ico('play')}</span>
+                                <span class="row__body"><span class="row__title">Simula una seduta</span><span class="row__sub">Non salva niente</span></span>
+                            </button>
+                            <button type="button" class="row" id="clear-cache-btn">
+                                <span class="row__icon">${this.ico('cycle')}</span>
+                                <span class="row__body"><span class="row__title">Aggiorna l'app</span><span class="row__sub">Svuota la cache e ricarica · <span id="storage-text">…</span></span></span>
+                            </button>
+                            <button type="button" class="row" id="clear-progress-btn">
+                                <span class="row__icon pf-danger">${this.ico('trash')}</span>
+                                <span class="row__body"><span class="row__title pf-danger">Cancella i progressi</span><span class="row__sub">Tiene profilo e scheda</span></span>
+                            </button>
+                            <button type="button" class="row" id="reset-data-btn">
+                                <span class="row__icon pf-danger">${this.ico('trash')}</span>
+                                <span class="row__body"><span class="row__title pf-danger">Cancella tutto</span><span class="row__sub">Come appena installata</span></span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <div class="foot">
+                        <span>${this.ico('lock', 'ico--sm')} I dati restano su questo telefono</span>
+                        <button type="button" class="pf-version" id="pf-version">GymTracker <span class="num" id="app-version">${GT.esc(String(GT.APP_VERSION || '').replace(/^v/, ''))}</span></button>
                     </div>
                 </div>
-            </section>
-
-            <section class="section" aria-labelledby="st-data">
-                <h2 class="cap" id="st-data">Dati</h2>
-                <div class="group backup">
-                    <div class="backup__state storage-info" id="storage-info">
-                        <span class="row__icon">${this.ico('shield')}</span>
-                        <span class="row__body">
-                            <span class="row__title storage-text" id="storage-text">Calcolo spazio…</span>
-                            <span class="row__sub">I dati stanno solo su questo telefono</span>
-                        </span>
-                    </div>
-                    <div class="storage-bar" aria-hidden="true"><div class="storage-used" id="storage-used-bar"></div></div>
-                    <div class="backup__btns data-buttons">
-                        <button type="button" class="btn btn--secondary" id="export-data-btn">${this.ico('download')}Esporta</button>
-                        <button type="button" class="btn btn--secondary" id="import-data-btn">${this.ico('upload')}Importa</button>
-                        <button type="button" class="btn btn--secondary" id="clear-cache-btn">${this.ico('cycle')}Aggiorna app</button>
-                    </div>
-                    <input type="file" id="import-file-input" accept=".json,application/json" hidden>
-                </div>
-            </section>
-
-            <section class="section" aria-labelledby="st-test">
-                <h2 class="cap" id="st-test">Prova</h2>
-                <button type="button" class="btn btn--secondary btn--block" id="simulate-workout-btn">Simula una seduta (non salva)</button>
-            </section>
-
-            <section class="section danger-zone" aria-labelledby="st-danger">
-                <h2 class="cap" id="st-danger">Cancellazione</h2>
-                <div class="group">
-                    <button type="button" class="row" id="clear-progress-btn">
-                        <span class="row__icon">${this.ico('trash')}</span>
-                        <span class="row__body"><span class="row__title">Cancella i progressi</span><span class="row__sub">Sedute, record e cicli. Profilo e scheda restano</span></span>
-                    </button>
-                    <button type="button" class="row" id="reset-data-btn">
-                        <span class="row__icon">${this.ico('trash')}</span>
-                        <span class="row__body"><span class="row__title btn--danger-text">Cancella tutti i dati</span><span class="row__sub">Non si torna indietro</span></span>
-                    </button>
-                </div>
-            </section>
-
-            <footer class="foot">
-                <span>GymTracker <span class="num" id="app-version">${GT.esc(GT.APP_VERSION || '')}</span></span>
-                <span>I dati restano su questo dispositivo</span>
-            </footer>
+            </div>
         `;
     },
 
     bindProfilo() {
         const on = (id, ev, fn) => this._on(id, ev, fn);
 
-        // Profile form
-        on('profile-form', 'submit', (e) => {
-            e.preventDefault();
-            this.saveProfile();
+        on('pf-edit', 'click', () => this._openDataSheet());
+        on('pf-goal', 'click', () => this._openGoalSheet());
+        on('pf-level', 'click', () => this._openLevelSheet());
+        on('pf-days', 'click', () => this._openDaysSheet());
+        on('pf-regen', 'click', () => this._regenerateProgram());
+        on('pf-avoid', 'click', () => this._openAvoidSheet());
+
+        on('equipment-checkboxes', 'click', (e) => {
+            const chip = e.target.closest('[data-eq]');
+            if (!chip) return;
+            const p = Storage.getProfile();
+            const set = new Set(p.equipment || []);
+            if (set.has(chip.dataset.eq)) set.delete(chip.dataset.eq); else set.add(chip.dataset.eq);
+            const order = this.PF_EQUIPMENT.map(x => x[0]);
+            this._saveProfilePatch({ equipment: [...set].sort((a, b) => order.indexOf(a) - order.indexOf(b)) });
+            this.loadProfile();
+        });
+        on('pf-pain', 'click', (e) => {
+            const chip = e.target.closest('[data-pain]');
+            if (!chip) return;
+            const set = new Set(Storage.getProfile().painAreas || []);
+            if (set.has(chip.dataset.pain)) set.delete(chip.dataset.pain); else set.add(chip.dataset.pain);
+            this._saveProfilePatch({ painAreas: this.PF_PAIN.map(x => x[0]).filter(k => set.has(k)) });
+            this.loadProfile();
         });
 
-        // Impostazioni
-        on('setting-theme', 'change', (e) => this.setTheme(e.target.value));
-        ['setting-rest-compound', 'setting-rest-isolation', 'setting-rest-sound',
-            'setting-vibration', 'setting-background-alerts'].forEach(id => {
-            on(id, 'change', () => this.saveSettings());
+        // Palestra: settings.gym (Storage.getGymConfig/saveGymConfig di G5, con ripiego su settings)
+        on('pf-bar', 'click', (e) => {
+            const b = e.target.closest('[data-val]');
+            if (!b) return;
+            this._saveGym({ barKg: parseInt(b.dataset.val, 10) });
+            this._renderGym();
         });
-        on('setting-keep-awake', 'change', (e) => {
-            this.saveSettings();
-            if (this.activeWorkout || this.conditioningState.startedAt) this._setKeepAwake(e.target.checked);
+        on('pf-plates', 'click', (e) => {
+            const b = e.target.closest('[data-plate]');
+            if (!b) return;
+            const kg = parseFloat(b.dataset.plate);
+            const plates = new Set(this._gym().plates || this.PF_PLATES);
+            if (plates.has(kg)) {
+                if (plates.size === 1) {
+                    this.showNotification('Serve almeno un disco', 'warning');
+                    return;
+                }
+                plates.delete(kg);
+            } else plates.add(kg);
+            this._saveGym({ plates: [...plates].sort((a, b) => b - a) });
+            this._renderGym();
         });
-        on('setting-notifications', 'change', (e) => this.onNotificationsToggle(e.target));
 
-        // Dati
+        // Seduta
+        on('setting-rest-sound', 'click', (e) => {
+            const b = e.target.closest('[data-val]');
+            if (!b) return;
+            Storage.saveSettings({ restSound: b.dataset.val });
+            this.loadSettings();
+        });
+        ['setting-vibration', 'setting-keep-awake', 'setting-background-alerts'].forEach(id => {
+            on(id, 'click', (e) => {
+                const btn = e.currentTarget;
+                const value = btn.getAttribute('aria-checked') !== 'true';
+                btn.setAttribute('aria-checked', String(value));
+                const key = { 'setting-vibration': 'vibration', 'setting-keep-awake': 'keepAwake', 'setting-background-alerts': 'backgroundAlerts' }[id];
+                Storage.saveSettings({ [key]: value });
+                if (id === 'setting-keep-awake' && (this.activeWorkout || this.conditioningState.startedAt)) this._safe(() => this._setKeepAwake(value));
+            });
+        });
+        on('setting-notifications', 'click', (e) => this.onNotificationsToggle(e.currentTarget));
+        document.querySelectorAll('[data-rest]').forEach(btn => btn.addEventListener('click', () => {
+            const key = btn.dataset.rest === 'compound' ? 'restTimeCompound' : 'restTimeIsolation';
+            const s = Storage.getSettings();
+            const v = this._clampInt((s[key] || 0) + parseInt(btn.dataset.by, 10), s[key], 15, 600);
+            Storage.saveSettings({ [key]: v });
+            this.loadSettings();
+        }));
+
+        on('setting-theme', 'click', (e) => {
+            const b = e.target.closest('[data-val]');
+            if (!b) return;
+            this.setTheme(b.dataset.val);
+            this.loadSettings();
+        });
+
+        // Backup
+        on('share-data-btn', 'click', () => this.shareBackup());
         on('export-data-btn', 'click', () => this.exportData());
         on('import-data-btn', 'click', () => document.getElementById('import-file-input')?.click());
         on('import-file-input', 'change', (e) => {
             this.importData(e.target.files[0]);
             e.target.value = '';   // permette di riscegliere lo stesso file
         });
-        on('reset-data-btn', 'click', () => {
-            if (confirm('Cancellare TUTTI i dati? Profilo, schede, allenamenti e PR')) {
-                Storage.clearAllData();
-                location.reload();
-            }
-        });
-        on('clear-progress-btn', 'click', () => {
-            const n = Storage.getWorkouts().length;
-            if (!confirm(`Cancellare i progressi? ${n} allenamenti, PR e cicli`)) return;
-            Storage.clearProgressData();
-            this.showNotification('Progressi cancellati', 'success');
-            this._cycleSummaryDismissed = false;
-            this.loadDashboard();
-            this._safe(() => this.loadProgress());
-            this._safe(() => this.initCharts());
-            this.updateStorageUsage();
-        });
-        on('clear-cache-btn', 'click', async () => {
-            if (!confirm('Svuotare la cache e ricaricare l\'app?')) return;
-            try {
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (const registration of registrations) await registration.unregister();
-                }
-                if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    for (const cacheName of cacheNames) await caches.delete(cacheName);
-                }
-                location.reload();
-            } catch (error) {
-                console.error('Errore durante la pulizia della cache:', error);
-                this.showNotification('Cache non svuotata: riprova', 'error');
-            }
-        });
 
-        // Debug
+        // Versione: 7 tocchi aprono gli strumenti di prova
+        on('pf-version', 'click', () => {
+            const tools = document.getElementById('pf-tools');
+            if (!tools || !tools.hidden) return;
+            this._versionTaps = (this._versionTaps || 0) + 1;
+            clearTimeout(this._versionTapTimer);
+            this._versionTapTimer = setTimeout(() => { this._versionTaps = 0; }, 3000);
+            if (this._versionTaps >= 7) {
+                this._versionTaps = 0;
+                tools.hidden = false;
+                this.updateStorageUsage();
+                this.showNotification('Strumenti di prova attivi', 'info', { icon: 'settings' });
+                tools.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+            }
+        });
         on('simulate-workout-btn', 'click', () => this.startSimulatedWorkout());
+        on('clear-cache-btn', 'click', () => this._clearCache());
+        on('clear-progress-btn', 'click', () => this._clearProgress());
+        on('reset-data-btn', 'click', () => this._resetAll());
     },
 
-    // Il form si ricarica a ogni apertura (E8); lo spazio occupato si ricalcola
+    // Il profilo si ridisegna a ogni apertura (E8: il peso aggiunto in Progressi non va perso)
     enterProfilo() {
         this._safe(() => this.loadProfile());
-        this._safe(() => this.updateStorageUsage());
-    },
-
-    startSimulatedWorkout() {
-        const fakeWorkout = {
-            type: 'Simulazione',
-            warmup: null,
-            exercises: [
-                { exerciseId: 'bench-press', name: 'Panca Piana (TEST)', sets: 3, reps: '8-12', rest: 90 },
-                { exerciseId: 'lat-pulldown', name: 'Lat Machine (TEST)', sets: 3, reps: '10-12', rest: 60 }
-            ]
-        };
-        if (this.activeWorkout) {
-            this._promptActiveSession();
-            return;
-        }
-        this.startWorkout(fakeWorkout, { isSimulation: true });
-        this.showNotification('Simulazione: non si salva nulla', 'info');
+        this._safe(() => this.loadSettings());
     },
 
     // ========================================
-    // PROFILE
+    // PROFILO: lettura e salvataggio
     // ========================================
 
-    // Il form si ricarica ogni volta che si apre la pagina (E8: il peso aggiunto in Progressi non va perso)
+    _saveProfilePatch(patch) {
+        const ok = Storage.saveProfile(patch);
+        if (ok === false) this.showNotification('Profilo NON salvato: memoria piena', 'error');
+        this._ctxCache = this.activeWorkout ? {} : null;   // il peso corporeo entra nel corpo libero
+        this._safe(() => this.loadDashboard());
+        return ok !== false;
+    },
+
+    _age(birthdate) {
+        const d = new Date(birthdate);
+        if (!birthdate || isNaN(d)) return null;
+        const now = new Date();
+        let a = now.getFullYear() - d.getFullYear();
+        if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) a--;
+        return a >= 10 && a <= 100 ? a : null;
+    },
+
     loadProfile() {
         const p = Storage.getProfile();
-        const set = (id, v) => {
-            const el = document.getElementById(id);
-            if (el) el.value = v ?? '';
+        const name = String(p.name || '').trim();
+        this._setText('pf-name', name || 'Profilo');
+        this._setText('pf-avatar', (name.charAt(0) || 'G').toUpperCase());
+        const sub = document.getElementById('pf-sub');
+        if (sub) {
+            const age = this._age(p.birthdate);
+            const parts = [{ male: 'Uomo', female: 'Donna' }[p.gender] || ''];
+            if (age) parts.push(`<span class="num">${age}</span> anni`);
+            if (GT.num(p.weight) > 0) parts.push(`<span class="num">${GT.esc(this.fmt(p.weight, 1))}</span>&nbsp;kg`);
+            const html = parts.filter(Boolean).join(' · ');
+            sub.innerHTML = html || 'Tocca la matita per i tuoi dati';
+        }
+        const goal = this.PF_GOALS.find(g => g[0] === p.goal);
+        this._setText('pf-goal-val', goal ? goal[1] : '');
+        const level = this.PF_LEVELS.find(l => l[0] === p.level);
+        this._setText('pf-level-val', level ? level[3] : '');
+        const daysVal = document.getElementById('pf-days-val');
+        if (daysVal) daysVal.innerHTML = `<span class="num">${GT.esc(p.daysPerWeek || 3)}</span> × <span class="num">${GT.esc(p.sessionTime || 60)}</span>&nbsp;min`;
+
+        const eq = new Set(Array.isArray(p.equipment) ? p.equipment : []);
+        document.querySelectorAll('#equipment-checkboxes [data-eq]').forEach(c => c.setAttribute('aria-pressed', String(eq.has(c.dataset.eq))));
+        const count = document.getElementById('pf-eq-count');
+        if (count) count.innerHTML = `<span class="num">${this.PF_EQUIPMENT.filter(x => eq.has(x[0])).length}</span> su <span class="num">${this.PF_EQUIPMENT.length}</span>`;
+
+        const pain = new Set(p.painAreas || []);
+        document.querySelectorAll('#pf-pain [data-pain]').forEach(c => c.setAttribute('aria-pressed', String(pain.has(c.dataset.pain))));
+        const avoid = (p.avoidExercises || []).filter(id => EXERCISES_DB[id]);
+        this._setText('pf-avoid-val', avoid.length ? String(avoid.length) : 'nessuno');
+        this._renderGym();
+    },
+
+    // Usata dal foglio dei dati (nome storico)
+    saveProfile() {
+        const root = document.getElementById('pf-data-sheet');
+        if (!root) return false;
+        const val = (id) => root.querySelector('#' + id)?.value ?? '';
+        const num = (id, lo, hi) => {
+            const v = GT.num(val(id));
+            return v >= lo && v <= hi ? Math.round(v * 10) / 10 : null;
         };
+        const name = val('profile-name').trim().slice(0, 40);
+        if (!name) {
+            this.showNotification('Scrivi il nome', 'warning');
+            root.querySelector('#profile-name')?.focus();
+            return false;
+        }
+        const gender = root.querySelector('#profile-gender [aria-checked="true"]')?.dataset.val || '';
+        const birth = val('profile-birthdate');
+        const birthOk = !birth || !!this._age(birth);
+        const patch = {
+            name,
+            gender,
+            birthdate: birthOk ? birth : (Storage.getProfile().birthdate || ''),
+            height: num('profile-height', 100, 250),
+            weight: num('profile-weight', 20, 400),
+            bodyFat: num('profile-bodyfat', 2, 70)
+        };
+        if (!birthOk) this.showNotification('Data di nascita non valida: non salvata', 'warning');
+        if (!this._saveProfilePatch(patch)) return false;
+        this.loadProfile();
+        this.showNotification('Dati salvati', 'success');
+        return true;
+    },
 
-        set('profile-name', p.name);
-        set('profile-gender', p.gender || '');
-        set('profile-birthdate', p.birthdate);
-        set('profile-height', p.height);
-        set('profile-weight', p.weight);
-        set('profile-bodyfat', p.bodyFat);
-        set('profile-level', p.level || 'beginner');
-        set('profile-background', p.background || 'none');
-        set('profile-goal', p.goal || 'hypertrophy');
-        set('profile-target-weight', p.targetWeight);
-        set('profile-target-bf', p.targetBodyFat);
-        set('profile-days', p.daysPerWeek || 3);
-        set('profile-session-time', p.sessionTime || 60);
-
-        const equipment = Array.isArray(p.equipment) ? p.equipment : [];
-        document.querySelectorAll('#equipment-checkboxes input').forEach(cb => {
-            cb.checked = equipment.includes(cb.value);
+    _openDataSheet() {
+        const p = Storage.getProfile();
+        const field = (id, label, input) => `<div class="field"><label for="${id}">${label}</label>${input}</div>`;
+        const g = (v) => (p.gender === v ? 'true' : 'false');
+        const root = this._sheet('pf-data-sheet', `
+            ${this._sheetHead('I tuoi dati', 'Chiudi senza salvare')}
+            <form class="pf-form" id="pf-data-form" novalidate>
+                ${field('profile-name', 'Nome', `<input class="input" type="text" id="profile-name" autocomplete="given-name" maxlength="40" value="${GT.esc(p.name || '')}">`)}
+                <div class="field"><span class="label" id="profile-gender-l">Sesso</span>
+                    <div class="seg" role="radiogroup" aria-labelledby="profile-gender-l" id="profile-gender">
+                        <button type="button" role="radio" aria-checked="${g('male')}" data-val="male">${this.ico('male')}Uomo</button>
+                        <button type="button" role="radio" aria-checked="${g('female')}" data-val="female">${this.ico('female')}Donna</button>
+                    </div></div>
+                ${field('profile-birthdate', 'Data di nascita', `<input class="input" type="date" id="profile-birthdate" value="${GT.esc(p.birthdate || '')}">`)}
+                <div class="pf-form__2">
+                    ${field('profile-height', 'Altezza (cm)', `<input class="input num" type="text" inputmode="numeric" id="profile-height" autocomplete="off" value="${GT.esc(p.height ?? '')}">`)}
+                    ${field('profile-weight', 'Peso (kg)', `<input class="input num" type="text" inputmode="decimal" id="profile-weight" autocomplete="off" value="${GT.esc(p.weight != null ? this.fmt(p.weight, 1) : '')}">`)}
+                </div>
+                ${field('profile-bodyfat', 'Grasso corporeo (%) · facoltativo', `<input class="input num" type="text" inputmode="decimal" id="profile-bodyfat" autocomplete="off" value="${GT.esc(p.bodyFat != null ? this.fmt(p.bodyFat, 1) : '')}">`)}
+                <button type="submit" class="btn btn--primary btn--xl btn--block">${this.ico('check')}Salva i dati</button>
+            </form>`, { tall: true });
+        root.querySelector('#profile-gender')?.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-val]');
+            if (!b) return;
+            const on = b.getAttribute('aria-checked') !== 'true';
+            root.querySelectorAll('#profile-gender [data-val]').forEach(x => x.setAttribute('aria-checked', String(on && x === b)));
+        });
+        root.querySelector('#pf-data-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (this.saveProfile()) this._closeSheet('pf-data-sheet');
         });
     },
 
-    saveProfile() {
-        const val = (id) => document.getElementById(id)?.value ?? '';
-        const num = (id) => {
-            const v = GT.num(val(id));
-            return Number.isFinite(v) && v > 0 ? v : null;
-        };
-        const equipment = [];
-        document.querySelectorAll('#equipment-checkboxes input:checked').forEach(cb => equipment.push(cb.value));
+    // Scelta singola in un foglio: obiettivo
+    _openGoalSheet() {
+        const p = Storage.getProfile();
+        const root = this._sheet('pf-goal-sheet', `
+            ${this._sheetHead('Obiettivo', 'Chiudi la scelta dell\'obiettivo')}
+            <div class="choices" role="radiogroup" aria-label="Obiettivo">
+                ${this.PF_GOALS.map(([v, t, d, i]) => `<button type="button" class="choice" role="radio" aria-checked="${p.goal === v}" data-val="${v}">
+                    <span class="choice__icon">${this.ico(i)}</span><span class="choice__body"><b>${t}</b><span>${d}</span></span>
+                    <span class="choice__mark">${this.ico('check')}</span></button>`).join('')}
+            </div>`);
+        root.addEventListener('click', (e) => {
+            const b = e.target.closest('.choice[data-val]');
+            if (!b) return;
+            const goal = b.dataset.val;
+            this._saveProfilePatch({ goal });
+            this.loadProfile();
+            this._closeSheet('pf-goal-sheet');
+            this._suggestRegen(`Obiettivo: ${this.PF_GOALS.find(g => g[0] === goal)?.[1] || ''}`, (prog) => prog?.metadata?.goal && prog.metadata.goal !== goal);
+        });
+    },
 
-        const profile = {
-            ...Storage.getProfile(),
-            name: val('profile-name').trim().slice(0, 40),
-            gender: val('profile-gender'),
-            birthdate: val('profile-birthdate'),
-            height: num('profile-height'),
-            weight: num('profile-weight'),
-            bodyFat: num('profile-bodyfat'),
-            level: val('profile-level') || 'beginner',
-            background: val('profile-background') || 'none',
-            goal: val('profile-goal') || 'hypertrophy',
-            targetWeight: num('profile-target-weight'),
-            targetBodyFat: num('profile-target-bf'),
-            daysPerWeek: parseInt(val('profile-days')) || 3,
-            sessionTime: parseInt(val('profile-session-time')) || 60,
-            equipment
-        };
+    _openLevelSheet() {
+        const p = Storage.getProfile();
+        const root = this._sheet('pf-level-sheet', `
+            ${this._sheetHead('Esperienza', 'Chiudi l\'esperienza')}
+            <div class="choices" role="radiogroup" aria-label="Da quanto ti alleni">
+                ${this.PF_LEVELS.map(([v, t, d]) => `<button type="button" class="choice" role="radio" aria-checked="${p.level === v}" data-val="${v}">
+                    <span class="choice__body"><b>${t}</b><span>${d}</span></span><span class="choice__mark">${this.ico('check')}</span></button>`).join('')}
+            </div>
+            <div class="field"><span class="label" id="pf-bg-l">Vieni da</span>
+                <div class="chips" role="radiogroup" aria-labelledby="pf-bg-l">
+                    ${this.PF_BACKGROUNDS.map(([v, t]) => `<button type="button" class="chip" role="radio" aria-checked="${(p.background || 'none') === v}" data-bg="${v}">${t}</button>`).join('')}
+                </div></div>
+            <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`);
+        root.addEventListener('click', (e) => {
+            const lv = e.target.closest('.choice[data-val]');
+            const bg = e.target.closest('[data-bg]');
+            if (lv) {
+                this._saveProfilePatch({ level: lv.dataset.val });
+                root.querySelectorAll('.choice[data-val]').forEach(x => x.setAttribute('aria-checked', String(x === lv)));
+            } else if (bg) {
+                this._saveProfilePatch({ background: bg.dataset.bg });
+                root.querySelectorAll('[data-bg]').forEach(x => x.setAttribute('aria-checked', String(x === bg)));
+            } else return;
+            this.loadProfile();
+        });
+    },
 
-        Storage.saveProfile(profile);
-        this._ctxCache = this.activeWorkout ? {} : null;   // il peso corporeo entra nel corpo libero
-        this.loadDashboard();
-        this.showNotification('Profilo salvato', 'success');
+    _openDaysSheet() {
+        const p = Storage.getProfile();
+        const pick = (key, list, cur, unit) => `<div class="pick" style="--n:${list.length}" role="radiogroup" aria-labelledby="pf-${key}-l">
+            ${list.map(v => `<button type="button" role="radio" aria-checked="${+cur === v}" data-${key}="${v}">${v}<small>${unit}</small></button>`).join('')}</div>`;
+        const before = { d: p.daysPerWeek, m: p.sessionTime };
+        const root = this._sheet('pf-days-sheet', `
+            ${this._sheetHead('Giorni e durata', 'Chiudi giorni e durata')}
+            <div class="field"><span class="label" id="pf-days-l">Giorni a settimana</span>${pick('days', [2, 3, 4, 5, 6], p.daysPerWeek || 3, 'gg')}</div>
+            <div class="field"><span class="label" id="pf-min-l">Minuti a seduta</span>${pick('min', [30, 45, 60, 75, 90], p.sessionTime || 60, 'min')}</div>
+            <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`,
+        {
+            onClose: () => {
+                this._closeSheet('pf-days-sheet');
+                const now = Storage.getProfile();
+                if (now.daysPerWeek !== before.d || now.sessionTime !== before.m) {
+                    this._suggestRegen(`${now.daysPerWeek} giorni × ${now.sessionTime} min`, () => true);
+                }
+            }
+        });
+        root.addEventListener('click', (e) => {
+            const d = e.target.closest('[data-days]');
+            const m = e.target.closest('[data-min]');
+            if (d) {
+                this._saveProfilePatch({ daysPerWeek: parseInt(d.dataset.days, 10) });
+                root.querySelectorAll('[data-days]').forEach(x => x.setAttribute('aria-checked', String(x === d)));
+            } else if (m) {
+                this._saveProfilePatch({ sessionTime: parseInt(m.dataset.min, 10) });
+                root.querySelectorAll('[data-min]').forEach(x => x.setAttribute('aria-checked', String(x === m)));
+            } else return;
+            this.loadProfile();
+        });
+    },
+
+    // Avviso con "Rigenera scheda" quando la scheda attiva non segue più il profilo
+    _suggestRegen(text, differs) {
+        const prog = this._safe(() => Storage.getActiveProgram());
+        if (prog && this._safe(() => differs(prog))) {
+            this.showNotification(text, 'success', { action: { label: 'Rigenera scheda', onClick: () => this._regenerateProgram() } });
+        } else {
+            this.showNotification(text, 'success');
+        }
+    },
+
+    // Rigenera: lo stesso flusso del primo avvio dal passo dell'obiettivo (G3); ripiego: il vecchio wizard
+    _regenerateProgram() {
+        if (typeof this.openOnboarding === 'function') {
+            this.openOnboarding({ fromStep: 'goal' });   // la seduta in corso la gestisce il primo avvio
+            return;
+        }
+        if (this.activeWorkout) {
+            this.showNotification('Prima finisci la seduta in corso', 'warning');
+            return;
+        }
+        if (typeof this.openWizard === 'function') {
+            this.navigateTo('scheda');
+            this.openWizard();
+        } else {
+            this.navigateTo('scheda');
+        }
+    },
+
+    // Esercizi da evitare: elenco con "Togli" e aggiunta dalla libreria
+    _openAvoidSheet() {
+        const render = () => {
+            const list = (Storage.getProfile().avoidExercises || []).filter(id => EXERCISES_DB[id]);
+            const box = document.getElementById('pf-avoid-list');
+            if (!box) return;
+            box.innerHTML = list.length ? `<ul class="group pf-avoid">${list.map(id => {
+                const ex = EXERCISES_DB[id];
+                const icon = this.EX_EQUIP_ICON?.[this._exEquip(ex)[0]] || 'dumbbell';
+                return `<li class="row">${this._thumbHTML(getExerciseGif(id), icon, ' thumb--sm')}
+                    <span class="row__body"><span class="row__title">${GT.esc(ex.name)}</span></span>
+                    <button type="button" class="btn btn--ghost btn--sm" data-rm="${GT.esc(id)}" aria-label="Togli ${GT.esc(ex.name)} dagli esercizi da evitare">Togli</button></li>`;
+            }).join('')}</ul>` : '<p class="muted">Nessuno: la scheda può proporre tutti gli esercizi</p>';
+        };
+        const root = this._sheet('pf-avoid-sheet', `
+            ${this._sheetHead('Esercizi da evitare', 'Chiudi gli esercizi da evitare')}
+            <div id="pf-avoid-list"></div>
+            <button type="button" class="btn btn--secondary btn--block" data-act="add">${this.ico('plus')}Aggiungi esercizio</button>`, { tall: true });
+        this._bindThumbFallback(root);
+        render();
+        root.addEventListener('click', (e) => {
+            const rm = e.target.closest('[data-rm]');
+            if (rm) {
+                const name = EXERCISES_DB[rm.dataset.rm]?.name || '';
+                this._saveProfilePatch({ avoidExercises: (Storage.getProfile().avoidExercises || []).filter(x => x !== rm.dataset.rm) });
+                render();
+                this.loadProfile();
+                this.showNotification(`${name}: di nuovo proposto`, 'success');
+                return;
+            }
+            if (e.target.closest('[data-act="add"]')) {
+                const cur = new Set(Storage.getProfile().avoidExercises || []);
+                this.pickExercise({
+                    title: 'Esercizio da evitare',
+                    filter: ex => !cur.has(ex.id),
+                    onPick: (id) => {
+                        this._saveProfilePatch({ avoidExercises: [...(Storage.getProfile().avoidExercises || []), id] });
+                        render();
+                        this.loadProfile();
+                        this.showNotification(`${EXERCISES_DB[id]?.name || ''}: non più proposto`, 'success');
+                    }
+                });
+            }
+        });
     },
 
     // ========================================
-    // SETTINGS
+    // PALESTRA (settings.gym)
+    // ========================================
+
+    _gym() {
+        if (typeof Storage.getGymConfig === 'function') {
+            const g = this._safe(() => Storage.getGymConfig());
+            if (g) return g;
+        }
+        const s = Storage.getSettings();
+        return { barKg: 20, plates: this.PF_PLATES.slice(), ...(s.gym && typeof s.gym === 'object' ? s.gym : {}) };
+    },
+
+    _saveGym(partial) {
+        if (typeof Storage.saveGymConfig === 'function') return Storage.saveGymConfig(partial);
+        const s = Storage.getSettings();
+        return Storage.saveSettings({ gym: { ...(s.gym && typeof s.gym === 'object' ? s.gym : {}), ...partial } });
+    },
+
+    _renderGym() {
+        const g = this._gym();
+        const bar = String(g.barKg === 15 ? 15 : 20);
+        document.querySelectorAll('#pf-bar [data-val]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.val === bar)));
+        const plates = new Set((Array.isArray(g.plates) ? g.plates : this.PF_PLATES).map(Number));
+        document.querySelectorAll('#pf-plates [data-plate]').forEach(b => {
+            const on = plates.has(parseFloat(b.dataset.plate));
+            b.setAttribute('aria-pressed', String(on));
+            b.setAttribute('aria-label', `Disco da ${this.fmt(parseFloat(b.dataset.plate))} kg${on ? '' : ', non disponibile'}`);
+        });
+    },
+
+    // ========================================
+    // IMPOSTAZIONI
     // ========================================
 
     loadSettings() {
         const s = Storage.getSettings();
-        const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-        const setChecked = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
-
-        setVal('setting-rest-compound', s.restTimeCompound);
-        setVal('setting-rest-isolation', s.restTimeIsolation);
-        setVal('setting-rest-sound', s.restSound || 'beep');
-        setChecked('setting-vibration', s.vibration !== false);
-        setVal('setting-theme', s.theme || 'dark');
+        const radio = (id, val) => document.querySelectorAll(`#${id} [data-val]`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.val === String(val))));
+        const swi = (id, v) => document.getElementById(id)?.setAttribute('aria-checked', String(!!v));
+        radio('setting-rest-sound', s.restSound || 'beep');
+        radio('setting-theme', s.theme || 'dark');
+        swi('setting-vibration', s.vibration !== false);
         const notifGranted = typeof Notification !== 'undefined' && Notification.permission === 'granted';
-        setChecked('setting-notifications', !!s.notifications && notifGranted);
-        setChecked('setting-keep-awake', s.keepAwake !== false);
-        setChecked('setting-background-alerts', !!s.backgroundAlerts);
+        swi('setting-notifications', !!s.notifications && notifGranted);
+        swi('setting-keep-awake', s.keepAwake !== false);
+        swi('setting-background-alerts', !!s.backgroundAlerts);
+        this._setText('setting-rest-compound', this._fmtSec(s.restTimeCompound || 120));
+        this._setText('setting-rest-isolation', this._fmtSec(s.restTimeIsolation || 75));
+        this._setText('app-version', String(GT.APP_VERSION || '').replace(/^v/, ''));
+        this._renderBackupState();
+    },
 
-        this._setText('app-version', GT.APP_VERSION);
-        this.updateStorageUsage();
+    // Nome storico: ora ogni controllo salva da sé; qui si riscrive solo ciò che il DOM mostra
+    saveSettings() {
+        const s = {};
+        const sw = (id) => document.getElementById(id)?.getAttribute('aria-checked') === 'true';
+        const radio = (id) => document.querySelector(`#${id} [aria-checked="true"]`)?.dataset.val;
+        if (document.getElementById('setting-vibration')) s.vibration = sw('setting-vibration');
+        if (document.getElementById('setting-keep-awake')) s.keepAwake = sw('setting-keep-awake');
+        if (document.getElementById('setting-background-alerts')) s.backgroundAlerts = sw('setting-background-alerts');
+        if (document.getElementById('setting-notifications')) s.notifications = sw('setting-notifications');
+        const snd = radio('setting-rest-sound');
+        if (snd) s.restSound = snd;
+        Storage.saveSettings(s);
+    },
+
+    // Il permesso delle notifiche si chiede SOLO da qui, mai in automatico
+    async onNotificationsToggle(btn) {
+        const turnOn = btn.getAttribute('aria-checked') !== 'true';
+        if (!turnOn) {
+            btn.setAttribute('aria-checked', 'false');
+            Storage.saveSettings({ notifications: false });
+            return;
+        }
+        if (typeof Notification === 'undefined') {
+            this.showNotification('Notifiche non disponibili qui: installa l\'app sulla Home', 'warning');
+            return;
+        }
+        let result = null;
+        try {
+            result = await Timer.requestNotificationPermission();
+        } catch (e) {
+            result = null;
+        }
+        const granted = result === 'granted' || result === true || Notification.permission === 'granted';
+        btn.setAttribute('aria-checked', String(granted));
+        Storage.saveSettings({ notifications: granted });
+        if (!granted) this.showNotification('Notifiche bloccate: consentile dalle impostazioni', 'warning');
     },
 
     updateStorageUsage() {
-        let totalSize = 0;
+        let total = 0;
         try {
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                totalSize += ((localStorage.getItem(key) || '').length + key.length) * 2;   // UTF-16
+                total += ((localStorage.getItem(key) || '').length + key.length) * 2;   // UTF-16
             }
         } catch (e) {
             return;
         }
-
-        const sizeKB = totalSize / 1024;
-        const sizeMB = sizeKB / 1024;
-        const maxMB = 5;
-        const percentUsed = Math.min((sizeMB / maxMB) * 100, 100);
-
-        const storageBar = document.getElementById('storage-used-bar');
-        if (storageBar) storageBar.style.width = `${Math.max(percentUsed, 2)}%`;
-        this._setText('storage-text', sizeMB >= 1
-            ? `${sizeMB.toFixed(2).replace('.', ',')} MB su ~5 MB`
-            : `${Math.round(sizeKB)} KB su ~5 MB`);
+        const kb = total / 1024;
+        this._setText('storage-text', kb >= 1024 ? `${this.fmt(kb / 1024, 1)} MB usati` : `${Math.round(kb)} KB usati`);
     },
 
-    // Salva solo i campi presenti nella pagina; il resto delle impostazioni resta com'è
-    saveSettings() {
-        const s = Storage.getSettings();
-        const el = (id) => document.getElementById(id);
-        const int = (id, def, min, max) => this._clampInt(el(id)?.value, def, min, max);
-
-        if (el('setting-rest-compound')) s.restTimeCompound = int('setting-rest-compound', 120, 15, 600);
-        if (el('setting-rest-isolation')) s.restTimeIsolation = int('setting-rest-isolation', 75, 15, 600);
-        if (el('setting-rest-sound')) s.restSound = el('setting-rest-sound').value || 'beep';
-        if (el('setting-vibration')) s.vibration = el('setting-vibration').checked;
-        if (el('setting-theme')) s.theme = el('setting-theme').value || 'dark';
-        if (el('setting-notifications')) s.notifications = el('setting-notifications').checked;
-        if (el('setting-keep-awake')) s.keepAwake = el('setting-keep-awake').checked;
-        if (el('setting-background-alerts')) s.backgroundAlerts = el('setting-background-alerts').checked;
-        delete s.weightUnit;   // unità sempre kg
-
-        Storage.saveSettings(s);
-    },
-
-    // Il permesso delle notifiche si chiede solo da qui, mai in automatico
-    async onNotificationsToggle(input) {
-        if (input.checked) {
-            if (typeof Notification === 'undefined') {
-                input.checked = false;
-                this.showNotification('Notifiche non disponibili su questo browser', 'warning');
-            } else {
-                let result = null;
-                try {
-                    result = await Timer.requestNotificationPermission();
-                } catch (e) {
-                    result = null;
-                }
-                const granted = result === 'granted' || result === true || Notification.permission === 'granted';
-                if (!granted) {
-                    input.checked = false;
-                    this.showNotification('Notifiche bloccate: consentile dal browser', 'warning');
-                }
-            }
+    startSimulatedWorkout() {
+        if (this.activeWorkout) {
+            this._promptActiveSession();
+            return;
         }
-        this.saveSettings();
+        const fakeWorkout = {
+            type: 'Simulazione',
+            name: 'Simulazione',
+            warmup: null,
+            exercises: [
+                { exerciseId: 'bench-press', name: 'Panca Piana (prova)', sets: 3, reps: '8-12', rest: 90 },
+                { exerciseId: 'lat-pulldown', name: 'Lat Machine (prova)', sets: 3, reps: '10-12', rest: 60 }
+            ]
+        };
+        this.startWorkout(fakeWorkout, { isSimulation: true });
+        this.showNotification('Simulazione: non si salva niente', 'info');
+    },
+
+    async _clearCache() {
+        const ok = await this.confirmSheet({ title: 'Aggiornare l\'app?', text: 'Svuota la cache e ricarica. I dati restano.', ok: 'Svuota e ricarica', cancel: 'Annulla' });
+        if (!ok) return;
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const r of regs) await r.unregister();
+            }
+            if ('caches' in window) {
+                for (const name of await caches.keys()) await caches.delete(name);
+            }
+            location.reload();
+        } catch (error) {
+            console.error('Pulizia della cache:', error);
+            this.showNotification('Cache non svuotata: riprova', 'error');
+        }
+    },
+
+    async _clearProgress() {
+        const n = Storage.getWorkouts().length;
+        const c = (this._safe(() => Storage.getConditioningSessions()) || []).length;
+        const ok = await this.confirmSheet({
+            title: 'Cancellare i progressi?',
+            text: `${n} sedute${c ? `, ${c} cardio` : ''}, record e cicli. Profilo, scheda e pesate restano. Non si torna indietro.`,
+            ok: 'Cancella i progressi', cancel: 'Tieni i progressi', danger: true
+        });
+        if (!ok) return;
+        Storage.clearProgressData();
+        this._cycleSummaryDismissed = false;
+        this.showNotification('Progressi cancellati', 'success', { icon: 'trash' });
+        this._safe(() => this.loadDashboard());
+        this._safe(() => this.loadProgress());
+        this.updateStorageUsage();
+        this._renderBackupState();
+    },
+
+    async _resetAll() {
+        const n = Storage.getWorkouts().length;
+        const ok = await this.confirmSheet({
+            title: 'Cancellare tutto?',
+            text: `Profilo, scheda, ${n} sedute, record e impostazioni. Non si torna indietro: fai prima un backup.`,
+            ok: 'Cancella tutto', cancel: 'Tieni i dati', danger: true
+        });
+        if (!ok) return;
+        Storage.clearAllData();
+        location.reload();
     },
 
     // ========================================
-    // DATA EXPORT/IMPORT
+    // BACKUP: condividi (foglio di iOS), esporta (file), importa
     // ========================================
 
-    exportData() {
-        let data = Storage.exportAllData();
-        if (typeof data !== 'string') data = JSON.stringify(data, null, 2);
+    _backupFileName() {
+        return `gymtracker_backup_${GT.dateKey(new Date())}.json`;
+    },
+
+    _backupJSON() {
+        const data = Storage.exportAllData();
+        return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    },
+
+    _markBackup() {
+        Storage.saveSettings({ lastBackupAt: new Date().toISOString() });
+        this._renderBackupState();
+        this._safe(() => this.loadDashboard());
+    },
+
+    _renderBackupState() {
+        const s = Storage.getSettings();
+        const icon = document.getElementById('pf-bk-icon');
+        const title = document.getElementById('pf-bk-title');
+        const sub = document.getElementById('pf-bk-sub');
+        if (!title || !sub) return;
+        const workouts = this._safe(() => Storage.getWorkouts()) || [];
+        const last = s.lastBackupAt ? new Date(s.lastBackupAt) : null;
+        let warn;
+        if (last && !isNaN(last)) {
+            const days = GT.calendarDaysBetween(last, new Date());
+            const after = workouts.filter(w => new Date(w.date) > last).length;
+            title.textContent = `Ultimo: ${days === 0 ? 'oggi' : this._shortDate(last)}`;
+            sub.innerHTML = `${days === 0 ? 'oggi' : days === 1 ? 'ieri' : `<span class="num">${days}</span>&nbsp;giorni fa`} · ${after ? `<span class="num">${after}</span>&nbsp;${after === 1 ? 'seduta' : 'sedute'} da allora` : 'niente di nuovo'}`;
+            warn = days >= 14 && after > 0;
+        } else {
+            title.textContent = 'Mai fatto';
+            sub.innerHTML = workouts.length ? `<span class="num">${workouts.length}</span>&nbsp;${workouts.length === 1 ? 'seduta' : 'sedute'} solo su questo telefono` : 'I dati stanno solo su questo telefono';
+            warn = workouts.length > 0;
+        }
+        if (icon) {
+            icon.classList.toggle('pf-bk--warn', !!warn);
+            icon.classList.toggle('pf-bk--ok', !warn && !!last);
+        }
+    },
+
+    // Condividi: file JSON nel foglio di condivisione (iCloud Drive, WhatsApp, Mail); senza, si scarica
+    async shareBackup() {
+        let json;
+        try {
+            json = this._backupJSON();
+        } catch (e) {
+            console.error('exportAllData', e);
+            this.showNotification('Backup non riuscito', 'error');
+            return;
+        }
+        const name = this._backupFileName();
+        let file = null;
+        try { file = new File([json], name, { type: 'application/json' }); } catch (e) { file = null; }
+        const canFiles = !!(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+        if (!canFiles) {
+            this.exportData(json);
+            return;
+        }
+        try {
+            await navigator.share({ files: [file], title: 'Backup GymTracker' });
+            this._markBackup();
+            this.showNotification('Backup condiviso', 'success', { icon: 'shield' });
+        } catch (e) {
+            if (e && e.name === 'AbortError') return;   // chiuso dall'utente: nessun backup
+            console.error('share', e);
+            this.exportData(json);
+        }
+    },
+
+    exportData(json = null) {
+        let data = json;
+        try {
+            if (!data) data = this._backupJSON();
+        } catch (e) {
+            console.error('exportAllData', e);
+            this.showNotification('Backup non riuscito', 'error');
+            return;
+        }
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement('a');
         a.href = url;
-        a.download = `gymtracker_backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = this._backupFileName();
         document.body.appendChild(a);
         a.click();
         a.remove();
-
         // Su iOS il download parte dopo il click: l'URL si libera più tardi (G9)
         setTimeout(() => URL.revokeObjectURL(url), 10000);
-        this.showNotification('Backup esportato', 'success');
+        this._markBackup();
+        this.showNotification(`Backup salvato: ${a.download}`, 'success', { icon: 'download' });
     },
 
+    // Importa: si legge il file, la conferma dice cosa sostituisce, poi si ricarica
     importData(file) {
         if (!file) return;
-        if (!confirm(`Importare ${file.name}? Sostituisce i dati attuali`)) return;
-
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onerror = () => this.showNotification('File non leggibile', 'error');
+        reader.onload = async (e) => {
+            const text = e.target.result;
+            let data = null;
+            try { data = JSON.parse(text); } catch (err) { data = null; }
+            if (!data || typeof data !== 'object' || !(data.version || data.schemaVersion)) {
+                this.showNotification('Non è un backup di GymTracker', 'error');
+                return;
+            }
+            const nNew = Array.isArray(data.workouts) ? data.workouts.length : 0;
+            const nNow = Storage.getWorkouts().length;
+            const when = data.exportDate && GT.isValidDate(data.exportDate) ? ` del ${this._shortDate(data.exportDate)}` : '';
+            const prog = Storage.getActiveProgram();
+            const ok = await this.confirmSheet({
+                title: `Importare il backup${when}?`,
+                text: `Sostituisce profilo, ${prog ? 'scheda, ' : ''}${nNow} sedute e record di adesso con le ${nNew} sedute del backup.`,
+                ok: 'Importa e sostituisci', cancel: 'Tieni i dati di adesso', danger: true
+            });
+            if (!ok) return;
             let result = false;
             try {
-                result = Storage.importAllData(e.target.result);
+                result = Storage.importAllData(text);
             } catch (err) {
                 console.error('importAllData', err);
                 result = false;
             }
-            const ok = result === true || result?.ok === true || result?.success === true;
-            if (ok) {
-                this.showNotification('Dati importati', 'success');
+            if (result === true || result?.ok === true || result?.success === true) {
+                this.showNotification('Backup importato: si ricarica', 'success');
                 setTimeout(() => location.reload(), 600);
             } else {
                 const reason = Storage.lastImportError || result?.error;
-                const why = typeof reason === 'string' && reason ? `: ${reason}` : '';
-                this.showNotification(`Importazione non riuscita${why}`, 'error');
+                this.showNotification(`Importazione non riuscita${typeof reason === 'string' && reason ? `: ${reason}` : ''}`, 'error');
             }
         };
-        reader.onerror = () => this.showNotification('File non leggibile', 'error');
         reader.readAsText(file);
     },
 });

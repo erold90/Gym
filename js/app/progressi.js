@@ -1,131 +1,965 @@
 /**
- * GymTracker 2.0 — area PROGRESSI: numeri, grafici, storico, dettaglio e modifica di una seduta,
- * peso corporeo, record, cicli.
+ * GymTracker 2.0 — area PROGRESSI: costanza (calendario a quadretti), muscoli (mappa del corpo + barre con
+ * la fascia consigliata), forza per esercizio, record, peso corporeo, cicli, storico delle sedute con
+ * dettaglio, modifica ed eliminazione (fogli). Grafici in SVG disegnati qui: nessuna libreria.
+ *
+ * Regole dei dati (v2): le serie con isWarmup/isCalibration non contano (volume, forza, record);
+ * corpo libero e zavorra: il peso è la zavorra (0 se non c'è; isBodyweight vecchio = 0);
+ * esercizi con metric 'time': le ripetizioni sono secondi e non c'è massimale stimato.
  */
 
 Object.assign(App, {
     // ========================================
-    // GUSCIO DELL'AREA: markup della pagina, listener, ingresso nella pagina
+    // MAPPA DEL CORPO (da design/body-map.html, generata da tools/bodymap.py)
     // ========================================
 
-    // Pagina #progressi
+    _BODY: (() => {
+        const base = [
+            ['e', '50 16.5 10 12.5'],
+            ['p', 'M 50 34 C 44 34 38 35 31 38 C 27 40 25 44 26 50 L 33 56 C 33 70 35 84 37 96 C 36 102 34 108 34 114 L 50 124 L 66 114 C 66 108 64 102 63 96 C 65 84 67 70 67 56 L 74 50 C 75 44 73 40 69 38 C 62 35 56 34 50 34 Z'],
+            ['p', 'M 44.5 26 L 55.5 26 L 56 36 L 44 36 Z'],
+            ['p', 'M 27 41 C 23 45 22 52 23 60 C 23 68 23 76 24 82 C 21 92 19 104 19 116 L 25 117 C 27 106 30 94 32 84 C 34 76 35 64 34 54 C 33 48 31 43 27 41 Z'],
+            ['p', 'M 73 41 C 77 45 78 52 77 60 C 77 68 77 76 76 82 C 79 92 81 104 81 116 L 75 117 C 73 106 70 94 68 84 C 66 76 65 64 66 54 C 67 48 69 43 73 41 Z'],
+            ['p', 'M 34 112 C 33 128 34 146 37 164 C 37 180 38 196 40 210 L 47 210 C 48 196 49 180 48 166 C 50 148 51 130 50 120 Z'],
+            ['p', 'M 66 112 C 67 128 66 146 63 164 C 63 180 62 196 60 210 L 53 210 C 52 196 51 180 52 166 C 50 148 49 130 50 120 Z'],
+            ['p', 'M 39 210 L 47 210 L 48 220 C 45 222 40 222 37 220 Z'],
+            ['p', 'M 61 210 L 53 210 L 52 220 C 55 222 60 222 63 220 Z'],
+            ['e', '22 123 4 7'],
+            ['e', '78 123 4 7']
+        ];
+        const arms = [
+            ['avambracci', 'M 24 84 C 26.5 82.5 29.5 82.5 31.5 84 C 30 94 28 104 25.5 114 C 23.8 115 21.5 115 20 114 C 20 104 21.5 93 24 84 Z'],
+            ['avambracci', 'M 76 84 C 73.5 82.5 70.5 82.5 68.5 84 C 70 94 72 104 74.5 114 C 76.2 115 78.5 115 80 114 C 80 104 78.5 93 76 84 Z']
+        ];
+        const upperArm = (m) => [
+            [m, 'M 25.5 53.5 C 28 52.5 31 52.5 33.8 53.5 C 34.3 61 33.5 69 31.5 76 C 29.5 78 26.5 78 24.5 76 C 23.5 68 23.8 60 25.5 53.5 Z'],
+            [m, 'M 74.5 53.5 C 72 52.5 69 52.5 66.2 53.5 C 65.7 61 66.5 69 68.5 76 C 70.5 78 73.5 78 75.5 76 C 76.5 68 76.2 60 74.5 53.5 Z']
+        ];
+        return {
+            base,
+            front: {
+                label: 'Fronte',
+                m: [
+                    ['spalle', 'M 27.5 40 C 31 38 35 38 38 39.5 C 36 42.5 34.5 46 34 51 C 31 50 28 50 25.5 51.5 C 25 46 25.5 42.5 27.5 40 Z'],
+                    ['spalle', 'M 72.5 40 C 69 38 65 38 62 39.5 C 64 42.5 65.5 46 66 51 C 69 50 72 50 74.5 51.5 C 75 46 74.5 42.5 72.5 40 Z'],
+                    ['petto', 'M 49.2 41 C 45 39.5 40 40 37.5 42.5 C 35.5 45 34.5 49 35 53 C 37 58 43 60.5 49.2 58.5 Z'],
+                    ['petto', 'M 50.8 41 C 55 39.5 60 40 62.5 42.5 C 64.5 45 65.5 49 65 53 C 63 58 57 60.5 50.8 58.5 Z'],
+                    ...upperArm('bicipiti'),
+                    ...arms,
+                    ['addome', 'M 36 57 C 38 62 40 66 40.5 70 L 40 94 C 38.5 92 37.5 89 37 85 C 36 76 35.5 66 36 57 Z'],
+                    ['addome', 'M 64 57 C 62 62 60 66 59.5 70 L 60 94 C 61.5 92 62.5 89 63 85 C 64 76 64.5 66 64 57 Z'],
+                    ['addome', 'M 42 61 C 46 60 54 60 58 61 L 58.5 95 C 55 100 45 100 41.5 95 Z'],
+                    ['quadricipiti', 'M 35 114 C 39 112 44 114 49 121 C 49.5 135 48.5 150 46.5 162 C 44 165 40.5 165 38.5 162 C 35.5 148 34.5 130 35 114 Z'],
+                    ['quadricipiti', 'M 65 114 C 61 112 56 114 51 121 C 50.5 135 51.5 150 53.5 162 C 56 165 59.5 165 61.5 162 C 64.5 148 65.5 130 65 114 Z'],
+                    ['polpacci', 'M 38.5 172 C 41 169.5 45 169.5 47.5 172 C 48 184 47.5 196 46 206 C 44 207.5 41.5 207.5 40.5 206 C 38.5 196 37.5 184 38.5 172 Z'],
+                    ['polpacci', 'M 61.5 172 C 59 169.5 55 169.5 52.5 172 C 52 184 52.5 196 54 206 C 56 207.5 58.5 207.5 59.5 206 C 61.5 196 62.5 184 61.5 172 Z']
+                ],
+                seams: ['M 50 61 L 50 99', 'M 42 72 L 58 72', 'M 42 83 L 58 83', 'M 41.5 128 C 42.5 140 43.2 152 43.5 162', 'M 58.5 128 C 57.5 140 56.8 152 56.5 162']
+            },
+            back: {
+                label: 'Retro',
+                m: [
+                    ['trapezio', 'M 50 30 C 47 33 42 36 36.5 38.5 C 41 41 46 47 50 66 C 54 47 59 41 63.5 38.5 C 58 36 53 33 50 30 Z'],
+                    ['spalle', 'M 27.5 40 C 30.5 38.5 34 38.5 36.5 39.5 C 35 43 34 46.5 33.5 51 C 31 50 28 50 25.5 51.5 C 25 46 25.5 42.5 27.5 40 Z'],
+                    ['spalle', 'M 72.5 40 C 69.5 38.5 66 38.5 63.5 39.5 C 65 43 66 46.5 66.5 51 C 69 50 72 50 74.5 51.5 C 75 46 74.5 42.5 72.5 40 Z'],
+                    ['schiena', 'M 37.5 41.5 C 41 44 45 49 49.2 67 L 49.2 86 C 45 84 41 79 38 72 C 35.5 64 35 52 37.5 41.5 Z'],
+                    ['schiena', 'M 62.5 41.5 C 59 44 55 49 50.8 67 L 50.8 86 C 55 84 59 79 62 72 C 64.5 64 65 52 62.5 41.5 Z'],
+                    ['schiena', 'M 42 87 C 45 89 47.5 90 50 90.5 C 52.5 90 55 89 58 87 L 59 100 C 55 103 45 103 41 100 Z'],
+                    ...upperArm('tricipiti'),
+                    ...arms,
+                    ['glutei', 'M 35.5 103 C 39 101.5 45 102 49.3 104 L 49.3 124 C 46 128 40 128 37 124.5 C 34.5 118 34.5 110 35.5 103 Z'],
+                    ['glutei', 'M 64.5 103 C 61 101.5 55 102 50.7 104 L 50.7 124 C 54 128 60 128 63 124.5 C 65.5 118 65.5 110 64.5 103 Z'],
+                    ['femorali', 'M 36 130 C 39.5 131.5 45 131.5 49 130 C 49.5 142 48.5 153 46.5 162 C 44 165 40.5 165 38.5 162 C 36.5 152 35.5 141 36 130 Z'],
+                    ['femorali', 'M 64 130 C 60.5 131.5 55 131.5 51 130 C 50.5 142 51.5 153 53.5 162 C 56 165 59.5 165 61.5 162 C 63.5 152 64.5 141 64 130 Z'],
+                    ['polpacci', 'M 38 171 C 41 168.5 45.5 168.5 48 171 C 49 180 48.5 190 46 199 C 44 201 41.5 201 40 199 C 37.5 190 37 180 38 171 Z'],
+                    ['polpacci', 'M 62 171 C 59 168.5 54.5 168.5 52 171 C 51 180 51.5 190 54 199 C 56 201 58.5 201 60 199 C 62.5 190 63 180 62 171 Z']
+                ],
+                seams: ['M 50 66 L 50 87', 'M 42.5 132 C 43 142 43.3 152 43.5 162', 'M 57.5 132 C 57 142 56.7 152 56.5 162']
+            }
+        };
+    })(),
+
+    // Serie settimanali → 5 gradini di calore (0 · 1-5 · 6-9 · 10-14 · 15+)
+    _heatStep(n) {
+        return n <= 0 ? 0 : n <= 5 ? 1 : n <= 9 ? 2 : n <= 14 ? 3 : 4;
+    },
+
+    _bodySvg(side, sets) {
+        const B = this._BODY;
+        const s = B[side];
+        const base = B.base.map(([t, v]) => {
+            if (t === 'e') {
+                const [cx, cy, rx, ry] = v.split(' ');
+                return `<ellipse class="base" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
+            }
+            return `<path class="base" d="${v}"/>`;
+        }).join('');
+        const muscles = s.m.map(([m, d]) => `<path class="m" data-m="${m}" data-h="${this._heatStep(sets[m] || 0)}" d="${d}"/>`).join('');
+        const seams = s.seams.map(d => `<path class="seam" d="${d}"/>`).join('');
+        return `<figure><svg viewBox="0 0 100 226" aria-hidden="true" focusable="false">${base}${muscles}${seams}</svg><figcaption>${s.label}</figcaption></figure>`;
+    },
+
+    // ========================================
+    // GUSCIO DELL'AREA
+    // ========================================
+
     htmlProgressi() {
-        const chart = (id, title, label, empty, extra = '') => `
-            <section class="card chart-card-compact" id="${id}-card">
-                <h2 class="cap">${title}</h2>
-                <div class="chart-container"${extra}><canvas id="${id}" role="img" aria-label="${label}"></canvas></div>
-                <p class="chart-empty-state muted" id="${id.replace('-chart', '')}-empty">${empty}</p>
-            </section>`;
         return `
             <header class="head"><h1>Progressi</h1></header>
 
-            <div class="stats progress-stats-bar" style="--n: 4">
-                <div class="stat"><span class="stat__v num" id="progress-total-workouts">0</span><span class="stat__k">Sedute</span></div>
-                <div class="stat"><span class="stat__v num" id="progress-total-volume">0</span><span class="stat__k">Tonnellate</span></div>
-                <div class="stat"><span class="stat__v num" id="progress-total-prs">0</span><span class="stat__k">Record</span></div>
-                <div class="stat"><span class="stat__v num" id="progress-best-streak">0</span><span class="stat__k">Settimane</span></div>
+            <div class="wide">
+                <div class="col">
+                    <section class="section" aria-labelledby="pg-cal-t">
+                        <div class="section__head"><h2 id="pg-cal-t">Costanza</h2><span class="pg-meta" id="pg-cal-meta"></span></div>
+                        <div class="heat pg-heat" id="pg-heat" role="img" aria-label="Calendario delle sedute"></div>
+                        <div class="pg-months" id="pg-months" aria-hidden="true"></div>
+                        <div class="legend pg-legend" aria-hidden="true">
+                            <span><i class="pg-sw" style="background:var(--heat-0)"></i>riposo</span>
+                            <span><i class="pg-sw" style="background:var(--heat-2)"></i>seduta breve</span>
+                            <span><i class="pg-sw" style="background:var(--heat-4)"></i>seduta</span>
+                            <span><i class="pg-sw" style="background:var(--phase-acc)"></i>cardio</span>
+                        </div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pg-mus-t">
+                        <div class="section__head"><h2 id="pg-mus-t">Muscoli</h2><span class="pg-meta">serie questa settimana</span></div>
+                        <div class="body" id="pg-body" role="img" aria-label="Mappa del corpo"></div>
+                        <div class="scale" aria-hidden="true"><span class="num">0</span><span class="scale__bar"><i></i><i></i><i></i><i></i><i></i></span><span class="num">15+</span><span>serie</span></div>
+                        <div class="bars" id="muscle-volume-bars"></div>
+                    </section>
+                </div>
+
+                <div class="col">
+                    <section class="section" aria-labelledby="pg-str-t">
+                        <div class="section__head"><h2 id="pg-str-t">Forza</h2><span class="pg-meta" id="pg-str-meta">massimale stimato</span></div>
+                        <div class="chips chips--scroll" role="radiogroup" aria-label="Esercizio del grafico" id="pg-str-chips"></div>
+                        <div class="pg-str" id="pg-str-body"></div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pg-pr-t">
+                        <div class="section__head"><h2 id="pg-pr-t">Record</h2>
+                            <button type="button" class="link" id="pg-pr-all" hidden>Tutti${this.ico('next', 'ico--sm')}</button></div>
+                        <div id="prs-list"></div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pg-bw-t">
+                        <div class="section__head"><h2 id="pg-bw-t">Peso corporeo</h2>
+                            <button type="button" class="btn btn--secondary btn--sm" id="toggle-weight-form" aria-expanded="false" aria-controls="body-measurement-form">${this.ico('plus', 'ico--sm')}Peso</button></div>
+                        <form id="body-measurement-form" class="pg-bwform" hidden novalidate>
+                            <label class="sr-only" for="measure-weight">Peso di oggi in kg</label>
+                            <span class="pg-bwfield"><input class="input num" type="text" id="measure-weight" inputmode="decimal" autocomplete="off" placeholder="kg"><span aria-hidden="true">kg</span></span>
+                            <button type="submit" class="btn btn--primary">${this.ico('check')}Salva peso</button>
+                        </form>
+                        <div id="pg-bw-body"></div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pg-cyc-t">
+                        <div class="section__head"><h2 id="pg-cyc-t">Cicli</h2></div>
+                        <div id="cycle-history-list"></div>
+                    </section>
+
+                    <section class="section" aria-labelledby="pg-hist-t">
+                        <div class="section__head"><h2 id="pg-hist-t">Sedute</h2><span class="pg-meta" id="pg-hist-meta"></span></div>
+                        <div id="workout-history-list"></div>
+                        <button type="button" class="btn btn--ghost btn--block" id="pg-hist-more" hidden>Mostra altre</button>
+                    </section>
+                </div>
             </div>
-
-            <section class="card" id="progress-cycle-card" aria-labelledby="progress-cycle-title">
-                <div class="progress-section-header section__head"><h2 id="progress-cycle-title">Ciclo</h2></div>
-                <div id="progress-cycle-info"><p class="muted">Nessuna scheda attiva</p></div>
-            </section>
-
-            <div class="progress-charts-grid wide">
-                ${chart('volume-chart', 'Volume settimanale', 'Volume settimanale', 'Nessun dato')}
-                ${chart('frequency-chart', 'Frequenza', 'Sedute per settimana', 'Nessun dato')}
-            </div>
-
-            ${chart('conditioning-chart', 'Cardio', 'Sedute HIIT e LISS', 'Nessuna seduta')}
-
-            <section class="card" id="muscle-volume-card" aria-labelledby="muscle-volume-title">
-                <div class="progress-section-header section__head">
-                    <h2 id="muscle-volume-title">Serie per muscolo</h2>
-                    <span class="progress-subtitle muted" id="muscle-volume-period">Questa settimana</span>
-                </div>
-                <div id="muscle-volume-bars"><p class="muted">Nessun dato</p></div>
-            </section>
-
-            <section class="card" aria-labelledby="strength-title">
-                <div class="progress-section-header section__head"><h2 id="strength-title">Forza per esercizio</h2></div>
-                <div class="strength-select-container field">
-                    <select id="strength-exercise-select" class="input form-select" aria-label="Esercizio">
-                        <option value="">Scegli un esercizio</option>
-                    </select>
-                </div>
-                <div class="chart-container" id="strength-chart-container" style="display: none;">
-                    <canvas id="strength-chart" role="img" aria-label="Andamento della forza"></canvas>
-                </div>
-                <p class="muted" id="strength-empty">Scegli un esercizio</p>
-            </section>
-
-            <section class="card" id="rir-trend-card" aria-labelledby="rir-title">
-                <div class="progress-section-header section__head"><h2 id="rir-title">RIR medio</h2></div>
-                <div class="chart-container" id="rir-chart-container">
-                    <canvas id="rir-chart" role="img" aria-label="RIR medio per seduta"></canvas>
-                </div>
-                <p class="chart-empty-state muted" id="rir-empty">Segna il RIR nelle serie</p>
-            </section>
-
-            <section class="card progress-body-section" aria-labelledby="weight-title">
-                <div class="progress-section-header section__head">
-                    <h2 id="weight-title">Peso corporeo</h2>
-                    <button type="button" class="btn btn--secondary btn--sm" id="toggle-weight-form">${this.ico('plus', 'ico--sm')}Peso</button>
-                </div>
-                <div class="weight-form-container" id="weight-form-container" style="display: none;">
-                    <form id="body-measurement-form" class="inline-form dock__row">
-                        <input class="input" type="number" step="0.1" id="measure-weight" placeholder="kg" inputmode="decimal" aria-label="Peso in kg">
-                        <button type="submit" class="btn btn--primary">Salva</button>
-                    </form>
-                </div>
-                <div class="weight-chart-container" id="weight-chart-container">
-                    <canvas id="weight-chart" role="img" aria-label="Peso corporeo"></canvas>
-                    <p class="chart-empty-state muted" id="weight-empty">Nessuna misura</p>
-                </div>
-            </section>
-
-            <section class="card" aria-labelledby="prs-title">
-                <div class="progress-section-header section__head"><h2 id="prs-title">Record personali</h2></div>
-                <div id="prs-list" class="prs-grid-compact"><p class="muted">Ancora nessun record</p></div>
-            </section>
-
-            <section class="card" id="cycle-history-card" aria-labelledby="cycle-history-title">
-                <div class="progress-section-header section__head"><h2 id="cycle-history-title">Cicli completati</h2></div>
-                <div id="cycle-history-list"><p class="muted">Nessun ciclo completato</p></div>
-            </section>
-
-            <section class="card" aria-labelledby="history-title">
-                <div class="progress-section-header section__head"><h2 id="history-title">Storico sedute</h2></div>
-                <div id="workout-history-list" class="workout-history-compact"><p class="muted">Ancora nessuna seduta</p></div>
-            </section>
         `;
     },
 
     bindProgressi() {
         const on = (id, ev, fn) => this._on(id, ev, fn);
 
-        // Peso corporeo
         on('body-measurement-form', 'submit', (e) => {
             e.preventDefault();
             this.saveMeasurement();
         });
-        on('toggle-weight-form', 'click', () => {
-            const container = document.getElementById('weight-form-container');
-            if (!container) return;
-            const open = container.style.display === 'none';
-            container.style.display = open ? 'block' : 'none';
-            if (open) document.getElementById('measure-weight')?.focus();
+        on('toggle-weight-form', 'click', () => this._toggleWeightForm());
+
+        on('pg-str-chips', 'click', (e) => {
+            const chip = e.target.closest('.chip');
+            if (!chip) return;
+            if (chip.dataset.more) {
+                const ids = new Set(this._strengthCandidates().map(c => c.id));
+                this.pickExercise({
+                    title: 'Forza: scegli l\'esercizio',
+                    filter: ex => ids.has(ex.id),
+                    onPick: (id) => { this._strengthId = id; this._renderStrength(); }
+                });
+                return;
+            }
+            this._strengthId = chip.dataset.id;
+            this._renderStrength();
         });
 
-        // Progressi: grafico forza (listener UNA volta sola, E9)
-        on('strength-exercise-select', 'change', (e) => this.showStrengthProgress(e.target.value));
+        on('pg-pr-all', 'click', () => this._openAllRecords());
+        on('prs-list', 'click', (e) => {
+            const row = e.target.closest('[data-ex]');
+            if (row) this.openExercise(row.dataset.ex);
+        });
+
+        on('workout-history-list', 'click', (e) => {
+            const row = e.target.closest('[data-workout-id], [data-cardio-id]');
+            if (!row) return;
+            if (row.dataset.workoutId) this.showWorkoutDetail(row.dataset.workoutId);
+            else this._showCardioDetail(row.dataset.cardioId);
+        });
+        on('pg-hist-more', 'click', () => {
+            this._histLimit = (this._histLimit || 10) + 10;
+            this.loadWorkoutHistory();
+        });
     },
 
-    // Ogni pagina si ridisegna con i dati aggiornati quando si apre
     enterProgressi() {
-        this._safe(() => this.loadProgress());
-        this._safe(() => this.initCharts());
+        this._histLimit = 10;
+        this.loadProgress();
     },
+
+    // Ogni sezione si ridisegna da sola: un errore in una non spegne le altre
+    loadProgress() {
+        this._pgWorkouts = this._safe(() => Storage.getWorkouts()) || [];
+        [
+            () => this._renderHeat(),
+            () => this.loadMuscleVolumeBars(),
+            () => this._renderStrength(),
+            () => this.loadPersonalRecords(),
+            () => this._renderWeight(),
+            () => this.loadCycleHistory(),
+            () => this.loadWorkoutHistory()
+        ].forEach(fn => this._safe(fn));
+    },
+
+    // Nomi della v1.26 chiamati da altre aree (tema cambiato, cardio salvato, Oggi)
+    initCharts() {
+        this._safe(() => this._renderStrength());
+        this._safe(() => this._renderWeight());
+    },
+    loadConditioningProgress() {
+        this.loadProgress();
+    },
+    loadProgressCycleInfo() {
+        this._safe(() => this.loadCycleHistory());
+    },
+
+    // ========================================
+    // AIUTI: serie valide, date, numeri
+    // ========================================
+
+    // Serie di lavoro fatte: completate, con ripetizioni, né riscaldamento né prova
+    _workSets(ex) {
+        return (ex && Array.isArray(ex.sets) ? ex.sets : [])
+            .filter(s => s && s.completed && !s.isWarmup && !s.isCalibration && GT.num(s.reps) > 0);
+    },
+
+    // Peso registrato: la zavorra per il corpo libero (il vecchio isBodyweight valeva il peso corporeo → 0)
+    _setKg(s) {
+        return s && s.isBodyweight ? 0 : Math.max(0, GT.num(s && s.weight));
+    },
+
+    _wTime(w) {
+        const t = new Date(w && w.date).getTime();
+        return Number.isFinite(t) ? t : NaN;
+    },
+
+    _wName(w) {
+        return (w && (w.name || w.type)) || 'Seduta';
+    },
+
+    _wSets(w) {
+        return (w.exercises || []).reduce((n, ex) => n + this._workSets(ex).length, 0);
+    },
+
+    _wVolume(w) {
+        return (w.exercises || []).reduce((sum, ex) => sum + this._workSets(ex)
+            .reduce((v, s) => v + this._setKg(s) * Math.round(GT.num(s.reps)), 0), 0);
+    },
+
+    _isTimedEx(id) {
+        return EXERCISES_DB[id]?.metric === 'time';
+    },
+
+    // "102,5 × 10" · "12 rip." (corpo libero senza zavorra) · "45 s" (a tempo)
+    _fmtSetShort(id, w, r) {
+        if (this._isTimedEx(id)) return `${this.fmt(r)} s`;
+        return GT.num(w) > 0 ? `${this.fmt(w)} × ${this.fmt(r)}` : `${this.fmt(r)} rip.`;
+    },
+
+    _relDay(date) {
+        const s = GT.formatRelativeDay(date);
+        return s ? s.charAt(0).toLowerCase() + s.slice(1) : '';
+    },
+
+    _shortDate(date) {
+        const d = new Date(date);
+        return isNaN(d) ? '' : `${d.getDate()} ${GT._MESI[d.getMonth()]}`;
+    },
+
+    _period(days) {
+        if (!(days > 0)) return '';
+        if (days >= 14) return `${Math.round(days / 7)} sett.`;
+        return days === 1 ? '1 giorno' : `${days} giorni`;
+    },
+
+    // ========================================
+    // COSTANZA: calendario a quadretti
+    // ========================================
+
+    _renderHeat() {
+        const box = document.getElementById('pg-heat');
+        const months = document.getElementById('pg-months');
+        if (!box) return;
+        const wide = !!window.matchMedia?.('(min-width: 960px)').matches;
+        const weeks = wide ? 26 : 16;
+        const today = GT.startOfDay(new Date());
+        const first = GT.addDays(GT.startOfWeek(today), -(weeks - 1) * 7);
+
+        const days = new Map();   // 'AAAA-MM-GG' → {sets, short, cardio}
+        let sessions = 0;
+        (this._pgWorkouts || []).forEach(w => {
+            const t = this._wTime(w);
+            if (!(t >= first.getTime())) return;
+            const k = GT.dateKey(new Date(t));
+            const d = days.get(k) || { full: false, any: false, cardio: false };
+            const sets = this._wSets(w);
+            d.any = true;
+            if (!w.compressed && sets >= 8) d.full = true;
+            days.set(k, d);
+            sessions++;
+        });
+        let cardio = 0;
+        (this._safe(() => Storage.getConditioningSessions()) || []).forEach(s => {
+            const t = new Date(s.date).getTime();
+            if (!(t >= first.getTime())) return;
+            const k = GT.dateKey(new Date(t));
+            const d = days.get(k) || { full: false, any: false, cardio: false };
+            d.cardio = true;
+            days.set(k, d);
+            cardio++;
+        });
+
+        let cells = '';
+        for (let i = 0; i < weeks * 7; i++) {
+            const day = GT.addDays(first, i);
+            const k = GT.dateKey(day);
+            const d = days.get(k);
+            const v = d ? (d.any ? (d.full ? '2' : '1') : (d.cardio ? 'c' : '')) : '';
+            const cls = k === GT.dateKey(today) ? ' class="is-today"' : (day > today ? ' class="is-future"' : '');
+            cells += `<i${cls}${v ? ` data-v="${v}"` : ''}></i>`;
+        }
+        box.style.setProperty('--weeks', weeks);
+        box.innerHTML = cells;
+
+        // Mesi sotto le colonne: dove cambia il mese del lunedì, senza etichette sovrapposte
+        if (months) {
+            const labels = [];
+            for (let wk = 0; wk < weeks; wk++) {
+                const m = GT.addDays(first, wk * 7).getMonth();
+                const prev = wk ? GT.addDays(first, (wk - 1) * 7).getMonth() : -1;
+                if (m !== prev) labels.push({ wk, text: GT._MESI[m] });
+            }
+            if (labels.length > 1 && labels[1].wk - labels[0].wk < 3) labels.shift();
+            months.style.setProperty('--weeks', weeks);
+            months.innerHTML = labels.filter(l => l.wk <= weeks - 2).map(l => `<span style="grid-column:${l.wk + 1}">${l.text}</span>`).join('');
+        }
+
+        const mesi = Math.round(weeks / 4.35);
+        const streak = this._safe(() => Storage.getStreak()) || {};
+        const meta = document.getElementById('pg-cal-meta');
+        if (meta) meta.innerHTML = `<span class="num">${sessions}</span>&nbsp;${sessions === 1 ? 'seduta' : 'sedute'} in ${mesi} mesi`;
+        box.setAttribute('aria-label', `Calendario delle ultime ${weeks} settimane: ${sessions} sedute${cardio ? `, ${cardio} cardio` : ''}${streak.current ? `, ${streak.current} settimane di fila` : ''}`);
+    },
+
+    // ========================================
+    // MUSCOLI: mappa del corpo + barre con la fascia consigliata
+    // ========================================
+
+    // Serie fatte questa settimana per muscolo: primari 1, secondari 0,5
+    _weeklyMuscleSets() {
+        const start = GT.startOfWeek(new Date()).getTime();
+        const end = GT.addDays(GT.startOfWeek(new Date()), 7).getTime();
+        const out = {};
+        (this._pgWorkouts || []).forEach(w => {
+            const t = this._wTime(w);
+            if (!(t >= start && t < end)) return;
+            (w.exercises || []).forEach(ex => {
+                const db = EXERCISES_DB[ex.exerciseId];
+                const n = this._workSets(ex).length;
+                if (!db || !n) return;
+                (db.primaryMuscles || []).forEach(m => { out[m] = (out[m] || 0) + n; });
+                (db.secondaryMuscles || []).forEach(m => { out[m] = (out[m] || 0) + n * 0.5; });
+            });
+        });
+        return out;
+    },
+
+    // Fascia consigliata per muscolo: scheda (v2) → getVolumeTargets (G5) → VOLUME_CONFIG
+    _volumeTargets() {
+        const program = this._safe(() => Storage.getActiveProgram());
+        const md = program?.metadata || {};
+        const valid = (t) => t && typeof t === 'object' && Object.values(t).some(x => x && Number.isFinite(+x.min) && Number.isFinite(+x.max));
+        if (valid(md.volumeTargets)) return md.volumeTargets;
+        const profile = this._safe(() => Storage.getProfile()) || {};
+        const level = md.level || profile.level || 'intermediate';
+        const goal = md.goal || profile.goal || 'hypertrophy';
+        const days = md.daysPerWeek || program?.days?.length || profile.daysPerWeek || 3;
+        const TA = typeof TrainingAlgorithm !== 'undefined' ? TrainingAlgorithm : null;
+        if (TA && typeof TA.getVolumeTargets === 'function') {
+            const t = this._safe(() => TA.getVolumeTargets(level, goal, md.emphasis ?? profile.emphasis ?? '', days));
+            if (valid(t)) return t;
+        }
+        const V = TA?.VOLUME_CONFIG?.[level] || { min: 10, max: 16 };
+        const core = TA?.CORE_VOLUME?.[level] || 8;
+        const big = { min: V.min, max: V.max };
+        return {
+            petto: big, schiena: big, quadricipiti: big, femorali: big, glutei: big,
+            spalle: { min: V.min, max: V.max + 6 },
+            bicipiti: { min: Math.max(0, V.min - 2), max: V.max + 6 },
+            tricipiti: { min: Math.max(0, V.min - 2), max: V.max + 6 },
+            polpacci: { min: level === 'beginner' ? 6 : 8, max: 12 },
+            addome: { min: core, max: Math.round(core * 1.5) }
+        };
+    },
+
+    loadMuscleVolumeBars() {
+        const bodyBox = document.getElementById('pg-body');
+        const container = document.getElementById('muscle-volume-bars');
+        const sets = this._weeklyMuscleSets();
+        const has = Object.values(sets).some(v => v > 0);
+
+        if (bodyBox) {
+            bodyBox.innerHTML = this._bodySvg('front', sets) + this._bodySvg('back', sets);
+            const top = Object.entries(sets).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
+                .map(([m, v]) => `${this._muscleName(m).toLowerCase()} ${this.fmt(v, 1)}`);
+            bodyBox.setAttribute('aria-label', has ? `Serie di questa settimana: ${top.join(', ')}` : 'Nessuna serie questa settimana');
+        }
+        if (!container) return;
+        if (!has) {
+            container.innerHTML = '<p class="muted pg-empty">Nessuna seduta questa settimana</p>';
+            return;
+        }
+
+        const targets = this._volumeTargets();
+        const names = ['petto', 'schiena', 'spalle', 'bicipiti', 'tricipiti', 'quadricipiti', 'femorali', 'glutei', 'polpacci', 'addome', 'trapezio', 'avambracci'];
+        const shown = names.filter(m => (sets[m] || 0) > 0 || (targets[m] && +targets[m].min > 0));
+        shown.sort((a, b) => (sets[b] || 0) - (sets[a] || 0) || names.indexOf(a) - names.indexOf(b));
+        const maxGoal = Math.max(0, ...shown.map(m => +(targets[m]?.max) || 0));
+        const scale = Math.max(maxGoal * 1.25, ...shown.map(m => sets[m] || 0), 1);
+        const pct = (v) => `${Math.min(100, (v / scale) * 100).toFixed(1)}%`;
+
+        container.setAttribute('aria-label', 'Serie per muscolo con la fascia consigliata');
+        container.innerHTML = shown.map(m => {
+            const v = sets[m] || 0;
+            const t = targets[m];
+            const lo = t ? +t.min : 0;
+            const hi = t ? +t.max : 0;
+            const goal = t && hi > 0 ? `<span class="bar__goal" style="--g0:${pct(lo)};--g1:${pct(hi)}"></span>` : '';
+            const low = t && v < lo;
+            return `<div class="bar">
+                    <span>${GT.esc(this._muscleName(m))}</span>
+                    <span class="bar__track" aria-hidden="true">${goal}<span class="bar__fill${low ? ' is-low' : ''}" style="--v:${pct(v)}"></span></span>
+                    <span class="num">${this.fmt(v, 1)}</span>
+                    <span class="sr-only">serie${t && hi > 0 ? `, consigliate ${this.fmt(lo)}-${this.fmt(hi)}` : ''}</span>
+                </div>`;
+        }).join('');
+    },
+
+    // ========================================
+    // FORZA: massimale stimato (o ripetizioni / secondi) per esercizio
+    // ========================================
+
+    // Come si misura la forza di un esercizio: massimale stimato, ripetizioni o secondi
+    _strengthMetric(id) {
+        const ex = EXERCISES_DB[id];
+        if (!ex) return 'e1rm';
+        if (ex.metric === 'time') return 'time';
+        if (['bodyweight', 'bodyweight-loadable', 'assisted'].includes(ex.loadType)) return 'reps';
+        return 'e1rm';
+    },
+
+    // Una voce per seduta: {t, v, w, r} dalla più vecchia
+    _strengthSeries(id) {
+        const metric = this._strengthMetric(id);
+        const out = [];
+        (this._pgWorkouts || []).slice().reverse().forEach(w => {
+            const t = this._wTime(w);
+            if (!Number.isFinite(t)) return;
+            let best = null;
+            (w.exercises || []).forEach(ex => {
+                if (ex.exerciseId !== id) return;
+                this._workSets(ex).forEach(s => {
+                    const kg = this._setKg(s);
+                    const r = Math.round(GT.num(s.reps));
+                    let v;
+                    if (metric === 'e1rm') {
+                        if (!(kg > 0)) return;
+                        v = Storage.calculateE1RM(kg, r);
+                    } else {
+                        v = r;
+                    }
+                    if (!best || v > best.v) best = { t, v, w: kg, r };
+                });
+            });
+            if (best && best.v > 0) out.push(best);
+        });
+        return out;
+    },
+
+    // Esercizi con almeno una seduta misurabile, dal più frequente
+    _strengthCandidates() {
+        const count = new Map();
+        (this._pgWorkouts || []).forEach(w => {
+            const seen = new Set();
+            (w.exercises || []).forEach(ex => {
+                if (!EXERCISES_DB[ex.exerciseId] || seen.has(ex.exerciseId)) return;
+                const metric = this._strengthMetric(ex.exerciseId);
+                const ok = this._workSets(ex).some(s => metric !== 'e1rm' || this._setKg(s) > 0);
+                if (!ok) return;
+                seen.add(ex.exerciseId);
+                count.set(ex.exerciseId, (count.get(ex.exerciseId) || 0) + 1);
+            });
+        });
+        return [...count.entries()]
+            .map(([id, n]) => ({ id, n, name: EXERCISES_DB[id].name }))
+            .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'it'));
+    },
+
+    _renderStrength() {
+        const chipsEl = document.getElementById('pg-str-chips');
+        const body = document.getElementById('pg-str-body');
+        if (!chipsEl || !body) return;
+        const cands = this._strengthCandidates();
+        if (!cands.length) {
+            chipsEl.hidden = true;
+            body.innerHTML = `<div class="pg-empty-box">${this.ico('progress', 'ico--lg')}<p class="muted">Fai 2 sedute e qui vedi la tua forza</p></div>`;
+            this._setText('pg-str-meta', 'massimale stimato');
+            return;
+        }
+        if (!this._strengthId || !cands.some(c => c.id === this._strengthId)) this._strengthId = cands[0].id;
+        const id = this._strengthId;
+        const top = cands.slice(0, 5);
+        if (!top.some(c => c.id === id)) top.unshift(cands.find(c => c.id === id));
+        chipsEl.hidden = false;
+        chipsEl.innerHTML = top.map(c => `<button type="button" class="chip" role="radio" aria-checked="${c.id === id}" data-id="${GT.esc(c.id)}">${GT.esc(c.name)}</button>`).join('')
+            + (cands.length > top.length ? `<button type="button" class="chip" data-more="1">Altri${this.ico('next')}</button>` : '');
+
+        const metric = this._strengthMetric(id);
+        const name = EXERCISES_DB[id]?.name || id;
+        const unit = metric === 'e1rm' ? 'kg' : metric === 'time' ? 's' : 'rip.';
+        this._setText('pg-str-meta', metric === 'e1rm' ? 'massimale stimato' : metric === 'time' ? 'secondi migliori' : 'ripetizioni migliori');
+        const series = this._strengthSeries(id).slice(-16);
+        const last = series[series.length - 1];
+        const shown = (v) => metric === 'e1rm' ? Math.round(v) : v;
+
+        let kv = '';
+        if (last) {
+            const firstP = series[0];
+            const diff = shown(last.v) - shown(firstP.v);
+            const days = GT.calendarDaysBetween(new Date(firstP.t), new Date(last.t));
+            const per = this._period(days);
+            const cls = diff > 0 ? 'delta--up' : diff < 0 ? 'delta--down' : 'delta--same';
+            const icon = diff > 0 ? 'trend-up' : diff < 0 ? 'trend-down' : 'equal';
+            const txt = series.length < 2 ? 'prima seduta'
+                : diff === 0 ? `uguale${per ? ` in ${per}` : ''}`
+                    : `${diff > 0 ? '+' : '−'}${this.fmt(Math.abs(diff))} ${unit}${per ? ` in ${per}` : ''}`;
+            kv = `<div class="kv pg-kv"><p class="kv__big num">${this.fmt(shown(last.v))}<small>${unit}</small></p>
+                <span class="delta ${cls}">${this.ico(icon)}${txt}</span></div>`;
+        }
+
+        if (series.length < 2) {
+            body.innerHTML = `${kv}<p class="muted pg-empty">Fai un'altra seduta di ${GT.esc(name)} e qui vedi la linea</p>`;
+            return;
+        }
+        let best = -Infinity;
+        const pr = new Set();
+        series.forEach((p, i) => {
+            if (i > 0 && p.v > best) pr.add(i);
+            best = Math.max(best, p.v);
+        });
+        const points = series.map(p => ({ t: p.t, v: metric === 'e1rm' ? Math.round(p.v * 10) / 10 : p.v }));
+        const days = GT.calendarDaysBetween(new Date(series[0].t), new Date(last.t));
+        const label = `${metric === 'e1rm' ? 'Massimale stimato' : metric === 'time' ? 'Secondi' : 'Ripetizioni'} di ${name}: da ${this.fmt(shown(series[0].v))} a ${this.fmt(shown(last.v))} ${unit}${days > 0 ? ` in ${this._period(days)}` : ''}; ${pr.size} record`;
+        const legend = metric === 'e1rm' ? 'Calcolato da peso e ripetizioni della serie migliore'
+            : metric === 'time' ? 'Secondi della serie migliore' : 'Ripetizioni della serie migliore';
+        body.innerHTML = `${kv}
+            ${this._chartSVG(points, { h: 160, pr, xlabels: this._monthLabels(points), label })}
+            <p class="legend pg-chart-legend"><span><svg width="12" height="12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--accent-mark)"/></svg> record</span><span>${legend}</span></p>`;
+    },
+
+    // ========================================
+    // GRAFICO A LINEA (SVG): x sul tempo, tacche "tonde" 1-2-2,5-5 × 10^k
+    // ========================================
+
+    /**
+     * @param {{t:number, v:number}[]} data - punti in ordine di tempo
+     * @param {{h?:number, pr?:Set<number>, avg?:number[], ticks?:number, xlabels?:[number,string][], label:string}} o
+     */
+    _chartSVG(data, o = {}) {
+        const W = 340, H = o.h || 160, L = 32, R = 10, T = 10, B = 22;
+        const vals = data.map(d => d.v).concat(o.avg || []);
+        let lo = Math.min(...vals), hi = Math.max(...vals);
+        if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+        const raw = (hi - lo) / (o.ticks || 3);
+        const mag = 10 ** Math.floor(Math.log10(raw));
+        const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(m => m >= raw - 1e-12) || raw;
+        const min = Math.floor(lo / step + 1e-9) * step;
+        const max = Math.ceil(hi / step - 1e-9) * step;
+        const t0 = data[0].t, t1 = data[data.length - 1].t;
+        const span = t1 - t0;
+        const x = (i) => L + (span > 0 ? (data[i].t - t0) / span : i / Math.max(1, data.length - 1)) * (W - L - R);
+        const xt = (t) => L + (span > 0 ? (t - t0) / span : 0) * (W - L - R);
+        const y = (v) => T + (H - T - B) * (1 - (v - min) / ((max - min) || 1));
+        const f = (n) => n.toFixed(1);
+        let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${GT.esc(o.label || '')}">`;
+        for (let v = min; v <= max + step / 1000; v += step) {
+            const yy = f(y(v));
+            s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/>`;
+            s += `<text class="axis" x="${L - 6}" y="${f(y(v) + 4)}" text-anchor="end">${GT.esc(this.fmt(Math.round(v * 100) / 100, 2))}</text>`;
+        }
+        (o.xlabels || []).forEach(([t, txt], i, arr) => {
+            const anchor = i === arr.length - 1 && arr.length > 1 && xt(t) > W - R - 16 ? 'end' : (xt(t) < L + 12 ? 'start' : 'middle');
+            s += `<text class="axis" x="${f(xt(t))}" y="${H - 4}" text-anchor="${anchor}">${GT.esc(txt)}</text>`;
+        });
+        const path = data.map((d, i) => `${i ? 'L' : 'M'}${f(x(i))} ${f(y(d.v))}`).join(' ');
+        if (o.avg) {
+            data.forEach((d, i) => { s += `<circle class="pt pt--raw" cx="${f(x(i))}" cy="${f(y(d.v))}" r="2.6"/>`; });
+            s += `<path class="line" d="${o.avg.map((v, i) => `${i ? 'L' : 'M'}${f(x(i))} ${f(y(v))}`).join(' ')}"/>`;
+        } else {
+            s += `<path class="area" d="${path} L${f(x(data.length - 1))} ${H - B} L${f(x(0))} ${H - B}Z"/>`;
+            s += `<path class="line" d="${path}"/>`;
+            data.forEach((d, i) => {
+                const isPr = o.pr && o.pr.has(i);
+                s += `<circle class="pt${isPr ? ' pt--pr' : ''}" cx="${f(x(i))}" cy="${f(y(d.v))}" r="${isPr ? 5.5 : 3.5}"/>`;
+            });
+        }
+        return s + '</svg>';
+    },
+
+    // Etichette dei mesi sotto i punti (la prima seduta di ogni mese) e "oggi" sull'ultimo
+    _monthLabels(points) {
+        const out = [];
+        let prev = -1;
+        points.forEach(p => {
+            const m = new Date(p.t).getMonth();
+            if (m !== prev) out.push([p.t, GT._MESI[m]]);
+            prev = m;
+        });
+        const lastT = points[points.length - 1].t;
+        if (GT.calendarDaysBetween(new Date(lastT), new Date()) === 0) out.push([lastT, 'oggi']);
+        const thin = this._thinLabels(points, out);
+        // meno di tre etichette (tutto in un mese): meglio tre date
+        return thin.length < 3 ? this._dateLabels(points) : thin;
+    },
+
+    // Tre date: prima, metà, ultima ("oggi" se è oggi)
+    _dateLabels(points) {
+        const first = points[0].t, lastT = points[points.length - 1].t;
+        const mid = first + (lastT - first) / 2;
+        const isToday = GT.calendarDaysBetween(new Date(lastT), new Date()) === 0;
+        return this._thinLabels(points, [[first, this._shortDate(first)], [mid, this._shortDate(mid)], [lastT, isToday ? 'oggi' : this._shortDate(lastT)]]);
+    },
+
+    // Niente etichette sovrapposte: si tiene l'ultima, si tolgono quelle troppo vicine
+    _thinLabels(points, labels) {
+        const t0 = points[0].t, span = (points[points.length - 1].t - t0) || 1;
+        const pos = (t) => (t - t0) / span * 298;
+        const kept = [];
+        for (let i = labels.length - 1; i >= 0; i--) {
+            if (!kept.length || pos(kept[0][0]) - pos(labels[i][0]) >= 36) kept.unshift(labels[i]);
+        }
+        return kept;
+    },
+
+    // ========================================
+    // RECORD
+    // ========================================
+
+    _recordList() {
+        const prs = this._safe(() => Storage.getPersonalRecords()) || {};
+        return Object.entries(prs).map(([id, pr]) => {
+            if (!pr) return null;
+            const timed = this._isTimedEx(id);
+            let w, r, date, e1rm = 0;
+            if (timed) {
+                if (!(pr.maxReps > 0)) return null;
+                w = 0; r = pr.maxReps; date = pr.maxRepsDate;
+            } else if (pr.e1rmWeight > 0) {
+                w = pr.e1rmWeight; r = pr.e1rmReps; date = pr.e1rmDate || pr.maxWeightDate; e1rm = pr.estimated1RM || pr.e1rm || 0;
+            } else if (pr.maxWeight > 0) {
+                w = pr.maxWeight; r = pr.maxWeightReps || pr.maxReps; date = pr.maxWeightDate; e1rm = pr.estimated1RM || 0;
+            } else return null;
+            return { id, name: EXERCISES_DB[id]?.name || id, timed, w, r, date, e1rm, t: new Date(date).getTime() || 0 };
+        }).filter(Boolean);
+    },
+
+    _recordRow(rec, { withE1rm = false } = {}) {
+        const recent = rec.t && GT.calendarDaysBetween(new Date(rec.t), new Date()) <= 14;
+        const sub = [withE1rm && rec.e1rm ? `massimale ${this.fmt(Math.round(rec.e1rm))} kg` : '', rec.date ? this._relDay(rec.date) : '']
+            .filter(Boolean).join(' · ');
+        return `<button type="button" class="row" data-ex="${GT.esc(rec.id)}">
+                <span class="row__icon${recent ? ' pg-pr--new' : ''}">${this.ico(recent ? 'trophy' : 'medal')}</span>
+                <span class="row__body"><span class="row__title">${GT.esc(rec.name)}</span>${sub ? `<span class="row__sub">${GT.esc(sub)}</span>` : ''}</span>
+                <span class="num pg-val">${GT.esc(this._fmtSetShort(rec.id, rec.w, rec.r))}</span>
+            </button>`;
+    },
+
+    loadPersonalRecords() {
+        const container = document.getElementById('prs-list');
+        const all = document.getElementById('pg-pr-all');
+        if (!container) return;
+        const list = this._recordList().sort((a, b) => b.t - a.t);
+        if (all) all.hidden = list.length <= 3;
+        if (!list.length) {
+            container.innerHTML = '<p class="muted pg-empty">Il primo record arriva dalla seconda seduta</p>';
+            return;
+        }
+        container.innerHTML = `<div class="group">${list.slice(0, 3).map(r => this._recordRow(r)).join('')}</div>`;
+    },
+
+    _openAllRecords() {
+        const list = this._recordList().sort((a, b) => (b.e1rm - a.e1rm) || a.name.localeCompare(b.name, 'it'));
+        const root = this._sheet('records-modal', `
+            ${this._sheetHead('Record', 'Chiudi i record')}
+            <div class="group">${list.map(r => this._recordRow(r, { withE1rm: true })).join('')}</div>`, { tall: true });
+        root.addEventListener('click', (e) => {
+            const row = e.target.closest('[data-ex]');
+            if (row) this.openExercise(row.dataset.ex);
+        });
+    },
+
+    // ========================================
+    // PESO CORPOREO: pesate + media di 7 giorni
+    // ========================================
+
+    _toggleWeightForm(force) {
+        const form = document.getElementById('body-measurement-form');
+        const btn = document.getElementById('toggle-weight-form');
+        if (!form) return;
+        const open = typeof force === 'boolean' ? force : form.hidden;
+        form.hidden = !open;
+        btn?.setAttribute('aria-expanded', String(open));
+        if (open) {
+            const input = document.getElementById('measure-weight');
+            const last = this._safe(() => Storage.getLatestMeasurement());
+            const p = this._safe(() => Storage.getProfile()) || {};
+            if (input) {
+                input.value = last?.weight ? this.fmt(last.weight, 1) : (p.weight ? this.fmt(p.weight, 1) : '');
+                setTimeout(() => { input.focus(); input.select?.(); }, 30);
+            }
+        }
+    },
+
+    saveMeasurement() {
+        const input = document.getElementById('measure-weight');
+        const weight = Math.round(GT.num(input?.value) * 10) / 10;
+        if (!(weight >= 20 && weight <= 400)) {
+            this.showNotification('Peso fuori misura: scrivi i kg, es. 84,2', 'warning');
+            input?.focus();
+            return;
+        }
+        try {
+            Storage.saveMeasurement({ weight, bodyFat: null });
+        } catch (e) {
+            console.error('saveMeasurement', e);
+            this.showNotification('Peso NON salvato: memoria piena', 'error');
+            return;
+        }
+        if (input) input.value = '';
+        this._toggleWeightForm(false);
+        this._safe(() => this.loadProfile());
+        this._safe(() => this._renderWeight());
+        this._safe(() => this.loadDashboard());
+        this.showNotification(`Peso salvato: ${this.fmt(weight, 1)} kg`, 'success', { icon: 'scale' });
+    },
+
+    _renderWeight() {
+        const body = document.getElementById('pg-bw-body');
+        if (!body) return;
+        const all = (this._safe(() => Storage.getMeasurements()) || [])
+            .map(m => ({ t: new Date(m.date).getTime(), v: GT.num(m.weight) }))
+            .filter(m => Number.isFinite(m.t) && m.v > 0)
+            .sort((a, b) => a.t - b.t);
+        if (!all.length) {
+            body.innerHTML = '<p class="muted pg-empty">Nessuna pesata: tocca Peso</p>';
+            return;
+        }
+        const lastT = all[all.length - 1].t;
+        let pts = all.filter(p => p.t >= lastT - 90 * 86400000);
+        if (pts.length < 2) pts = all.slice(-10);
+        const DAY = 86400000;
+        const avg = pts.map(p => {
+            const win = all.filter(q => q.t <= p.t && q.t > p.t - 7 * DAY);
+            return win.reduce((s, q) => s + q.v, 0) / win.length;
+        });
+        const latest = all[all.length - 1];
+
+        // Variazione della media di 7 giorni rispetto a ~30 giorni prima
+        let delta = '';
+        if (pts.length >= 2) {
+            const target = lastT - 30 * DAY;
+            let k = 0;
+            pts.forEach((p, i) => { if (Math.abs(p.t - target) < Math.abs(pts[k].t - target)) k = i; });
+            const days = GT.calendarDaysBetween(new Date(pts[k].t), new Date(lastT));
+            const d = Math.round((avg[avg.length - 1] - avg[k]) * 10) / 10;
+            if (days > 0) {
+                const icon = d > 0 ? 'trend-up' : d < 0 ? 'trend-down' : 'equal';
+                const txt = d === 0 ? `uguale in ${days} giorni` : `${d > 0 ? '+' : '−'}${this.fmt(Math.abs(d), 1)} kg in ${days} giorni`;
+                delta = `<span class="delta delta--same">${this.ico(icon)}${txt}</span>`;
+            }
+        }
+        const kv = `<div class="kv pg-kv"><p class="kv__big num">${this.fmt(latest.v, 1)}<small>kg</small></p>${delta}</div>`;
+        if (pts.length < 2) {
+            body.innerHTML = `${kv}<p class="muted pg-empty">Con due pesate compare la linea</p>`;
+            return;
+        }
+        const label = `Peso corporeo: da ${this.fmt(pts[0].v, 1)} a ${this.fmt(latest.v, 1)} kg, media di 7 giorni ${avg[avg.length - 1] < avg[0] ? 'in calo' : avg[avg.length - 1] > avg[0] ? 'in salita' : 'stabile'}`;
+        body.innerHTML = `${kv}
+            ${this._chartSVG(pts, { h: 150, ticks: 2, avg: avg.map(v => Math.round(v * 100) / 100), xlabels: this._dateLabels(pts), label })}
+            <p class="legend pg-chart-legend" aria-hidden="true"><span><svg width="12" height="12"><circle cx="6" cy="6" r="3" fill="var(--text-3)"/></svg> pesate</span><span><svg width="18" height="12"><path d="M1 6h16" stroke="var(--text)" stroke-width="2.5" stroke-linecap="round"/></svg> media di 7 giorni</span></p>`;
+    },
+
+    // ========================================
+    // CICLI
+    // ========================================
+
+    _phaseKey(p) {
+        const s = String((p && (p.phase || p.phaseName)) || p || '').toLowerCase();
+        if (/intens/.test(s)) return 'int';
+        if (/deload|scaric/.test(s)) return 'del';
+        return 'acc';
+    },
+
+    _phaseLabel(key) {
+        return { acc: 'Accumulo', int: 'Intensificazione', del: 'Scarico' }[key] || '';
+    },
+
+    _monthRange(a, b) {
+        const da = new Date(a), db = new Date(b);
+        if (isNaN(da)) return '';
+        if (isNaN(db) || (da.getMonth() === db.getMonth() && da.getFullYear() === db.getFullYear())) return GT._MESI[da.getMonth()];
+        return `${GT._MESI[da.getMonth()]}-${GT._MESI[db.getMonth()]}`;
+    },
+
+    _mesoHTML(keys, now = 0) {
+        const n = keys.length || 1;
+        return `<span class="meso pg-meso" style="--weeks:${n}" aria-hidden="true">${keys.map((k, i) => {
+            const cls = now && i + 1 === now ? ' is-now' : (now && i + 1 > now ? ' is-future' : '');
+            return `<i class="meso__wk${cls}" data-ph="${k}"></i>`;
+        }).join('')}</span>`;
+    },
+
+    loadCycleHistory() {
+        const container = document.getElementById('cycle-history-list');
+        if (!container) return;
+        const rows = [];
+        const info = this._safe(() => Storage.getCycleInfo());
+        if (info) {
+            const keys = (info.phases || []).map(p => this._phaseKey(p));
+            const deload = this._safe(() => Storage.isDeloadActive());
+            const phase = deload ? 'del' : this._phaseKey(info.currentPhase);
+            rows.push(`<div class="row">
+                <span class="row__body"><span class="row__title">Ciclo ${GT.esc(info.cycleNumber || 1)} · in corso</span>
+                <span class="row__sub">dal ${GT.esc(this._shortDate(info.startDate))} · sett. <span class="num">${info.currentWeek}</span> di <span class="num">${info.duration}</span> · ${this._phaseLabel(phase)}</span></span>
+                ${this._mesoHTML(keys, Math.min(info.currentWeek, keys.length))}
+                <span class="sr-only">Settimana ${info.currentWeek} di ${info.duration}, fase ${this._phaseLabel(phase)}</span>
+            </div>`);
+        }
+        const history = this._safe(() => Storage.getCycleHistory()) || [];
+        history.slice(0, 5).forEach((c, i) => {
+            const st = c.statistics || {};
+            const keys = (Array.isArray(c.phases) ? c.phases : []).map(p => this._phaseKey(p));
+            const parts = [this._monthRange(c.startDate, c.endDate || c.completedAt)];
+            if (st.totalWorkouts) parts.push(`<span class="num">${GT.esc(st.totalWorkouts)}</span>&nbsp;sedute`);
+            if (st.prsAchieved) parts.push(`<span class="num">${GT.esc(st.prsAchieved)}</span>&nbsp;record`);
+            rows.push(`<div class="row">
+                <span class="row__body"><span class="row__title">Ciclo ${GT.esc(c.cycleNumber || history.length - i)}</span>
+                <span class="row__sub">${parts.filter(Boolean).join(' · ')}</span></span>
+                ${keys.length ? this._mesoHTML(keys) : ''}
+            </div>`);
+        });
+        container.innerHTML = rows.length ? `<div class="group">${rows.join('')}</div>` : '<p class="muted pg-empty">Nessun ciclo: crea una scheda</p>';
+    },
+
+    // ========================================
+    // STORICO DELLE SEDUTE (pesi e cardio)
+    // ========================================
+
+    _cardioTitle(s) {
+        const isHiit = String(s.type).toLowerCase() === 'hiit';
+        const name = isHiit
+            ? (typeof HIIT_PROTOCOLS !== 'undefined' && HIIT_PROTOCOLS[s.protocol]?.name) || ''
+            : (typeof LISS_ACTIVITIES !== 'undefined' && LISS_ACTIVITIES[s.activity]?.name) || '';
+        return `${isHiit ? 'HIIT' : 'LISS'}${name ? ` · ${name}` : ''}`;
+    },
+
+    loadWorkoutHistory() {
+        const container = document.getElementById('workout-history-list');
+        const more = document.getElementById('pg-hist-more');
+        if (!container) return;
+        const workouts = this._pgWorkouts || this._safe(() => Storage.getWorkouts()) || [];
+        const cardio = this._safe(() => Storage.getConditioningSessions()) || [];
+        const items = [
+            ...workouts.map(w => ({ t: this._wTime(w) || 0, w })),
+            ...cardio.map(c => ({ t: new Date(c.date).getTime() || 0, c }))
+        ].sort((a, b) => b.t - a.t);
+        const limit = this._histLimit || 10;
+        const meta = document.getElementById('pg-hist-meta');
+        if (meta) meta.innerHTML = items.length ? `<span class="num">${items.length}</span>&nbsp;in tutto` : '';
+        if (more) more.hidden = items.length <= limit;
+        if (!items.length) {
+            container.innerHTML = '<p class="muted pg-empty">Ancora nessuna seduta</p>';
+            return;
+        }
+        container.innerHTML = `<div class="group">${items.slice(0, limit).map(({ w, c }) => {
+            if (w) {
+                const min = Math.round((w.duration || 0) / 60);
+                const sets = this._wSets(w);
+                const sub = [GT.formatRelativeDay(w.date), min ? `${min} min` : '', `${sets} serie`].filter(Boolean).join(' · ');
+                return `<button type="button" class="row" data-workout-id="${GT.esc(w.id)}">
+                    <span class="row__icon">${this.ico('barbell')}</span>
+                    <span class="row__body"><span class="row__title">${GT.esc(this._wName(w))}</span><span class="row__sub">${GT.esc(sub)}</span></span>
+                    <span class="row__end"><span class="num pg-vol">${GT.esc(GT.formatVolume(this._wVolume(w)))}</span>${this.ico('next', 'ico--sm')}</span>
+                </button>`;
+            }
+            const isHiit = c.type === 'hiit';
+            const sub = [GT.formatRelativeDay(c.date), `${c.duration || 0} min`, c.calories ? `${c.calories} kcal` : ''].filter(Boolean).join(' · ');
+            return `<button type="button" class="row" data-cardio-id="${GT.esc(c.id)}">
+                    <span class="row__icon">${this.ico(isHiit ? 'bolt' : 'steps')}</span>
+                    <span class="row__body"><span class="row__title">${GT.esc(this._cardioTitle(c))}</span><span class="row__sub">${GT.esc(sub)}</span></span>
+                    <span class="row__end">${this.ico('next', 'ico--sm')}</span>
+                </button>`;
+        }).join('')}</div>`;
+    },
+
+    _showCardioDetail(id) {
+        const s = (this._safe(() => Storage.getConditioningSessions()) || []).find(x => String(x.id) === String(id));
+        if (!s) return;
+        const d = new Date(s.date);
+        const exs = (s.exercises || []).map(x => (typeof HIIT_EXERCISES !== 'undefined' && HIIT_EXERCISES[x]?.name) || x);
+        const root = this._sheet('cardio-detail-modal', `
+            ${this._sheetHead(this._cardioTitle(s), 'Chiudi il dettaglio del cardio')}
+            <p class="muted">${GT.esc(GT.formatRelativeDay(d))} · ${GT.esc(isNaN(d) ? '' : d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }))}</p>
+            <div class="stats pg-dstats" style="--n:2">
+                <div class="stat"><span class="stat__v num">${GT.esc(s.duration || 0)}<small>min</small></span><span class="stat__k">durata</span></div>
+                <div class="stat"><span class="stat__v num">${GT.esc(s.calories || 0)}<small>kcal</small></span><span class="stat__k">${s.manualCalories ? 'misurate' : 'stimate'}</span></div>
+            </div>
+            ${exs.length ? `<p class="muted">${GT.esc(exs.join(' · '))}</p>` : ''}
+            ${s.notes ? `<p>${GT.esc(s.notes)}</p>` : ''}
+            <div class="sheet__actions"><button type="button" class="btn btn--secondary btn--danger-text" data-act="delete">${this.ico('trash')}Elimina cardio</button></div>`);
+        root.querySelector('[data-act="delete"]')?.addEventListener('click', async () => {
+            const ok = await this.confirmSheet({ title: `Eliminare ${this._cardioTitle(s)}?`, text: `${GT.formatRelativeDay(d)} · ${s.duration || 0} min.`, ok: 'Elimina cardio', cancel: 'Tienilo', danger: true });
+            if (!ok) return;
+            this._safe(() => Storage.deleteConditioningSession(s.id));
+            this._closeSheet('cardio-detail-modal');
+            this.showNotification('Cardio eliminato', 'success', { icon: 'trash' });
+            this.loadProgress();
+            this._safe(() => this.loadDashboard());
+        });
+    },
+
+    // ========================================
+    // DETTAGLIO DI UNA SEDUTA (foglio)
+    // ========================================
 
     // Gli id dei workout possono arrivare da un backup (numeri o stringhe): si confrontano come testo
     _findWorkout(id) {
@@ -133,222 +967,213 @@ Object.assign(App, {
         return Storage.getWorkouts().find(w => String(w.id) === key) || null;
     },
 
+    _setLine(exId, s) {
+        const kg = this._setKg(s);
+        const r = Math.round(GT.num(s.reps));
+        const timed = this._isTimedEx(exId);
+        const val = timed ? `<span class="num">${this.fmt(r)}</span><small>s</small>`
+            : kg > 0 ? `<span class="num">${this.fmt(kg)}</span><small>kg</small><span class="num">× ${this.fmt(r)}</span>`
+                : `<span class="num">${this.fmt(r)}</span><small>rip.</small>`;
+        const rir = Number.isFinite(s.rir) ? `<span class="rir-dot" data-rir="${Math.min(4, Math.max(0, s.rir))}">RIR ${s.rir >= 4 ? '4+' : s.rir}</span>` : '';
+        const pr = s.isNewPR ? `<span class="pg-set__pr">${this.ico('trophy', 'ico--sm')}<span class="sr-only">record</span></span>` : '';
+        const warm = s.isWarmup ? '<span class="tag">risc.</span>' : '';
+        return `<li class="pg-set${s.isWarmup ? ' is-warm' : ''}"><span class="pg-set__val">${val}</span><span class="pg-set__end">${warm}${rir}${pr}</span></li>`;
+    },
+
     showWorkoutDetail(workoutId) {
         const workout = this._findWorkout(workoutId);
         if (!workout) {
-            this.showNotification('Allenamento non trovato', 'error');
+            this.showNotification('Seduta non trovata', 'error');
             return;
         }
-
         const date = new Date(workout.date);
         const durationMin = Math.round((workout.duration || 0) / 60);
-        const exercisesHTML = (workout.exercises || []).length
-            ? workout.exercises.map(ex => `
-                <div class="workout-detail-exercise">
-                    <div class="workout-detail-ex-header">
-                        <span class="workout-detail-ex-name">${GT.esc(ex.name)}</span>
-                        <span class="workout-detail-ex-vol">${GT.esc(GT.formatVolume(this._setsVolume(ex.sets)))}</span>
-                    </div>
-                    <div class="workout-detail-sets">${this._setsChips(ex.sets)}</div>
-                </div>
-            `).join('')
-            : '<p class="empty-state-mini">Nessun dettaglio</p>';
+        const prs = this._safe(() => Storage.countRealPRs([workout])) || 0;
+        const exHTML = (workout.exercises || []).map(ex => {
+            const done = (ex.sets || []).filter(s => s && s.completed && GT.num(s.reps) > 0);
+            return `<li class="pg-dex">
+                <h3>${GT.esc(ex.name || EXERCISES_DB[ex.exerciseId]?.name || 'Esercizio')}</h3>
+                ${done.length ? `<ol class="pg-sets">${done.map(s => this._setLine(ex.exerciseId, s)).join('')}</ol>` : '<p class="faint">Nessuna serie fatta</p>'}
+            </li>`;
+        }).join('');
 
-        const html = `
-            <div class="progression-summary-modal" id="workout-detail-modal">
-                <div class="progression-summary-content">
-                    <h3>${GT.esc(workout.name || 'Allenamento')}</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 12px;">${GT.esc(GT.formatRelativeDay(date))} · ${GT.esc(isNaN(date) ? '' : date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }))}</p>
-                    <div class="summary-stats">
-                        <div class="summary-stat">
-                            <span class="stat-value">${GT.esc(GT.formatVolume(workout.totalVolume || 0))}</span>
-                            <span class="stat-label">volume</span>
-                        </div>
-                        <div class="summary-stat">
-                            <span class="stat-value">${GT.esc(workout.totalSets || 0)}</span>
-                            <span class="stat-label">serie</span>
-                        </div>
-                        <div class="summary-stat">
-                            <span class="stat-value">${durationMin}</span>
-                            <span class="stat-label">minuti</span>
-                        </div>
-                    </div>
-                    <h4>Esercizi</h4>
-                    <div class="workout-detail-exercises">${exercisesHTML}</div>
-                    <div style="display:flex;gap:8px;margin-top:16px;">
-                        <button type="button" class="btn btn--primary" data-action="close" style="flex:1;">Chiudi</button>
-                        <button type="button" class="btn btn--secondary" data-action="edit" style="flex:1;">Modifica</button>
-                        <button type="button" class="btn btn--danger btn--sm" data-action="delete">Elimina</button>
-                    </div>
-                </div>
+        const root = this._sheet('workout-detail-modal', `
+            ${this._sheetHead(this._wName(workout), `Chiudi il dettaglio di ${this._wName(workout)}`)}
+            <p class="muted pg-dwhen">${GT.esc(GT.formatRelativeDay(date))}${isNaN(date) ? '' : ` · ${GT.esc(date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }))}`}${prs ? ` · <span class="pg-pr--new">${this.ico('trophy', 'ico--sm')}</span> <span class="num">${prs}</span> record` : ''}</p>
+            <div class="stats pg-dstats" style="--n:3">
+                <div class="stat"><span class="stat__v num">${GT.esc(GT.formatVolume(this._wVolume(workout)))}</span><span class="stat__k">volume</span></div>
+                <div class="stat"><span class="stat__v num">${this._wSets(workout)}</span><span class="stat__k">serie</span></div>
+                <div class="stat"><span class="stat__v num">${durationMin}</span><span class="stat__k">minuti</span></div>
             </div>
-        `;
+            ${exHTML ? `<ol class="pg-dlist">${exHTML}</ol>` : '<p class="muted">Nessun esercizio</p>'}
+            <div class="sheet__actions pg-dactions">
+                <button type="button" class="btn btn--secondary" data-act="edit">${this.ico('edit')}Modifica</button>
+                <button type="button" class="btn btn--secondary btn--danger-text" data-act="delete">${this.ico('trash')}Elimina</button>
+            </div>`, { tall: true, onClose: () => this.closeWorkoutDetail() });
 
-        const modal = this._showDynamicModal('workout-detail-modal', html);
-        modal?.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                if (action === 'close') {
-                    this.closeWorkoutDetail();
-                } else if (action === 'edit') {
-                    this.closeWorkoutDetail();
-                    this.editWorkout(workout.id);
-                } else if (action === 'delete') {
-                    // Si chiude solo se l'eliminazione è confermata (E16)
-                    if (this.deleteWorkoutSession(workout.id)) this.closeWorkoutDetail();
-                }
-            });
+        root.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-act]');
+            if (!btn) return;
+            if (btn.dataset.act === 'edit') {
+                this.closeWorkoutDetail();
+                this.editWorkout(workout.id);
+            } else if (btn.dataset.act === 'delete') {
+                // Si chiude solo se l'eliminazione è confermata (E16)
+                if (await this.deleteWorkoutSession(workout.id)) this.closeWorkoutDetail();
+            }
         });
     },
 
     closeWorkoutDetail() {
-        this._removeDynamicModal('workout-detail-modal');
+        this._closeSheet('workout-detail-modal');
+    },
+
+    // true se la seduta è stata eliminata
+    async deleteWorkoutSession(workoutId, event) {
+        if (event) event.stopPropagation();
+        const workout = this._findWorkout(workoutId);
+        if (!workout) {
+            this.showNotification('Seduta non trovata', 'error');
+            return false;
+        }
+        const name = this._wName(workout);
+        const when = this._relDay(workout.date);
+        const ok = await this.confirmSheet({
+            title: `Eliminare ${name} di ${when}?`,
+            text: `${this._wSets(workout)} serie. Record e costanza si ricalcolano.`,
+            ok: 'Elimina seduta', cancel: 'Tienila', danger: true
+        });
+        if (!ok) return false;
+        try {
+            Storage.deleteWorkout(workout.id);   // ricalcola anche i PR
+        } catch (e) {
+            console.error('deleteWorkout', e);
+            this.showNotification('Seduta NON eliminata: riprova', 'error');
+            return false;
+        }
+        this.showNotification(`${name} eliminata`, 'success', { icon: 'trash' });
+        this._safe(() => this.loadDashboard());
+        this.loadProgress();
+        return true;
     },
 
     // ========================================
-    // EDIT WORKOUT
+    // MODIFICA DI UNA SEDUTA (foglio)
     // ========================================
 
     editWorkout(workoutId) {
         const workout = this._findWorkout(workoutId);
         if (!workout) return;
         this._editingWorkout = JSON.parse(JSON.stringify(workout));
-        (this._editingWorkout.exercises || []).forEach(ex => { if (!Array.isArray(ex.sets)) ex.sets = []; });
-        this._editingWorkout.exercises = this._editingWorkout.exercises || [];
+        this._editingWorkout.exercises = Array.isArray(this._editingWorkout.exercises) ? this._editingWorkout.exercises : [];
+        this._editingWorkout.exercises.forEach(ex => { if (!Array.isArray(ex.sets)) ex.sets = []; });
+        const root = this._sheet('workout-edit-modal', `
+            ${this._sheetHead(`Modifica ${this._wName(workout)}`, 'Chiudi senza salvare')}
+            <p class="muted">${GT.esc(GT.formatRelativeDay(new Date(workout.date)))}</p>
+            <div id="workout-edit-exercises"></div>
+            <button type="button" class="btn btn--secondary btn--block" data-act="add-ex">${this.ico('plus')}Aggiungi esercizio</button>
+            <div class="sheet__actions pg-edit-actions">
+                <button type="button" class="btn btn--primary btn--xl" data-act="save">${this.ico('check')}Salva modifiche</button>
+                <button type="button" class="btn btn--ghost btn--block" data-act="cancel">Annulla</button>
+            </div>`, { tall: true, cls: 'pg-edit', onClose: () => this.closeWorkoutEdit() });
         this._renderWorkoutEdit();
+
+        root.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-act]');
+            if (!btn) return;
+            const ex = parseInt(btn.dataset.ex, 10);
+            const set = parseInt(btn.dataset.set, 10);
+            switch (btn.dataset.act) {
+                case 'save': this.saveWorkoutEdit(); break;
+                case 'cancel': this.closeWorkoutEdit(); break;
+                case 'add-set': this._addEditSet(ex); break;
+                case 'rm-set': this._removeEditSet(ex, set); break;
+                case 'rm-ex': await this._removeEditExercise(ex); break;
+                case 'add-ex':
+                    this._syncEditFromDOM();
+                    this.pickExercise({ title: 'Aggiungi alla seduta', onPick: (id) => this._addExerciseToEdit(id) });
+                    break;
+                default: break;
+            }
+        });
     },
 
     _renderWorkoutEdit() {
         const workout = this._editingWorkout;
-        if (!workout) return;
-        const hadModal = !!document.getElementById('workout-edit-modal');
-        const scroll = document.querySelector('#workout-edit-modal .progression-summary-content')?.scrollTop || 0;
-
-        const exercisesHTML = workout.exercises.map((ex, exIdx) => {
-            const setsHTML = ex.sets.map((s, sIdx) => `
-                <div class="workout-edit-set">
-                    <input type="number" class="edit-input edit-weight" data-ex="${exIdx}" data-set="${sIdx}"
-                        value="${GT.esc(s.weight ?? '')}" placeholder="kg" inputmode="decimal" step="any" min="0" aria-label="Peso serie ${sIdx + 1}">
-                    <span class="edit-x">&times;</span>
-                    <input type="number" class="edit-input edit-reps" data-ex="${exIdx}" data-set="${sIdx}"
-                        value="${GT.esc(s.reps ?? '')}" placeholder="reps" inputmode="numeric" min="0" aria-label="Ripetizioni serie ${sIdx + 1}">
-                    <button type="button" class="edit-set-remove" onclick="App._removeEditSet(${exIdx}, ${sIdx})" aria-label="Togli serie ${sIdx + 1}">&times;</button>
-                </div>
-            `).join('');
-
-            return `
-                <div class="workout-edit-exercise">
-                    <div class="workout-edit-ex-header">
-                        <span class="workout-edit-ex-name">${GT.esc(ex.name)}</span>
-                        <button type="button" class="edit-ex-remove" onclick="App._removeEditExercise(${exIdx})">Rimuovi</button>
-                    </div>
-                    <div class="workout-edit-sets">${setsHTML}</div>
-                    <button type="button" class="workout-edit-add-set" onclick="App._addEditSet(${exIdx})">+ Serie</button>
-                </div>
-            `;
-        }).join('');
-
-        const html = `
-            <div class="progression-summary-modal" id="workout-edit-modal">
-                <div class="progression-summary-content" style="max-height:85vh;overflow-y:auto;">
-                    <h3>Modifica ${GT.esc(workout.name || 'allenamento')}</h3>
-                    <p style="color:var(--text-secondary);margin-bottom:12px;">${GT.esc(GT.formatRelativeDay(new Date(workout.date)))}</p>
-                    <div id="workout-edit-exercises">${exercisesHTML}</div>
-                    <div class="workout-edit-add-exercise">
-                        <input type="text" id="edit-add-exercise-search" class="edit-input"
-                            placeholder="Aggiungi esercizio..." style="width:100%;margin-top:12px;"
-                            aria-label="Cerca esercizio da aggiungere"
-                            oninput="App._searchExerciseForEdit(this.value)">
-                        <div id="edit-exercise-results"></div>
-                    </div>
-                    <div style="display:flex;gap:8px;margin-top:16px;">
-                        <button type="button" class="btn btn--primary" onclick="App.saveWorkoutEdit()" style="flex:1;">Salva</button>
-                        <button type="button" class="btn btn--secondary" onclick="App.closeWorkoutEdit()" style="flex:1;">Annulla</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        if (hadModal) {
-            // Ridisegno durante la modifica: stesso modale, stesso punto di scorrimento
-            document.getElementById('workout-edit-modal').outerHTML = html;
-            const content = document.querySelector('#workout-edit-modal .progression-summary-content');
-            if (content) content.scrollTop = scroll;
-            this._sheetify(document.getElementById('workout-edit-modal'));
-        } else {
-            this._showDynamicModal('workout-edit-modal', html);
-        }
+        const box = document.getElementById('workout-edit-exercises');
+        if (!workout || !box) return;
+        const sheet = box.closest('.sheet');
+        const scroll = sheet ? sheet.scrollTop : 0;
+        box.innerHTML = workout.exercises.length ? workout.exercises.map((ex, i) => {
+            const name = ex.name || EXERCISES_DB[ex.exerciseId]?.name || 'Esercizio';
+            const timed = this._isTimedEx(ex.exerciseId);
+            const sets = ex.sets.map((s, j) => `
+                <li class="pg-eset${s.isWarmup ? ' is-warm' : ''}">
+                    <span class="pg-eset__n num" aria-hidden="true">${s.isWarmup ? 'R' : j + 1}</span>
+                    ${timed ? '' : `<input class="input num pg-ein" type="text" inputmode="decimal" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="weight" value="${GT.esc(s.weight ?? '')}" placeholder="kg" aria-label="Peso, serie ${j + 1} di ${GT.esc(name)}">
+                    <span class="pg-eset__x" aria-hidden="true">×</span>`}
+                    <input class="input num pg-ein" type="text" inputmode="numeric" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="reps" value="${GT.esc(s.reps ?? '')}" placeholder="${timed ? 's' : 'rip.'}" aria-label="${timed ? 'Secondi' : 'Ripetizioni'}, serie ${j + 1} di ${GT.esc(name)}">
+                    <button type="button" class="btn btn--ghost btn--icon btn--sm" data-act="rm-set" data-ex="${i}" data-set="${j}" aria-label="Togli la serie ${j + 1} di ${GT.esc(name)}">${this.ico('close', 'ico--sm')}</button>
+                </li>`).join('');
+            return `<section class="pg-eex" aria-label="${GT.esc(name)}">
+                    <div class="pg-eex__head"><h3>${GT.esc(name)}</h3>
+                        <button type="button" class="btn btn--ghost btn--sm btn--danger-text" data-act="rm-ex" data-ex="${i}" aria-label="Togli ${GT.esc(name)} dalla seduta">Togli</button></div>
+                    <ol class="pg-esets">${sets}</ol>
+                    <button type="button" class="btn btn--ghost btn--sm" data-act="add-set" data-ex="${i}">${this.ico('plus', 'ico--sm')}Serie</button>
+                </section>`;
+        }).join('') : '<p class="muted">Nessun esercizio</p>';
+        if (sheet) sheet.scrollTop = scroll;
     },
 
     _syncEditFromDOM() {
         if (!this._editingWorkout) return;
-        document.querySelectorAll('#workout-edit-modal .edit-weight, #workout-edit-modal .edit-reps').forEach(input => {
-            const ex = parseInt(input.dataset.ex);
-            const set = parseInt(input.dataset.set);
-            const target = this._editingWorkout.exercises[ex]?.sets[set];
-            if (!target) return;
-            if (input.classList.contains('edit-weight')) target.weight = input.value;
-            else target.reps = input.value;
+        document.querySelectorAll('#workout-edit-modal .pg-ein').forEach(input => {
+            const target = this._editingWorkout.exercises[parseInt(input.dataset.ex, 10)]?.sets[parseInt(input.dataset.set, 10)];
+            if (target) target[input.dataset.f] = input.value;
         });
     },
 
     _addEditSet(exIdx) {
         this._syncEditFromDOM();
-        const sets = this._editingWorkout.exercises[exIdx].sets;
-        const last = sets[sets.length - 1];
+        const sets = this._editingWorkout?.exercises[exIdx]?.sets;
+        if (!sets) return;
+        const last = [...sets].reverse().find(s => !s.isWarmup) || sets[sets.length - 1];
         sets.push({ weight: last?.weight ?? '', reps: last?.reps ?? '', completed: true });
         this._renderWorkoutEdit();
     },
 
     _removeEditSet(exIdx, setIdx) {
         this._syncEditFromDOM();
-        this._editingWorkout.exercises[exIdx].sets.splice(setIdx, 1);
+        this._editingWorkout?.exercises[exIdx]?.sets.splice(setIdx, 1);
         this._renderWorkoutEdit();
     },
 
-    _removeEditExercise(exIdx) {
+    async _removeEditExercise(exIdx) {
         this._syncEditFromDOM();
-        const ex = this._editingWorkout.exercises[exIdx];
-        if (ex?.sets?.length && !confirm(`Togliere ${ex.name}? ${ex.sets.length} serie`)) return;
+        const ex = this._editingWorkout?.exercises[exIdx];
+        if (!ex) return;
+        const n = ex.sets.filter(s => s.completed !== false).length;
+        if (n) {
+            const ok = await this.confirmSheet({ title: `Togliere ${ex.name || 'l\'esercizio'}?`, text: `${n} serie escono dalla seduta.`, ok: 'Togli esercizio', cancel: 'Tienilo', danger: true });
+            if (!ok) return;
+        }
         this._editingWorkout.exercises.splice(exIdx, 1);
         this._renderWorkoutEdit();
-    },
-
-    _searchExerciseForEdit(query) {
-        const container = document.getElementById('edit-exercise-results');
-        if (!container) return;
-        if (!query || query.length < 2) {
-            container.innerHTML = '';
-            return;
-        }
-
-        const results = searchExercises(query).filter(ex => !ex.hidden).slice(0, 5);
-        container.innerHTML = results.map(ex => `
-            <div class="edit-search-result" data-id="${GT.esc(ex.id)}" tabindex="0" role="button">${GT.esc(ex.name)}</div>
-        `).join('');
-        container.querySelectorAll('.edit-search-result').forEach(el => {
-            el.addEventListener('click', () => this._addExerciseToEdit(el.dataset.id));
-            this._makeKeyboardClickable(el);
-        });
     },
 
     _addExerciseToEdit(exerciseId) {
         const ex = EXERCISES_DB[exerciseId];
         if (!ex || !this._editingWorkout) return;
-        this._syncEditFromDOM();
-        this._editingWorkout.exercises.push({
-            exerciseId,
-            name: ex.name,
-            sets: [{ weight: '', reps: '', completed: true }]
-        });
+        this._editingWorkout.exercises.push({ exerciseId, name: ex.name, sets: [{ weight: '', reps: '', completed: true }] });
         this._renderWorkoutEdit();
+        const inputs = document.querySelectorAll('#workout-edit-modal .pg-ein');
+        setTimeout(() => inputs[inputs.length - (this._isTimedEx(exerciseId) ? 1 : 2)]?.focus(), 60);
     },
 
     saveWorkoutEdit() {
         this._syncEditFromDOM();
         const workout = this._editingWorkout;
         if (!workout) return;
-
         let totalVolume = 0;
         let totalSets = 0;
         workout.exercises.forEach(ex => {
@@ -356,709 +1181,29 @@ Object.assign(App, {
                 s.weight = Math.max(0, GT.num(s.weight));
                 s.reps = Math.max(0, Math.round(GT.num(s.reps)));
                 s.completed = s.reps > 0;
-                if (s.completed) {
-                    totalVolume += s.weight * s.reps;
+                if (s.completed && !s.isWarmup && !s.isCalibration) {
+                    totalVolume += this._setKg(s) * s.reps;
                     totalSets++;
                 }
             });
         });
         workout.totalVolume = Math.round(totalVolume);
         workout.totalSets = totalSets;
-
-        Storage.updateWorkout(workout.id, workout);   // ricalcola anche i PR
+        try {
+            Storage.updateWorkout(workout.id, workout);   // ricalcola anche i PR
+        } catch (e) {
+            console.error('updateWorkout', e);
+            this.showNotification('Modifiche NON salvate: memoria piena', 'error');
+            return;
+        }
         this.closeWorkoutEdit();
-        this.showNotification('Allenamento aggiornato', 'success');
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
-        if (this.currentPage === 'progressi') this._safe(() => this.initCharts());
+        this.showNotification(`${this._wName(workout)} aggiornata`, 'success');
+        this._safe(() => this.loadDashboard());
+        this.loadProgress();
     },
 
     closeWorkoutEdit() {
-        this._removeDynamicModal('workout-edit-modal');
+        this._closeSheet('workout-edit-modal');
         this._editingWorkout = null;
-    },
-
-    // ========================================
-    // PROGRESS & CHARTS
-    // ========================================
-
-    loadProgress() {
-        [
-            () => this.updateProgressStats(),
-            () => this.loadWorkoutHistory(),
-            () => this.loadPersonalRecords(),
-            () => this.loadProgressCycleInfo(),
-            () => this.loadMuscleVolumeBars(),
-            () => this.loadRirTrend(),
-            () => this.loadCycleHistory(),
-            () => this.populateStrengthExerciseSelect(),
-            () => this.loadConditioningProgress()
-        ].forEach(fn => this._safe(fn));
-    },
-
-    updateProgressStats() {
-        const stats = Storage.getStatistics();
-        const streak = Storage.getStreak();
-        const tonnes = (stats.totalVolume || 0) / 1000;
-
-        this._setText('progress-total-workouts', stats.totalWorkouts || 0);
-        this._setText('progress-total-volume', tonnes.toLocaleString('it-IT', { maximumFractionDigits: 1 }));
-        this._setText('progress-total-prs', stats.totalPRs ?? stats.prCount ?? 0);
-        this._setText('progress-best-streak', streak.best || 0);
-    },
-
-    _chartsAvailable() {
-        return typeof Chart !== 'undefined';
-    },
-
-    // Colori dei grafici presi dal tema (scuro/chiaro)
-    _chartColors() {
-        const css = getComputedStyle(document.documentElement);
-        const tick = css.getPropertyValue('--text-secondary').trim() || '#a0a0b0';
-        const light = document.documentElement.getAttribute('data-theme') === 'light';
-        return { tick, grid: light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)' };
-    },
-
-    initCharts() {
-        if (!this._chartsAvailable()) return;
-        [
-            () => this.initVolumeChart(),
-            () => this.initFrequencyChart(),
-            () => this.initWeightChart(),
-            () => this.initConditioningChart(),
-            () => this.loadRirTrend()
-        ].forEach(fn => this._safe(fn));
-        const selected = document.getElementById('strength-exercise-select')?.value;
-        if (selected) this._safe(() => this.showStrengthProgress(selected));
-    },
-
-    // Settimana di calendario (lunedì-domenica) di `weeksAgo` settimane fa
-    _weekRange(weeksAgo) {
-        const start = GT.startOfWeek(new Date());
-        start.setDate(start.getDate() - weeksAgo * 7);
-        const end = new Date(start);
-        end.setDate(start.getDate() + 7);
-        end.setMilliseconds(end.getMilliseconds() - 1);
-        return { start, end };
-    },
-
-    _weekLabel(weeksAgo) {
-        if (weeksAgo === 0) return 'Questa';
-        if (weeksAgo === 1) return 'Scorsa';
-        return `${weeksAgo} sett fa`;
-    },
-
-    _shortDate(date) {
-        return GT.formatDate(new Date(date), { day: 'numeric', month: 'short' });
-    },
-
-    initVolumeChart() {
-        const ctx = document.getElementById('volume-chart');
-        const card = document.getElementById('volume-chart-card');
-        if (!ctx || !card || !this._chartsAvailable()) return;
-
-        const weeks = this.getWeeklyVolumes(4);
-        const hasData = weeks.some(w => w.volume > 0);
-        card.classList.toggle('no-data', !hasData);
-        if (this.charts.volume) {
-            this.charts.volume.destroy();
-            this.charts.volume = null;
-        }
-        if (!hasData) return;
-
-        const c = this._chartColors();
-        this.charts.volume = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: weeks.map(w => w.label),
-                datasets: [{
-                    label: 'Volume (kg)',
-                    data: weeks.map(w => w.volume),
-                    backgroundColor: 'rgba(67, 97, 238, 0.7)',
-                    borderColor: 'rgba(67, 97, 238, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { color: c.tick }, grid: { color: c.grid } },
-                    x: { ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    initFrequencyChart() {
-        const ctx = document.getElementById('frequency-chart');
-        const card = document.getElementById('frequency-chart-card');
-        if (!ctx || !card || !this._chartsAvailable()) return;
-
-        const weeks = this.getWeeklyWorkoutCounts(4);
-        const hasData = weeks.some(w => w.count > 0);
-        card.classList.toggle('no-data', !hasData);
-        if (this.charts.frequency) {
-            this.charts.frequency.destroy();
-            this.charts.frequency = null;
-        }
-        if (!hasData) return;
-
-        const c = this._chartColors();
-        this.charts.frequency = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: weeks.map(w => w.label),
-                datasets: [{
-                    label: 'Allenamenti',
-                    data: weeks.map(w => w.count),
-                    borderColor: 'rgba(114, 9, 183, 1)',
-                    backgroundColor: 'rgba(114, 9, 183, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, suggestedMax: 7, ticks: { color: c.tick, stepSize: 1 }, grid: { color: c.grid } },
-                    x: { ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    initWeightChart() {
-        const ctx = document.getElementById('weight-chart');
-        if (!ctx) return;
-
-        const measurements = Storage.getMeasurements().slice(0, 10).reverse();
-        const hasData = measurements.length > 0;
-        const emptyEl = document.getElementById('weight-empty');
-        if (emptyEl) emptyEl.style.display = hasData ? 'none' : 'block';
-        ctx.style.display = hasData ? 'block' : 'none';
-
-        if (this.charts.weight) {
-            this.charts.weight.destroy();
-            this.charts.weight = null;
-        }
-        if (!hasData || !this._chartsAvailable()) return;
-
-        const c = this._chartColors();
-        this.charts.weight = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: measurements.map(m => this._shortDate(m.date)),
-                datasets: [{
-                    label: 'Peso (kg)',
-                    data: measurements.map(m => m.weight),
-                    borderColor: 'rgba(6, 214, 160, 1)',
-                    backgroundColor: 'rgba(6, 214, 160, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { ticks: { color: c.tick }, grid: { color: c.grid } },
-                    x: { ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    // ========================================
-    // CONDITIONING PROGRESS
-    // ========================================
-
-    loadConditioningProgress() {
-        const card = document.getElementById('conditioning-chart-card');
-        if (!card) return;
-
-        const sessions = Storage.getConditioningSessions();
-        const suggestion = this._conditioningSuggestion();
-        if (!sessions.length && !suggestion?.enabled) {
-            card.style.display = 'none';
-            return;
-        }
-
-        card.style.display = '';
-        const hasData = sessions.length > 0;
-        card.classList.toggle('no-data', !hasData);
-        const emptyEl = document.getElementById('conditioning-empty');
-        if (emptyEl) emptyEl.style.display = hasData ? 'none' : 'block';
-        if (hasData) this.initConditioningChart();
-    },
-
-    getWeeklyConditioningCounts(numWeeks) {
-        const sessions = Storage.getConditioningSessions();
-        const weeks = [];
-        for (let i = numWeeks - 1; i >= 0; i--) {
-            const { start, end } = this._weekRange(i);
-            const inWeek = sessions.filter(s => {
-                const d = new Date(s.date);
-                return d >= start && d <= end;
-            });
-            // Il tipo si confronta in minuscolo: vale per i dati vecchi e nuovi (E1)
-            const type = (s) => String(s.type || '').toLowerCase();
-            weeks.push({
-                label: this._weekLabel(i),
-                hiit: inWeek.filter(s => type(s) === 'hiit').length,
-                liss: inWeek.filter(s => type(s) === 'liss').length
-            });
-        }
-        return weeks;
-    },
-
-    initConditioningChart() {
-        const ctx = document.getElementById('conditioning-chart');
-        const card = document.getElementById('conditioning-chart-card');
-        if (!ctx || !card || !this._chartsAvailable()) return;
-
-        const weeks = this.getWeeklyConditioningCounts(4);
-        const hasData = weeks.some(w => w.hiit > 0 || w.liss > 0);
-        card.classList.toggle('no-data', !hasData);
-        if (this.charts.conditioning) {
-            this.charts.conditioning.destroy();
-            this.charts.conditioning = null;
-        }
-        if (!hasData) return;
-
-        const c = this._chartColors();
-        this.charts.conditioning = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: weeks.map(w => w.label),
-                datasets: [
-                    {
-                        label: 'HIIT',
-                        data: weeks.map(w => w.hiit),
-                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                        borderColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'LISS',
-                        data: weeks.map(w => w.liss),
-                        backgroundColor: 'rgba(6, 214, 160, 0.7)',
-                        borderColor: 'rgba(6, 214, 160, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: true, labels: { color: c.tick, boxWidth: 12 } } },
-                scales: {
-                    y: { beginAtZero: true, stacked: true, ticks: { color: c.tick, stepSize: 1 }, grid: { color: c.grid } },
-                    x: { stacked: true, ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    getWeeklyVolumes(numWeeks) {
-        const weeks = [];
-        for (let i = numWeeks - 1; i >= 0; i--) {
-            const { start, end } = this._weekRange(i);
-            const workouts = Storage.getWorkoutsInDateRange(start, end);
-            weeks.push({
-                label: this._weekLabel(i),
-                volume: workouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0)
-            });
-        }
-        return weeks;
-    },
-
-    getWeeklyWorkoutCounts(numWeeks) {
-        const weeks = [];
-        for (let i = numWeeks - 1; i >= 0; i--) {
-            const { start, end } = this._weekRange(i);
-            weeks.push({
-                label: this._weekLabel(i),
-                count: Storage.getWorkoutsInDateRange(start, end).length
-            });
-        }
-        return weeks;
-    },
-
-    saveMeasurement() {
-        const input = document.getElementById('measure-weight');
-        const weight = GT.num(input?.value);
-        if (!(weight > 0)) {
-            this.showNotification('Inserisci il peso', 'warning');
-            return;
-        }
-
-        Storage.saveMeasurement({ weight, bodyFat: null });
-        if (input) input.value = '';
-        const form = document.getElementById('weight-form-container');
-        if (form) form.style.display = 'none';
-
-        this.loadProfile();          // il form del profilo mostra il peso nuovo (E8)
-        this.initWeightChart();
-        this.loadDashboard();
-        this.showNotification(`Peso salvato: ${weight} kg`, 'success');
-    },
-
-    loadWorkoutHistory() {
-        const container = document.getElementById('workout-history-list');
-        if (!container) return;
-        const workouts = Storage.getRecentWorkouts(10);
-
-        if (workouts.length === 0) {
-            container.innerHTML = '<p class="empty-state-mini">Nessun allenamento registrato</p>';
-            return;
-        }
-
-        container.innerHTML = workouts.map(w => `
-            <div class="workout-history-item clickable" data-workout-id="${GT.esc(w.id)}" tabindex="0" role="button">
-                <div class="workout-history-info">
-                    <div class="workout-history-name">${GT.esc(w.name || 'Allenamento')}</div>
-                    <div class="workout-history-meta">${GT.esc(GT.formatRelativeDay(new Date(w.date)))} • ${Math.round((w.duration || 0) / 60)} min</div>
-                </div>
-                <div class="workout-history-stats">${GT.esc(GT.formatVolume(w.totalVolume || 0))} →</div>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.workout-history-item').forEach(item => {
-            item.addEventListener('click', () => this.showWorkoutDetail(item.dataset.workoutId));
-            this._makeKeyboardClickable(item);
-        });
-    },
-
-    // true se l'allenamento è stato eliminato
-    deleteWorkoutSession(workoutId, event) {
-        if (event) event.stopPropagation();
-        const workout = this._findWorkout(workoutId);
-        if (!workout) {
-            this.showNotification('Allenamento non trovato', 'error');
-            return false;
-        }
-
-        const when = GT.formatRelativeDay(new Date(workout.date));
-        if (!confirm(`Eliminare ${workout.name || 'l\'allenamento'} (${when.toLowerCase()})? ${workout.totalSets || 0} serie`)) return false;
-
-        Storage.deleteWorkout(workout.id);   // ricalcola anche i PR
-        this.showNotification('Allenamento eliminato', 'success');
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
-        if (this.currentPage === 'progressi') this._safe(() => this.initCharts());
-        return true;
-    },
-
-    loadPersonalRecords() {
-        const container = document.getElementById('prs-list');
-        if (!container) return;
-        const prs = Storage.getPersonalRecords() || {};
-        const e1rmOf = (pr) => pr.estimated1RM ?? pr.e1rm ?? 0;
-        const entries = Object.entries(prs).filter(([, pr]) => pr && (e1rmOf(pr) > 0 || pr.maxWeight > 0));
-
-        if (entries.length === 0) {
-            container.innerHTML = '<p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>';
-            return;
-        }
-
-        entries.sort((a, b) => e1rmOf(b[1]) - e1rmOf(a[1]));
-
-        container.innerHTML = entries.slice(0, 10).map(([exId, pr]) => {
-            const name = EXERCISES_DB[exId]?.name || exId;
-            const shortName = name.length > 22 ? name.substring(0, 20) + '…' : name;
-            const bestDetail = pr.e1rmWeight && pr.e1rmReps
-                ? `${pr.e1rmWeight} kg × ${pr.e1rmReps}`
-                : `${pr.maxWeight} kg × ${pr.maxWeightReps || pr.maxReps || '?'}`;
-            const dateRaw = pr.e1rmDate || pr.maxWeightDate;
-            const dateStr = dateRaw ? this._shortDate(dateRaw) : '';
-
-            return `
-                <div class="pr-item-detail">
-                    <div class="pr-item-top">
-                        <span class="pr-exercise" title="${GT.esc(name)}">${GT.esc(shortName)}</span>
-                        <span class="pr-e1rm">${GT.esc(Math.round(e1rmOf(pr) * 10) / 10)} kg <small>E1RM</small></span>
-                    </div>
-                    <div class="pr-item-bottom">
-                        <span class="pr-best-set">${GT.esc(bestDetail)}</span>
-                        <span class="pr-date">${GT.esc(dateStr)}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    },
-
-    // Le opzioni si ricostruiscono, la scelta resta; il listener è uno solo (E9)
-    populateStrengthExerciseSelect() {
-        const select = document.getElementById('strength-exercise-select');
-        if (!select) return;
-        const previous = select.value;
-        const prs = Storage.getPersonalRecords() || {};
-
-        const options = Object.keys(prs)
-            .filter(id => EXERCISES_DB[id])
-            .sort((a, b) => EXERCISES_DB[a].name.localeCompare(EXERCISES_DB[b].name))
-            .map(id => `<option value="${GT.esc(id)}">${GT.esc(EXERCISES_DB[id].name)}</option>`);
-
-        select.innerHTML = '<option value="">Scegli un esercizio…</option>' + options.join('');
-        if (previous && prs[previous]) select.value = previous;
-    },
-
-    showStrengthProgress(exerciseId) {
-        const ctx = document.getElementById('strength-chart');
-        const chartContainer = document.getElementById('strength-chart-container');
-        const emptyEl = document.getElementById('strength-empty');
-        if (!ctx) return;
-
-        if (this.charts.strength) {
-            this.charts.strength.destroy();
-            this.charts.strength = null;
-        }
-
-        const history = exerciseId ? (Storage.getExerciseHistory(exerciseId) || []) : [];
-        if (!exerciseId || history.length === 0 || !this._chartsAvailable()) {
-            if (chartContainer) chartContainer.style.display = 'none';
-            if (emptyEl) {
-                emptyEl.style.display = 'block';
-                emptyEl.textContent = exerciseId ? 'Nessun dato per questo esercizio' : 'Scegli un esercizio';
-            }
-            return;
-        }
-
-        if (chartContainer) chartContainer.style.display = 'block';
-        if (emptyEl) emptyEl.style.display = 'none';
-
-        const c = this._chartColors();
-        this.charts.strength = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: history.map(h => this._shortDate(h.date)),
-                datasets: [{
-                    label: 'Peso (kg)',
-                    data: history.map(h => h.weight),
-                    borderColor: 'rgba(67, 97, 238, 1)',
-                    backgroundColor: 'rgba(67, 97, 238, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }, {
-                    label: 'E1RM (kg)',
-                    data: history.map(h => h.e1rm ?? h.estimated1RM),
-                    borderColor: 'rgba(6, 214, 160, 1)',
-                    borderDash: [5, 5],
-                    fill: false,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { color: c.tick } } },
-                scales: {
-                    y: { ticks: { color: c.tick }, grid: { color: c.grid } },
-                    x: { ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    // ========================================
-    // PROGRESS PAGE - MESOCYCLE, MUSCLE VOLUME, RIR, CYCLE HISTORY
-    // ========================================
-
-    loadProgressCycleInfo() {
-        const container = document.getElementById('progress-cycle-info');
-        if (!container) return;
-
-        const cycleInfo = Storage.getCycleInfo();
-        const program = Storage.getActiveProgram();
-        if (!cycleInfo || !program) {
-            container.innerHTML = '<p class="empty-state-mini">Nessuna scheda attiva</p>';
-            return;
-        }
-
-        const isDeload = Storage.isDeloadActive();
-        const phase = this._currentPhase(cycleInfo, isDeload) || {};
-        const goal = this._goalLabel(program.metadata?.goal) || 'Allenamento';
-        const cycleNum = program.metadata?.cycleNumber || 1;
-        const rir = phase.rirTarget ? `${phase.rirTarget.min}-${phase.rirTarget.max}` : '—';
-        const volume = Math.round((phase.volumeMultiplier ?? 1) * 100);
-        const phaseClass = isDeload ? 'deload' : String(phase.phase || '').replace(/[^a-z-]/gi, '');
-        const row = (label, value, cls = '') => `
-            <div class="cycle-detail-row">
-                <span class="cycle-detail-label">${label}</span>
-                <span class="cycle-detail-value ${cls}">${value}</span>
-            </div>`;
-
-        container.innerHTML = `
-            <div class="cycle-progress-detail">
-                ${row('Obiettivo', GT.esc(goal))}
-                ${row('Ciclo #', GT.esc(cycleNum))}
-                ${row('Settimana', `${cycleInfo.currentWeek} / ${cycleInfo.duration}`)}
-                ${row('Fase', GT.esc(phase.phaseName || ''), `phase-badge ${phaseClass}`)}
-                ${row('RIR', GT.esc(rir))}
-                ${row('Volume', `${volume}%`)}
-                <div class="cycle-progress-bar-container">
-                    <div class="cycle-progress-bar">
-                        <div class="cycle-progress-fill" style="width: ${Math.max(0, Math.min(100, cycleInfo.progress || 0))}%"></div>
-                    </div>
-                    <span class="cycle-progress-text">${cycleInfo.progress > 0 ? `${cycleInfo.progress}% fatto` : `Settimana ${cycleInfo.currentWeek} in corso`}</span>
-                </div>
-            </div>
-        `;
-    },
-
-    // Serie fatte questa settimana per muscolo (primari 1, secondari 0,5), confrontate con
-    // il volume ottimale del livello (E10)
-    loadMuscleVolumeBars() {
-        const container = document.getElementById('muscle-volume-bars');
-        if (!container) return;
-
-        const workoutsThisWeek = Storage.getWorkoutsThisWeek();
-        if (!workoutsThisWeek.length) {
-            container.innerHTML = '<p class="empty-state-mini">Completa allenamenti per vedere il volume per muscolo</p>';
-            return;
-        }
-
-        const muscleVolume = {};
-        workoutsThisWeek.forEach(w => {
-            (w.exercises || []).forEach(ex => {
-                const exercise = EXERCISES_DB[ex.exerciseId];
-                if (!exercise) return;
-                const sets = (ex.sets || []).filter(s => s.completed && parseInt(s.reps) > 0).length;
-                if (!sets) return;
-                (exercise.primaryMuscles || []).forEach(m => { muscleVolume[m] = (muscleVolume[m] || 0) + sets; });
-                (exercise.secondaryMuscles || []).forEach(m => { muscleVolume[m] = (muscleVolume[m] || 0) + sets * 0.5; });
-            });
-        });
-
-        const muscleLabels = {
-            petto: 'Petto', schiena: 'Schiena', spalle: 'Spalle', bicipiti: 'Bicipiti',
-            tricipiti: 'Tricipiti', quadricipiti: 'Quadricipiti', femorali: 'Femorali',
-            glutei: 'Glutei', polpacci: 'Polpacci', addome: 'Addome', trapezio: 'Trapezio'
-        };
-        const sorted = Object.entries(muscleVolume)
-            .filter(([m, v]) => muscleLabels[m] && v > 0)
-            .sort((a, b) => b[1] - a[1]);
-
-        if (!sorted.length) {
-            container.innerHTML = '<p class="empty-state-mini">Nessuna serie questa settimana</p>';
-            return;
-        }
-
-        const program = Storage.getActiveProgram();
-        const level = program?.metadata?.level || Storage.getProfile().level || 'intermediate';
-        const cfg = TrainingAlgorithm.VOLUME_CONFIG?.[level] || { min: 10, max: 20 };
-        const minOptimal = cfg.min || 10;
-        const maxOptimal = cfg.max || 20;
-        const scale = Math.max(maxOptimal, ...sorted.map(([, v]) => v));
-        const colors = { low: 'var(--warning)', optimal: 'var(--success)', high: 'var(--accent-primary)' };
-
-        container.innerHTML = sorted.map(([muscle, sets]) => {
-            const status = sets < minOptimal ? 'low' : sets > maxOptimal ? 'high' : 'optimal';
-            const shown = Math.round(sets * 2) / 2;
-            return `
-                <div class="muscle-volume-row" title="Ottimale ${minOptimal}-${maxOptimal} serie/settimana">
-                    <span class="muscle-volume-label">${muscleLabels[muscle]}</span>
-                    <div class="muscle-volume-bar-bg">
-                        <div class="muscle-volume-bar-fill muscle-vol-${status}" style="width: ${Math.min(100, (sets / scale) * 100)}%; background: ${colors[status]};"></div>
-                    </div>
-                    <span class="muscle-volume-value">${String(shown).replace('.', ',')}</span>
-                </div>
-            `;
-        }).join('');
-    },
-
-    loadRirTrend() {
-        const ctx = document.getElementById('rir-chart');
-        const card = document.getElementById('rir-trend-card');
-        const emptyEl = document.getElementById('rir-empty');
-        if (!ctx || !card) return;
-
-        const rirData = Storage.getRecentWorkouts(10)
-            .map(w => {
-                const rirs = [];
-                (w.exercises || []).forEach(ex => (ex.sets || []).forEach(s => {
-                    if (Number.isFinite(s.rir)) rirs.push(s.rir);
-                }));
-                if (!rirs.length) return null;
-                return { date: this._shortDate(w.date), avgRir: rirs.reduce((a, b) => a + b, 0) / rirs.length };
-            })
-            .filter(Boolean)
-            .reverse();
-
-        if (this.charts.rir) {
-            this.charts.rir.destroy();
-            this.charts.rir = null;
-        }
-        if (!rirData.length || !this._chartsAvailable()) {
-            if (emptyEl) emptyEl.style.display = 'block';
-            ctx.style.display = 'none';
-            return;
-        }
-
-        if (emptyEl) emptyEl.style.display = 'none';
-        ctx.style.display = 'block';
-
-        const c = this._chartColors();
-        this.charts.rir = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: rirData.map(d => d.date),
-                datasets: [{
-                    label: 'RIR medio',
-                    data: rirData.map(d => Math.round(d.avgRir * 10) / 10),
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { min: 0, max: 5, reverse: true, ticks: { color: c.tick, stepSize: 1 }, grid: { color: c.grid } },
-                    x: { ticks: { color: c.tick }, grid: { display: false } }
-                }
-            }
-        });
-    },
-
-    loadCycleHistory() {
-        const container = document.getElementById('cycle-history-list');
-        if (!container) return;
-
-        const history = Storage.getCycleHistory() || [];
-        if (!history.length) {
-            container.innerHTML = '<p class="empty-state-mini">Nessun ciclo completato</p>';
-            return;
-        }
-
-        container.innerHTML = history.slice(0, 5).map((c, i) => {
-            const goal = this._goalLabel(c.goal) || c.goal || '';
-            const startDate = c.startDate ? this._shortDate(c.startDate) : '?';
-            const endDate = c.completedAt ? this._shortDate(c.completedAt) : '?';
-            const stats = c.statistics || {};
-            return `
-                <div class="cycle-history-item">
-                    <div class="cycle-history-header">
-                        <strong>Ciclo ${GT.esc(c.cycleNumber || history.length - i)}</strong>
-                        <span class="cycle-history-dates">${GT.esc(startDate)} - ${GT.esc(endDate)}</span>
-                    </div>
-                    <div class="cycle-history-meta">
-                        <span>${GT.esc(goal)}</span>
-                        <span>${GT.esc(c.duration || '?')} sett</span>
-                        <span>${GT.esc(stats.totalWorkouts || 0)} allenamenti</span>
-                        <span>${stats.totalVolume ? GT.esc(GT.formatVolume(stats.totalVolume)) : '-'}</span>
-                        ${stats.prsAchieved ? `<span>${GT.esc(stats.prsAchieved)} PR</span>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
     },
 });

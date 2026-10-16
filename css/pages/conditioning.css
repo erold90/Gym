@@ -1,16 +1,59 @@
 /* =====================================================================
    GymTracker 2.0 — pages/conditioning.css: foglio del cardio (HIIT/LISS).
+   Il timer a intervalli è grande come il recupero della seduta: si legge dalla panca.
    File dell'area Cardio (js/app/conditioning.js).
    ===================================================================== */
 
-/* i passi li mostra showConditioningStep() con style.display: il ritmo lo fanno i margini */
-.conditioning-step > * + * { margin-top: var(--s-4); }
-.conditioning-header.head { margin-left: calc(var(--s-2) * -1); }
-.conditioning-header h3 { font-size: var(--fs-lg); }
+.cd { gap: var(--s-4); }
+.cd > *, .cd-step > * { flex-shrink: 0; }
+.cd .sheet__head h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-back { margin-left: calc(var(--s-2) * -1); flex: none; }
+.cd-step { display: flex; flex-direction: column; gap: var(--s-5); }
+.cd-step[hidden] { display: none !important; }
+.cd-meta { font-size: var(--fs-body); color: var(--text-2); }
+.cd-meta .num { color: var(--text); font-size: var(--fs-lg); }
+.cd-tip { font-size: var(--fs-sm); }
+.cd-proto .choice__body span { white-space: normal; }
 
-/* intervallo HIIT: visibile solo durante il lavoro o il recupero (classi messe da _renderHiitInterval) */
-.conditioning-interval:not(.is-work):not(.is-rest) { display: none; }
-.conditioning-interval { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-lg); background: var(--surface-2); }
-.conditioning-interval.is-work { background: var(--accent); color: var(--on-accent); }
-.conditioning-interval .interval-time { font-size: var(--fn-xl); line-height: 1; font-weight: 800; font-stretch: 72%; }
-.conditioning-timer-display .timer-value { font-size: var(--fn-lg); line-height: 1; }
+/* esercizi HIIT: scelta multipla, la spunta dice "dentro" */
+.cd-exs .row { min-height: 64px; }
+.cd-exs .thumb--sm { width: 44px; height: 44px; }
+.cd-ex .choice__mark .ico { opacity: 0; }
+.cd-ex[aria-pressed="true"] .choice__mark { background: var(--accent); border-color: var(--accent-edge); }
+.cd-ex[aria-pressed="true"] .choice__mark .ico { opacity: 1; }
+.cd-ex[aria-pressed="true"] .row__title { font-weight: 700; }
+.cd-exs li + li .row::before { content: ""; position: absolute; top: 0; left: var(--s-4); right: 0; height: 1px; background: var(--line); }
+
+/* bottone principale in fondo al foglio, sempre raggiungibile */
+.cd-foot { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--gutter) * -1) calc(var(--s-5) * -1 - var(--safe-b)); padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
+
+/* timer a intervalli: lavoro = giallo pieno (va visto da lontano), recupero = grafite, fine = verde */
+.cd-int { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--s-1); padding: var(--s-5) var(--s-4) var(--s-6); border-radius: var(--r-lg); background: var(--surface-2); color: var(--text); overflow: hidden; text-align: center; transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out); }
+.cd-int__phase { font-size: var(--fs-lg); font-weight: 760; text-transform: uppercase; letter-spacing: 0.06em; }
+.cd-int__time { font-size: var(--fn-2xl); line-height: 0.92; font-weight: 800; font-stretch: 72%; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.cd-int__round { font-size: var(--fs-sm); font-weight: 650; color: var(--text-2); min-height: 1.2em; }
+.cd-int__track { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: var(--surface-3); }
+.cd-int__fill { display: block; height: 100%; width: var(--p, 100%); background: var(--accent-mark); transition: width 250ms linear; }
+.cd-int.is-work { background: var(--accent); color: var(--on-accent); }
+.cd-int.is-work .cd-int__round { color: var(--on-accent); }
+.cd-int.is-work .cd-int__track { background: rgb(0 0 0 / 0.12); }
+.cd-int.is-work .cd-int__fill { background: var(--on-accent); }
+.cd-int.is-rest.is-last { box-shadow: inset 0 0 0 3px var(--accent-mark); }
+.cd-int.is-done { background: var(--ok); color: var(--on-color); }
+.cd-int.is-done .cd-int__round { color: var(--on-color); }
+.cd-int.is-done .cd-int__track { display: none; }
+.cd-int.is-liss .cd-int__track { display: none; }
+
+/* esercizio di adesso (o il prossimo, durante il recupero) */
+.cd-now__ex { display: flex; align-items: center; gap: var(--s-4); }
+.cd-now__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cd-now__head { display: flex; flex-direction: column; gap: 2px; }
+.cd-now__label { font-size: var(--fs-cap); font-weight: 650; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.cd-now__name { font-size: var(--fs-lg); font-weight: 760; line-height: 1.2; }
+.cd-now__desc { font-size: var(--fs-sm); color: var(--text-2); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.cd-total { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--line); }
+.cd-total__v { font-size: var(--fn-md); }
+
+/* fatto */
+.cd-done { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-lg); font-weight: 760; color: var(--ok-text); }
+.cd-stats .stat__v { font-size: 2.25rem; }

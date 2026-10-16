@@ -1,18 +1,66 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/esercizi.css: libreria (sottopagina) e scheda dell'esercizio.
+   GymTracker 2.0 — pages/esercizi.css: libreria (sottopagina e foglio di scelta), scheda dell'esercizio.
    Fonte: proto.css sezione 6. File dell'area Esercizi (js/app/esercizi.js).
    ===================================================================== */
 
-/* Esercizi */
+/* libreria: ricerca, tipo, chip combinabili, conteggio, righe con miniatura 64 */
+.lib-root { display: flex; flex-direction: column; gap: var(--s-4); padding-top: var(--s-2); }
+.lib-root--sheet { padding-top: 0; }
+.lib-filters { display: flex; flex-direction: column; gap: var(--s-2); }
+.lib-count { align-items: center; min-height: 44px; margin-bottom: calc(var(--s-3) * -1); }
+.lib-count .btn { font-size: var(--fs-sm); margin-right: calc(var(--s-3) * -1); }
+.count { font-size: var(--fs-sm); color: var(--text-3); font-weight: 560; }
+.lib-empty__t { font-size: var(--fs-lg); }
+
 .lib { display: flex; flex-direction: column; }
-.libr { color: inherit; text-decoration: none; display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; min-height: 80px; width: 100%; text-align: left; position: relative; }
-.libr + .libr::before { content: ""; position: absolute; top: 0; left: 76px; right: 0; height: 1px; background: var(--line); }
+.lib > li { position: relative; display: flex; align-items: center; }
+.lib > li + li::before { content: ""; position: absolute; top: 0; left: 76px; right: 0; height: 1px; background: var(--line); }
+.libr { color: inherit; text-decoration: none; display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; min-height: 88px; flex: 1; min-width: 0; width: 100%; text-align: left; border-radius: var(--r-sm); }
+.libr:active { background: var(--surface-2); }
 .libr .thumb { width: 64px; height: 64px; }
 .libr__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .libr__name { font-weight: 650; line-height: 1.25; }
 .libr__sub { font-size: var(--fs-sm); color: var(--text-2); }
-.libr__eq { color: var(--text-3); display: flex; gap: 4px; }
-.count { font-size: var(--fs-sm); color: var(--text-3); font-weight: 560; }
+.libr__eq { color: var(--text-3); display: flex; gap: 4px; flex: none; }
+.lib__info { flex: none; color: var(--text-3); }
+@media (hover: hover) { .libr:hover { background: var(--surface-2); } }
+
+/* miniatura senza GIF: l'icona dell'attrezzo su grafite */
+.thumb--ico { display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
+.thumb--ico .ico { width: 28px; height: 28px; }
+
+/* fogli al volo delle aree G4 (App._sheet): niente si schiaccia quando il contenuto supera l'altezza */
+.g4-sheet > * { flex-shrink: 0; }
+
+/* foglio di scelta: la libreria dentro un foglio alto */
+.pick-sheet { gap: var(--s-4); }
+.pick-sheet .chips--scroll { margin: 0 calc(var(--gutter) * -1); padding: 2px var(--gutter); }
+
+/* scheda dell'esercizio */
+.ex-sheet { gap: var(--s-5); }
+.ex-media { border-radius: var(--r-lg); background: var(--media-plate); overflow: hidden; aspect-ratio: 1; max-height: 340px; display: grid; place-items: center; }
+.ex-media img { width: 100%; height: 100%; object-fit: contain; filter: var(--media-dim); }
+.ex-media--svg { background: var(--surface-2); }
+.ex-media > svg { width: 82%; height: 82%; max-width: 280px; }
+/* animazioni di ripiego (colori della v1 nell'SVG): ricolorate con i token del tema */
+.ex-media svg [stroke="#7209b7"], .ex-media svg [stroke="#16213e"] { stroke: var(--text); }
+.ex-media svg [stroke="#4361ee"] { stroke: var(--accent-mark); }
+.ex-media svg [fill="#4361ee"] { fill: var(--accent-mark); }
+.ex-media svg [fill="#7209b7"] { fill: var(--text); }
+.ex-media svg [fill="#1a1a2e"], .ex-media svg [fill="#16213e"] { fill: var(--surface-3); }
+.ex-media svg [fill="#fff"] { fill: var(--surface-1); }
+.gif-loading { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--surface-3); border-top-color: var(--accent-mark); animation: ex-spin 900ms linear infinite; }
+@keyframes ex-spin { to { transform: rotate(360deg); } }
+.ex-tags { margin-top: calc(var(--s-2) * -1); }
+.ex-part { gap: var(--s-3); }
+.ex-part h3 { font-size: var(--fs-lg); }
+.ex-val { font-size: var(--fn-sm); flex: none; }
+.row__icon.ex-pr { background: var(--accent-soft); color: var(--accent-text); }
+.ex-text { line-height: 1.45; color: var(--text-2); }
+.ex-tips { display: flex; flex-direction: column; gap: var(--s-2); }
+.ex-tips li { position: relative; padding-left: var(--s-5); line-height: 1.4; color: var(--text-2); }
+.ex-tips li::before { content: ""; position: absolute; left: 4px; top: 0.6em; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+
 .steps-list { counter-reset: s; display: flex; flex-direction: column; gap: var(--s-3); }
 .steps-list li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: var(--s-3); align-items: start; line-height: 1.4; }
 .steps-list li::before { content: counter(s); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 760; font-stretch: var(--narrow); font-size: var(--fs-sm); }
@@ -20,6 +68,6 @@
 .errs li { display: grid; grid-template-columns: 24px 1fr; gap: var(--s-3); line-height: 1.4; }
 .errs .ico { color: var(--warn-text); width: 22px; height: 22px; }
 
-/* "Come si fa": la GIF (o l'animazione SVG di ripiego) riempie la lastra chiara */
-.exercise-gif-container { height: 100%; display: grid; place-items: center; }
-.exercise-gif-container > svg { max-width: 100%; max-height: 100%; }
+@media (min-width: 960px) {
+  #ex-lib { width: 100%; max-width: 880px; margin: 0 auto; }
+}

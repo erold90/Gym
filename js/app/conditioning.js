@@ -1,92 +1,107 @@
 /**
- * GymTracker 2.0 — area CARDIO (HIIT/LISS): consiglio in Oggi, foglio di scelta, sessione a tempo, salvataggio.
+ * GymTracker 2.0 — area CARDIO (HIIT/LISS): consiglio in Oggi, foglio con scelta del tipo, protocollo ed
+ * esercizi, timer a intervalli grande (come il recupero della seduta), salvataggio con kcal misurate e note.
+ * Il tempo si calcola sempre dal timestamp di partenza (E3): giusto anche se iOS sospende l'app.
+ *
+ * Si apre con App.openConditioningModal() (alias App.openConditioning) o con un clic su
+ * #conditioning-btn / [data-action="cardio"] in qualunque pagina.
  */
 
 Object.assign(App, {
     // ========================================
-    // GUSCIO DELL'AREA: foglio del cardio e listener (la riga "Cardio" sta nella pagina Oggi)
+    // GUSCIO DELL'AREA: foglio del cardio e listener
     // ========================================
 
     sheetsConditioning() {
-        const back = (id) => `<button type="button" class="btn btn--ghost btn--icon" id="${id}" aria-label="Indietro">${this.ico('back')}</button>`;
         return `
             <div class="modal" id="conditioning-modal">
-                <section class="sheet sheet--tall conditioning-modal-content" role="dialog" aria-modal="true" aria-labelledby="conditioning-title-sheet">
+                <section class="sheet sheet--tall cd" role="dialog" aria-modal="true" aria-labelledby="conditioning-title-sheet">
                     <span class="sheet__grip" aria-hidden="true"></span>
                     <div class="sheet__head">
+                        <button type="button" class="btn btn--ghost btn--icon cd-back" id="conditioning-back" aria-label="Indietro: scegli il tipo" hidden>${this.ico('back')}</button>
                         <h2 id="conditioning-title-sheet">Cardio</h2>
                         <button type="button" class="btn btn--ghost btn--icon sheet__close" id="close-conditioning-modal" aria-label="Chiudi il cardio">${this.ico('close')}</button>
                     </div>
 
                     <!-- Passo 1: tipo -->
-                    <div class="conditioning-step" id="conditioning-step-1">
-                        <p class="conditioning-week-status muted" id="conditioning-week-status"></p>
-                        <div class="choices conditioning-type-grid">
-                            <button type="button" class="choice conditioning-type-card" id="choose-hiit">
-                                <span class="choice__icon type-icon">${this.ico('bolt')}</span>
-                                <span class="choice__body"><b class="type-name">HIIT</b><span class="type-desc">Alta intensità · <span class="type-time num">15-20</span> min</span></span>
+                    <div class="conditioning-step cd-step" id="conditioning-step-1">
+                        <p class="muted" id="conditioning-week-status"></p>
+                        <div class="choices">
+                            <button type="button" class="choice" id="choose-hiit">
+                                <span class="choice__icon">${this.ico('bolt')}</span>
+                                <span class="choice__body"><b>HIIT</b><span>Intervalli intensi · <span class="num">15-20</span> min</span></span>
                                 <span class="row__end">${this.ico('next')}</span>
                             </button>
-                            <button type="button" class="choice conditioning-type-card" id="choose-liss">
-                                <span class="choice__icon type-icon">${this.ico('steps')}</span>
-                                <span class="choice__body"><b class="type-name">LISS</b><span class="type-desc">Bassa intensità · <span class="type-time num">20-30</span> min</span></span>
+                            <button type="button" class="choice" id="choose-liss">
+                                <span class="choice__icon">${this.ico('steps')}</span>
+                                <span class="choice__body"><b>LISS</b><span>Ritmo costante · <span class="num">20-30</span> min</span></span>
                                 <span class="row__end">${this.ico('next')}</span>
                             </button>
                         </div>
+                        <p class="faint cd-tip" id="conditioning-tip"></p>
                     </div>
 
                     <!-- Passo 2: HIIT -->
-                    <div class="conditioning-step" id="conditioning-step-hiit" style="display: none;">
-                        <div class="conditioning-header head">${back('conditioning-back-hiit')}<h3 id="hiit-protocol-name">HIIT</h3></div>
-                        <p class="conditioning-meta muted" id="hiit-meta"></p>
-                        <!-- Protocolli: app.js lo riempie da HIIT_PROTOCOLS con
-                             <button type="button" class="protocol-option" role="radio" aria-checked="true|false" data-protocol="…"> -->
-                        <div class="protocol-list" id="hiit-protocol-list" role="radiogroup" aria-label="Protocollo"></div>
-                        <div class="conditioning-exercises-list" id="hiit-exercises-list"></div>
-                        <div class="conditioning-protocol-info"><p id="hiit-protocol-desc" class="muted"></p></div>
-                        <button type="button" class="btn btn--primary btn--xl btn--block" id="start-hiit-btn">${this.ico('play')}Inizia HIIT</button>
+                    <div class="conditioning-step cd-step" id="conditioning-step-hiit" hidden>
+                        <p class="cd-meta" id="hiit-meta"></p>
+                        <section class="section" aria-labelledby="cd-proto-t">
+                            <h3 class="cap" id="cd-proto-t">Protocollo</h3>
+                            <div class="choices" id="hiit-protocol-list" role="radiogroup" aria-labelledby="cd-proto-t"></div>
+                        </section>
+                        <section class="section" aria-labelledby="cd-ex-t">
+                            <div class="section__head"><h3 class="cap" id="cd-ex-t">Esercizi</h3><span class="count" id="hiit-ex-count" aria-live="polite"></span></div>
+                            <ul class="group cd-exs" id="hiit-exercises-list" aria-labelledby="cd-ex-t"></ul>
+                        </section>
+                        <div class="cd-foot">
+                            <button type="button" class="btn btn--primary btn--xl btn--block" id="start-hiit-btn">${this.ico('play')}Inizia HIIT</button>
+                        </div>
                     </div>
 
                     <!-- Passo 2b: LISS -->
-                    <div class="conditioning-step" id="conditioning-step-liss" style="display: none;">
-                        <div class="conditioning-header head">${back('conditioning-back-liss')}<h3>LISS</h3></div>
-                        <p class="conditioning-meta muted" id="liss-meta"></p>
-                        <div class="liss-activities-list" id="liss-activities-list"></div>
-                        <button type="button" class="btn btn--primary btn--xl btn--block" id="start-liss-btn">${this.ico('play')}Inizia LISS</button>
+                    <div class="conditioning-step cd-step" id="conditioning-step-liss" hidden>
+                        <p class="cd-meta" id="liss-meta"></p>
+                        <div class="choices" id="liss-activities-list" role="radiogroup" aria-label="Attività"></div>
+                        <div class="cd-foot">
+                            <button type="button" class="btn btn--primary btn--xl btn--block" id="start-liss-btn">${this.ico('play')}Inizia LISS</button>
+                        </div>
                     </div>
 
                     <!-- Passo 3: in corso -->
-                    <div class="conditioning-step" id="conditioning-step-active" style="display: none;">
-                        <h3 class="conditioning-header" id="active-session-title">Seduta in corso</h3>
-                        <!-- Intervallo HIIT: visibile solo con .is-work o .is-rest (lo pilota conditioning.js) -->
-                        <div class="conditioning-interval" id="conditioning-interval">
-                            <span class="interval-phase" id="conditioning-interval-phase" aria-live="assertive">Lavoro</span>
-                            <span class="interval-time num" id="conditioning-interval-time" role="timer">0:20</span>
-                            <span class="interval-round num" id="conditioning-interval-round"></span>
+                    <div class="conditioning-step cd-step" id="conditioning-step-active" hidden>
+                        <div class="cd-int" id="conditioning-interval">
+                            <span class="cd-int__phase" id="conditioning-interval-phase" aria-live="polite">Lavoro</span>
+                            <span class="cd-int__time num" id="conditioning-interval-time" role="timer" aria-label="Tempo dell'intervallo">0:30</span>
+                            <span class="cd-int__round" id="conditioning-interval-round"></span>
+                            <span class="cd-int__track" aria-hidden="true"><span class="cd-int__fill" id="conditioning-interval-fill"></span></span>
                         </div>
-                        <div class="conditioning-timer-display">
-                            <span class="timer-value num" id="conditioning-timer" role="timer" aria-label="Tempo totale">00:00</span>
+                        <div class="cd-now" id="conditioning-active-info"></div>
+                        <div class="cd-total">
+                            <span class="cap">Tempo totale</span>
+                            <span class="num cd-total__v" id="conditioning-timer" role="timer" aria-label="Tempo totale">00:00</span>
                         </div>
-                        <div class="conditioning-active-info" id="conditioning-active-info"></div>
-                        <button type="button" class="btn btn--secondary btn--xl btn--block btn--danger-text" id="end-conditioning-btn">${this.ico('stop')}Termina</button>
+                        <div class="cd-foot">
+                            <button type="button" class="btn btn--secondary btn--xl btn--block btn--danger-text" id="end-conditioning-btn">${this.ico('stop')}Termina</button>
+                        </div>
                     </div>
 
                     <!-- Passo 4: fatto -->
-                    <div class="conditioning-step" id="conditioning-step-complete" style="display: none;">
-                        <h3>Cardio fatto</h3>
-                        <div class="stats conditioning-summary" style="--n: 2">
-                            <div class="stat summary-item"><span class="stat__v num summary-value" id="summary-duration">00:00</span><span class="stat__k summary-label">Durata</span></div>
-                            <div class="stat summary-item"><span class="stat__v num summary-value" id="summary-calories">0</span><span class="stat__k summary-label">kcal stimate</span></div>
+                    <div class="conditioning-step cd-step" id="conditioning-step-complete" hidden>
+                        <p class="cd-done">${this.ico('check')}<span id="cd-done-title">Cardio fatto</span></p>
+                        <div class="stats cd-stats" style="--n: 2">
+                            <div class="stat"><span class="stat__v num" id="summary-duration">0<small>min</small></span><span class="stat__k">durata</span></div>
+                            <div class="stat"><span class="stat__v num" id="summary-calories">0<small>kcal</small></span><span class="stat__k">stimate</span></div>
                         </div>
-                        <div class="field conditioning-manual-input">
-                            <label for="manual-calories">kcal misurate (es. Apple Watch)</label>
-                            <input class="input" type="number" id="manual-calories" inputmode="numeric" min="0">
+                        <div class="field">
+                            <label for="manual-calories">kcal misurate (es. Apple Watch) · facoltativo</label>
+                            <input class="input num" type="text" id="manual-calories" inputmode="numeric" autocomplete="off">
                         </div>
-                        <div class="field conditioning-notes">
-                            <label for="conditioning-notes">Note</label>
-                            <textarea class="input" id="conditioning-notes" rows="2"></textarea>
+                        <div class="field">
+                            <label for="conditioning-notes">Note · facoltativo</label>
+                            <textarea class="input" id="conditioning-notes" rows="2" maxlength="500"></textarea>
                         </div>
-                        <button type="button" class="btn btn--primary btn--xl btn--block" id="save-conditioning-btn">${this.ico('check')}Salva</button>
+                        <div class="cd-foot">
+                            <button type="button" class="btn btn--primary btn--xl btn--block" id="save-conditioning-btn">${this.ico('check')}Salva cardio</button>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -96,18 +111,46 @@ Object.assign(App, {
     bindConditioning() {
         const on = (id, ev, fn) => this._on(id, ev, fn);
 
-        // Conditioning
-        on('conditioning-btn', 'click', () => this.openConditioningModal());
+        // Apertura da qualunque pagina (la riga "Cardio" di Oggi la disegna l'area Oggi)
+        document.addEventListener('click', (e) => {
+            const t = e.target.closest('#conditioning-btn, [data-action="cardio"]');
+            if (!t || e.defaultPrevented) return;
+            e.preventDefault();
+            this.openConditioningModal();
+        });
+
         on('close-conditioning-modal', 'click', () => this.closeConditioningModal());
         this._closeOnBackdrop('conditioning-modal', () => this.closeConditioningModal());
+        on('conditioning-back', 'click', () => this.showConditioningStep('1'));
         on('choose-hiit', 'click', () => this.chooseConditioningType('hiit'));
         on('choose-liss', 'click', () => this.chooseConditioningType('liss'));
-        ['choose-hiit', 'choose-liss'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) this._makeKeyboardClickable(el);
+
+        on('hiit-protocol-list', 'click', (e) => {
+            const b = e.target.closest('[data-protocol]');
+            if (!b) return;
+            this.conditioningState.protocol = b.dataset.protocol;
+            document.querySelectorAll('#hiit-protocol-list [data-protocol]').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+            this.updateHIITInfo();
         });
-        on('conditioning-back-hiit', 'click', () => this.showConditioningStep('1'));
-        on('conditioning-back-liss', 'click', () => this.showConditioningStep('1'));
+        on('hiit-exercises-list', 'click', (e) => {
+            const b = e.target.closest('[data-exercise-id]');
+            if (!b) return;
+            const st = this.conditioningState;
+            const set = new Set(st.exercises);
+            const id = b.dataset.exerciseId;
+            if (set.has(id)) set.delete(id); else set.add(id);
+            st.exercises = [...set];
+            b.setAttribute('aria-pressed', String(set.has(id)));
+            this.updateHIITInfo();
+        });
+        on('liss-activities-list', 'click', (e) => {
+            const b = e.target.closest('[data-activity]');
+            if (!b) return;
+            this.conditioningState.lissActivity = b.dataset.activity;
+            document.querySelectorAll('#liss-activities-list [data-activity]').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+            this.updateLISSInfo();
+        });
+
         on('start-hiit-btn', 'click', () => {
             if (this.conditioningState.exercises.length === 0) {
                 this.showNotification('Scegli almeno un esercizio', 'warning');
@@ -127,7 +170,7 @@ Object.assign(App, {
     },
 
     // ========================================
-    // CONDITIONING (HIIT/LISS)
+    // CONSIGLIO PER L'OBIETTIVO
     // ========================================
 
     _conditioningGoal() {
@@ -140,7 +183,7 @@ Object.assign(App, {
         const program = Storage.getActiveProgram();
         const goal = this._conditioningGoal();
         try {
-            const s = TrainingAlgorithm.generateConditioningSuggestions(goal, program);
+            const s = TrainingAlgorithm.generateConditioningSuggestions(goal, program, Storage.getProfile());
             if (s) return s;
         } catch (e) {
             console.warn('generateConditioningSuggestions', e);
@@ -149,21 +192,20 @@ Object.assign(App, {
         return cfg ? { enabled: cfg.frequency > 0, frequency: cfg.frequency, preferredType: cfg.preferredType, protocol: cfg.protocol } : null;
     },
 
+    // Riga "Cardio" di Oggi (markup dell'area Oggi: #conditioning-card, -title, -subtitle)
     updateConditioningCard() {
         const card = document.getElementById('conditioning-card');
         const titleEl = document.getElementById('conditioning-title');
         const subtitleEl = document.getElementById('conditioning-subtitle');
         if (!card) return;
-
         const program = Storage.getActiveProgram();
         const suggestion = this._conditioningSuggestion();
         const target = suggestion?.frequency || 0;
         if (!program || !suggestion?.enabled || target <= 0) {
-            card.style.display = 'none';
+            card.hidden = true;
             return;
         }
-
-        card.style.display = 'flex';
+        card.hidden = false;
         const done = Storage.getConditioningThisWeek().length;
         let title;
         if (done >= target) {
@@ -174,8 +216,12 @@ Object.assign(App, {
             title = pick === 'liss' ? 'LISS consigliato' : 'HIIT consigliato';
         }
         if (titleEl) titleEl.textContent = title;
-        if (subtitleEl) subtitleEl.textContent = `${done}/${target} questa settimana`;
+        if (subtitleEl) subtitleEl.textContent = `${done} di ${target} questa settimana`;
     },
+
+    // ========================================
+    // FOGLIO: passi
+    // ========================================
 
     _resetConditioningState() {
         this._stopConditioningTimer();
@@ -188,6 +234,7 @@ Object.assign(App, {
             startedAt: null,
             timerInterval: null,
             lastCue: null,
+            lastTick: null,
             finalDurationSec: 0,
             finalCalories: 0
         };
@@ -195,38 +242,60 @@ Object.assign(App, {
 
     openConditioningModal() {
         if (!document.getElementById('conditioning-modal')) return;
+        // Un cardio in corso non si azzera: si riapre dov'era
+        if (this.conditioningState.startedAt || this.conditioningState.step === 'complete') {
+            this._openModal('conditioning-modal');
+            return;
+        }
         this._resetConditioningState();
-
         const suggestion = this._conditioningSuggestion();
         const target = suggestion?.frequency || 0;
         const done = Storage.getConditioningThisWeek().length;
-        this._setText('conditioning-week-status', target > 0 ? `${done}/${target} questa settimana` : `${done} questa settimana`);
-
+        this._setText('conditioning-week-status', target > 0 ? `${done} di ${target} questa settimana` : `${done} questa settimana`);
+        const type = String(suggestion?.preferredType || '').toLowerCase();
+        const tip = target > 0 && done < target
+            ? (type === 'mixed' ? (done % 2 === 0 ? 'Oggi tocca all\'HIIT' : 'Oggi tocca al LISS') : type === 'liss' ? 'Per il tuo obiettivo: LISS' : type === 'hiit' ? 'Per il tuo obiettivo: HIIT' : '')
+            : '';
+        this._setText('conditioning-tip', tip);
         this.showConditioningStep('1');
         this._openModal('conditioning-modal', '#choose-hiit');
     },
 
-    closeConditioningModal(force = false) {
+    openConditioning() {
+        this.openConditioningModal();
+    },
+
+    async closeConditioningModal(force = false) {
         const st = this.conditioningState;
+        const label = st.type === 'liss' ? 'il LISS' : 'l\'HIIT';
         if (!force) {
             if (st.step === 'active' && st.startedAt) {
-                const min = Math.round((Date.now() - st.startedAt) / 60000);
-                if (!confirm(`Interrompere ${String(st.type).toUpperCase()}? ${min} min non salvati`)) return;
+                const min = Math.max(1, Math.round((Date.now() - st.startedAt) / 60000));
+                const ok = await this.confirmSheet({ title: `Interrompere ${label}?`, text: `${min} min non salvati.`, ok: 'Interrompi senza salvare', cancel: 'Continua', danger: true });
+                if (!ok) return;
             } else if (st.step === 'complete') {
-                if (!confirm(`Chiudere senza salvare ${String(st.type).toUpperCase()}?`)) return;
+                const ok = await this.confirmSheet({ title: 'Chiudere senza salvare?', text: `${Math.max(1, Math.round((st.finalDurationSec || 60) / 60))} min di cardio non salvati.`, ok: 'Chiudi senza salvare', cancel: 'Torna al salvataggio', danger: true });
+                if (!ok) return;
             }
         }
         this._stopConditioningTimer();
         this.conditioningState.startedAt = null;
-        if (!this.activeWorkout) this._setKeepAwake(false);
+        this.conditioningState.step = '1';
+        if (!this.activeWorkout) this._safe(() => this._setKeepAwake(false));
         this._closeModal('conditioning-modal');
     },
 
     showConditioningStep(stepId) {
-        document.querySelectorAll('.conditioning-step').forEach(s => { s.style.display = 'none'; });
+        document.querySelectorAll('#conditioning-modal .conditioning-step').forEach(s => { s.hidden = true; });
         const step = document.getElementById(`conditioning-step-${stepId}`);
-        if (step) step.style.display = 'block';
+        if (step) step.hidden = false;
         this.conditioningState.step = stepId;
+        const back = document.getElementById('conditioning-back');
+        if (back) back.hidden = !(stepId === 'hiit' || stepId === 'liss');
+        const titles = { 1: 'Cardio', hiit: 'HIIT', liss: 'LISS', complete: 'Cardio fatto' };
+        if (titles[stepId]) this._setText('conditioning-title-sheet', titles[stepId]);
+        const sheet = document.querySelector('#conditioning-modal .sheet');
+        if (sheet) sheet.scrollTop = 0;
     },
 
     // HIIT o LISS: ogni scelta riparte pulita (E17: niente selezioni fantasma)
@@ -241,10 +310,13 @@ Object.assign(App, {
             this.populateHIITProtocols();
             this.populateHIITExercises();
             this.updateHIITInfo();
+            this._focusFirst(document.getElementById('conditioning-step-hiit'), '[data-protocol][aria-checked="true"]');
         } else {
             st.protocol = null;
             this.showConditioningStep('liss');
             this.populateLISSActivities();
+            this.updateLISSInfo();
+            this._focusFirst(document.getElementById('conditioning-step-liss'), '[data-activity]');
         }
     },
 
@@ -254,12 +326,9 @@ Object.assign(App, {
         if (!keys.length) return null;
         const suggestion = this._conditioningSuggestion();
         let key = typeof suggestion?.protocol === 'string' ? suggestion.protocol : null;
-        if (!key && suggestion?.protocol?.name) {
-            key = keys.find(k => HIIT_PROTOCOLS[k].name === suggestion.protocol.name) || null;
-        }
+        if (!key && suggestion?.protocol?.name) key = keys.find(k => HIIT_PROTOCOLS[k].name === suggestion.protocol.name) || null;
         if (!key && typeof CONDITIONING_BY_GOAL !== 'undefined') key = CONDITIONING_BY_GOAL[this._conditioningGoal()]?.protocol || null;
         if (!key || !HIIT_PROTOCOLS[key]) key = HIIT_PROTOCOLS.circuit30 ? 'circuit30' : keys[0];
-
         // Mai un protocollo sopra il livello della persona
         const levels = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
         const userLevel = levels[Storage.getProfile().level] || 1;
@@ -273,28 +342,15 @@ Object.assign(App, {
         const list = document.getElementById('hiit-protocol-list');
         if (!list || typeof HIIT_PROTOCOLS === 'undefined') return;
         const st = this.conditioningState;
-
         list.innerHTML = Object.entries(HIIT_PROTOCOLS).map(([key, p]) => {
-            const selected = key === st.protocol;
-            return `
-                <button type="button" class="protocol-option ${selected ? 'selected' : ''}" role="radio" aria-checked="${selected ? 'true' : 'false'}" data-protocol="${GT.esc(key)}">
-                    <span class="protocol-name">${GT.esc(p.name || key)}</span>
-                    <span class="protocol-meta">${GT.esc(p.work ?? p.workTime)}/${GT.esc(p.rest ?? p.restTime)} s</span>
-                </button>
-            `;
+            const work = p.work ?? p.workTime;
+            const rest = p.rest ?? p.restTime;
+            const giri = p.order === 'emom' ? `${p.intervals || p.rounds} minuti` : p.order === 'block' ? `${p.rounds} giri per esercizio` : `${p.rounds} giri`;
+            return `<button type="button" class="choice cd-proto" role="radio" aria-checked="${key === st.protocol}" data-protocol="${GT.esc(key)}">
+                    <span class="choice__body"><b>${GT.esc(p.name || key)}</b><span><span class="num">${GT.esc(work)}</span> s lavoro · <span class="num">${GT.esc(rest)}</span> s recupero · ${GT.esc(giri)}</span></span>
+                    <span class="choice__mark">${this.ico('check')}</span>
+                </button>`;
         }).join('');
-
-        list.querySelectorAll('[data-protocol]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                st.protocol = btn.dataset.protocol;
-                list.querySelectorAll('[data-protocol]').forEach(b => {
-                    const on = b === btn;
-                    b.classList.toggle('selected', on);
-                    b.setAttribute('aria-checked', on ? 'true' : 'false');
-                });
-                this.updateHIITInfo();
-            });
-        });
     },
 
     // Piano HIIT: intervalli lavoro/recupero. Circuiti: giri su tutti gli esercizi.
@@ -318,56 +374,43 @@ Object.assign(App, {
     updateHIITInfo() {
         const plan = this._hiitPlan();
         if (!plan) return;
+        const st = this.conditioningState;
         const minutes = Math.max(1, Math.round(plan.totalSec / 60));
-        this._setText('hiit-protocol-name', `HIIT · ${plan.p.name || ''}`);
-        this._setText('hiit-meta', `~${minutes} min · ~${this._estimateCalories('hiit', minutes)} kcal`);
-        this._setText('hiit-protocol-desc', plan.p.description || '');
+        const meta = document.getElementById('hiit-meta');
+        if (meta) meta.innerHTML = `<span class="num">~${minutes}</span> min · <span class="num">~${this._estimateCalories('hiit', minutes)}</span> kcal`;
+        const want = plan.p.exercisesCount || 4;
+        const count = document.getElementById('hiit-ex-count');
+        if (count) count.innerHTML = `<span class="num">${st.exercises.length}</span> scelti · consigliati <span class="num">${want}</span>`;
+    },
+
+    updateLISSInfo() {
+        const st = this.conditioningState;
+        const a = typeof LISS_ACTIVITIES !== 'undefined' ? LISS_ACTIVITIES[st.lissActivity] : null;
+        const cfg = typeof CONDITIONING_BY_GOAL !== 'undefined' ? CONDITIONING_BY_GOAL[this._conditioningGoal()] : null;
+        const minutes = cfg?.lissDuration || cfg?.duration || 25;
+        const meta = document.getElementById('liss-meta');
+        if (meta) meta.innerHTML = a ? `<span class="num">${minutes}</span> min · <span class="num">~${this._estimateCalories('liss', minutes)}</span> kcal` : `Consigliati <span class="num">${minutes}</span> min a ritmo costante`;
     },
 
     populateHIITExercises() {
         const container = document.getElementById('hiit-exercises-list');
         if (!container || typeof HIIT_EXERCISES === 'undefined') return;
         const st = this.conditioningState;
-
         const levels = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
         const userLevel = levels[Storage.getProfile().level] || 1;
         const list = Object.entries(HIIT_EXERCISES)
             .map(([id, ex]) => ({ id, ...ex }))
             .filter(ex => (levels[ex.difficulty] || 2) <= userLevel && !(ex.equipment || []).length);
-
         // Restano selezionati solo esercizi visibili, senza doppioni
         const visible = new Set(list.map(ex => ex.id));
         st.exercises = [...new Set(st.exercises)].filter(id => visible.has(id));
-
-        const placeholder = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%232a2a3e%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E';
-        container.innerHTML = list.map(ex => {
-            const selected = st.exercises.includes(ex.id);
-            return `
-            <div class="conditioning-exercise-card ${selected ? 'selected' : ''}" data-exercise-id="${GT.esc(ex.id)}" tabindex="0" role="button" aria-pressed="${selected ? 'true' : 'false'}">
-                <img class="exercise-gif-thumb" src="${GT.esc(ex.gifUrl || placeholder)}" alt="" loading="lazy"
-                     onerror="this.onerror=null;this.src='${placeholder}'">
-                <div class="exercise-info">
-                    <div class="exercise-name">${GT.esc(ex.name)}</div>
-                    <div class="exercise-category">${GT.esc(this.formatDifficulty(ex.difficulty))}</div>
-                </div>
-                <div class="exercise-check">${this.ico('check')}</div>
-            </div>
-        `;
-        }).join('');
-
-        container.querySelectorAll('.conditioning-exercise-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const id = card.dataset.exerciseId;
-                const set = new Set(st.exercises);
-                if (set.has(id)) set.delete(id); else set.add(id);
-                st.exercises = [...set];
-                const on = set.has(id);
-                card.classList.toggle('selected', on);
-                card.setAttribute('aria-pressed', on ? 'true' : 'false');
-                this.updateHIITInfo();
-            });
-            this._makeKeyboardClickable(card);
-        });
+        container.innerHTML = list.map(ex => `<li>
+                <button type="button" class="row cd-ex" aria-pressed="${st.exercises.includes(ex.id)}" data-exercise-id="${GT.esc(ex.id)}">
+                    ${this._thumbHTML(ex.gifUrl, 'bolt', ' thumb--sm')}
+                    <span class="row__body"><span class="row__title">${GT.esc(ex.name)}</span><span class="row__sub">${GT.esc(this.formatDifficulty(ex.difficulty))}</span></span>
+                    <span class="choice__mark">${this.ico('check')}</span>
+                </button></li>`).join('');
+        this._bindThumbFallback(container);
     },
 
     formatDifficulty(difficulty) {
@@ -378,53 +421,44 @@ Object.assign(App, {
         const container = document.getElementById('liss-activities-list');
         if (!container || typeof LISS_ACTIVITIES === 'undefined') return;
         const st = this.conditioningState;
-
-        container.innerHTML = Object.entries(LISS_ACTIVITIES).map(([id, activity]) => `
-            <div class="liss-activity-card ${st.lissActivity === id ? 'selected' : ''}" data-activity="${GT.esc(id)}" tabindex="0" role="button">
-                <span class="activity-icon">${this.getLissIcon(id)}</span>
-                <span class="activity-name">${GT.esc(activity.name)}</span>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.liss-activity-card').forEach(card => {
-            card.addEventListener('click', () => {
-                container.querySelectorAll('.liss-activity-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                st.lissActivity = card.dataset.activity;
-            });
-            this._makeKeyboardClickable(card);
-        });
+        container.innerHTML = Object.entries(LISS_ACTIVITIES).map(([id, a]) => `
+            <button type="button" class="choice" role="radio" aria-checked="${st.lissActivity === id}" data-activity="${GT.esc(id)}">
+                <span class="choice__icon">${this.getLissIcon(id)}</span>
+                <span class="choice__body"><b>${GT.esc(a.name)}</b></span>
+                <span class="choice__mark">${this.ico('check')}</span>
+            </button>`).join('');
     },
 
     getLissIcon(activityId) {
         // Icone dello sprite (niente emoji): camminate e scale = passi, il resto = cuore
-        const icons = {
-            'walking-incline': 'steps',
-            'cycling-steady': 'heart',
-            'elliptical': 'heart',
-            'rowing-steady': 'heart',
-            'swimming': 'heart',
-            'outdoor-walk': 'steps',
-            'stair-climber': 'steps'
-        };
-        return this.ico(icons[activityId] || 'heart', 'ico--lg');
+        const icons = { 'walking-incline': 'steps', 'outdoor-walk': 'steps', 'stair-climber': 'steps' };
+        return this.ico(icons[activityId] || 'heart');
     },
+
+    // ========================================
+    // SESSIONE A TEMPO
+    // ========================================
 
     startConditioningSession() {
         const st = this.conditioningState;
         st.startedAt = Date.now();
         st.lastCue = null;
-
+        st.lastTick = null;
         this.showConditioningStep('active');
+        this._setText('conditioning-title-sheet', st.type === 'hiit'
+            ? `HIIT · ${this._hiitPlan()?.p.name || ''}`
+            : `LISS · ${(typeof LISS_ACTIVITIES !== 'undefined' && LISS_ACTIVITIES[st.lissActivity]?.name) || ''}`);
         this.updateConditioningActiveInfo();
-
-        const interval = document.getElementById('conditioning-interval');
-        if (interval) interval.classList.remove('is-work', 'is-rest', 'is-done');
-
-        this._setKeepAwake(true);
+        const box = document.getElementById('conditioning-interval');
+        if (box) {
+            box.classList.remove('is-work', 'is-rest', 'is-done');
+            box.classList.toggle('is-liss', st.type !== 'hiit');
+        }
+        this._safe(() => this._setKeepAwake(true));
         this._stopConditioningTimer();
         this._conditioningTick();
         st.timerInterval = setInterval(() => this._conditioningTick(), 250);
+        this._focusFirst(document.getElementById('conditioning-step-active'), '#end-conditioning-btn');
     },
 
     _stopConditioningTimer() {
@@ -439,16 +473,22 @@ Object.assign(App, {
         const st = this.conditioningState;
         if (!st.startedAt) return;
         const elapsed = Math.max(0, Math.floor((Date.now() - st.startedAt) / 1000));
-        const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const ss = String(elapsed % 60).padStart(2, '0');
-        this._setText('conditioning-timer', `${mm}:${ss}`);
+        const clock = elapsed >= 3600 ? this._fmtClock(elapsed) : `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+        this._setText('conditioning-timer', clock);
         if (st.type === 'hiit') this._renderHiitInterval(elapsed);
+        else {
+            // LISS: il numero grande è il tempo che passa
+            this._setText('conditioning-interval-phase', 'In corso');
+            this._setText('conditioning-interval-time', clock);
+            this._setText('conditioning-interval-round', '');
+        }
     },
 
     _renderHiitInterval(elapsed) {
         const st = this.conditioningState;
         const plan = this._hiitPlan();
         const box = document.getElementById('conditioning-interval');
+        const fill = document.getElementById('conditioning-interval-fill');
         if (!plan || !box) return;
 
         const cycle = plan.work + plan.rest;
@@ -460,11 +500,14 @@ Object.assign(App, {
             if (st.lastCue !== 'done') {
                 st.lastCue = 'done';
                 this._cue('done');
-                box.classList.remove('is-work');
-                box.classList.add('is-rest', 'is-done');
+                box.classList.remove('is-work', 'is-rest', 'is-last');
+                box.classList.add('is-done');
                 this._setText('conditioning-interval-phase', 'Fatto');
                 this._setText('conditioning-interval-time', 'Fine');
-                this._setText('conditioning-interval-round', `${rounds}/${rounds}`);
+                this._setText('conditioning-interval-round', `Giro ${rounds} di ${rounds}`);
+                if (fill) fill.style.setProperty('--p', '100%');
+                const now = document.getElementById('hiit-current-exercise');
+                if (now) { now.dataset.current = ''; now.innerHTML = '<p class="cd-now__name">Tocca Termina e salva</p>'; }
             }
             return;
         }
@@ -472,6 +515,7 @@ Object.assign(App, {
         const within = elapsed - idx * cycle;
         const isWork = within < plan.work;
         const remaining = isWork ? plan.work - within : cycle - within;
+        const total = isWork ? plan.work : plan.rest;
         const round = plan.isEmom ? idx + 1 : plan.isBlock ? (idx % plan.rounds) + 1 : Math.floor(idx / plan.n) + 1;
 
         // Segnali: inizio lavoro, inizio recupero, 3-2-1 prima di ripartire.
@@ -482,6 +526,8 @@ Object.assign(App, {
             this._cue(isWork ? 'work' : 'rest');
             const nextIdx = isWork ? idx : Math.min(idx + 1, plan.intervals - 1);
             this._showHiitExercise(st.exercises[exIndexAt(nextIdx)], !isWork && idx + 1 < plan.intervals);
+            const t = document.getElementById('conditioning-interval-time');
+            if (t) t.setAttribute('aria-label', `${isWork ? 'Lavoro' : 'Recupero'}: ${total} secondi`);
         } else if (!isWork && remaining <= 3 && remaining > 0 && st.lastTick !== `${cueKey}-${remaining}`) {
             st.lastTick = `${cueKey}-${remaining}`;
             this._cue('tick');
@@ -490,9 +536,11 @@ Object.assign(App, {
         box.classList.remove('is-done');
         box.classList.toggle('is-work', isWork);
         box.classList.toggle('is-rest', !isWork);
+        box.classList.toggle('is-last', !isWork && remaining <= 3);
         this._setText('conditioning-interval-phase', isWork ? 'Lavoro' : 'Recupero');
         this._setText('conditioning-interval-time', this._fmtSec(remaining));
-        this._setText('conditioning-interval-round', `${round}/${rounds}`);
+        this._setText('conditioning-interval-round', plan.isEmom ? `Minuto ${round} di ${rounds}` : `Giro ${round} di ${rounds}`);
+        if (fill) fill.style.setProperty('--p', `${Math.max(0, Math.min(100, (remaining / Math.max(1, total)) * 100))}%`);
     },
 
     _cue(kind) {
@@ -516,33 +564,22 @@ Object.assign(App, {
 
     updateConditioningActiveInfo() {
         const st = this.conditioningState;
-        const infoContainer = document.getElementById('conditioning-active-info');
-        if (!infoContainer) return;
-
+        const box = document.getElementById('conditioning-active-info');
+        if (!box) return;
         if (st.type === 'hiit') {
-            const plan = this._hiitPlan();
-            this._setText('active-session-title', `HIIT · ${plan?.p.name || ''}`);
-            infoContainer.innerHTML = `
-                <div class="selected-exercises-list">
-                    ${st.exercises.map(id => HIIT_EXERCISES?.[id] ? `<span class="selected-exercise-tag">${GT.esc(HIIT_EXERCISES[id].name)}</span>` : '').join('')}
-                </div>
-                <div id="hiit-current-exercise"></div>
-            `;
+            box.innerHTML = '<div class="cd-now__ex" id="hiit-current-exercise"></div>';
             this._showHiitExercise(st.exercises[0]);
         } else {
-            const activity = typeof LISS_ACTIVITIES !== 'undefined' ? LISS_ACTIVITIES[st.lissActivity] : null;
-            this._setText('active-session-title', `LISS · ${activity?.name || 'Cardio'}`);
-            infoContainer.innerHTML = `
-                <div class="liss-activity-display">
-                    <span class="activity-icon-large">${this.getLissIcon(st.lissActivity)}</span>
-                    <span class="activity-name-large">${GT.esc(activity?.name || 'Cardio leggero')}</span>
-                </div>
-                <p class="conditioning-description">${GT.esc(activity?.description || 'Ritmo costante e moderato')}</p>
-            `;
+            const a = typeof LISS_ACTIVITIES !== 'undefined' ? LISS_ACTIVITIES[st.lissActivity] : null;
+            box.innerHTML = `<div class="cd-now__ex">
+                    <span class="thumb thumb--md thumb--ico">${this.getLissIcon(st.lissActivity)}</span>
+                    <span class="cd-now__body"><b class="cd-now__name">${GT.esc(a?.name || 'Cardio leggero')}</b>
+                    <span class="cd-now__desc">${GT.esc(a?.description || 'Ritmo costante e moderato')}</span></span>
+                </div>`;
         }
     },
 
-    // GIF e descrizione dell'esercizio HIIT in corso (si cambia solo quando cambia esercizio)
+    // GIF e nome dell'esercizio HIIT in corso (si cambia solo quando cambia esercizio)
     _showHiitExercise(id, isNext = false) {
         const box = document.getElementById('hiit-current-exercise');
         const ex = typeof HIIT_EXERCISES !== 'undefined' ? HIIT_EXERCISES[id] : null;
@@ -551,17 +588,17 @@ Object.assign(App, {
         if (box.dataset.current === key) return;
         const sameGif = box.dataset.current?.split('|')[0] === id;
         box.dataset.current = key;
-        const title = `<p class="hiit-exercise-name"><strong>${isNext ? 'Poi: ' : ''}${GT.esc(ex.name)}</strong></p>`;
-        const titleEl = box.querySelector('.hiit-exercise-name');
-        if (sameGif && titleEl) {
-            titleEl.outerHTML = title;   // stessa GIF: non si ricarica
+        const title = `<span class="cd-now__label">${isNext ? 'Poi' : 'Adesso'}</span><b class="cd-now__name">${GT.esc(ex.name)}</b>`;
+        const head = box.querySelector('.cd-now__head');
+        if (sameGif && head) {
+            head.innerHTML = title;   // stessa GIF: non si ricarica
             return;
         }
         box.innerHTML = `
-            ${title}
-            ${ex.gifUrl ? `<img class="conditioning-exercise-gif" src="${GT.esc(ex.gifUrl)}" alt="" onerror="this.style.display='none'">` : ''}
-            <p class="conditioning-description">${GT.esc(ex.description || '')}</p>
-        `;
+            ${this._thumbHTML(ex.gifUrl, 'bolt', ' thumb--lg')}
+            <span class="cd-now__body"><span class="cd-now__head">${title}</span>
+            <span class="cd-now__desc">${GT.esc(ex.description || '')}</span></span>`;
+        this._bindThumbFallback(box);
     },
 
     _estimateCalories(type, minutes) {
@@ -584,32 +621,33 @@ Object.assign(App, {
         const st = this.conditioningState;
         if (!st.startedAt) return;
         this._stopConditioningTimer();
-        if (!this.activeWorkout) this._setKeepAwake(false);
-
+        if (!this.activeWorkout) this._safe(() => this._setKeepAwake(false));
         const durationSec = Math.max(1, Math.round((Date.now() - st.startedAt) / 1000));
         const minutes = Math.max(1, Math.round(durationSec / 60));
         st.finalDurationSec = durationSec;
         st.finalCalories = this._estimateCalories(st.type, durationSec / 60);
         st.startedAt = null;
 
-        this._setText('summary-duration', `${minutes} min`);
-        this._setText('summary-calories', `${st.finalCalories} kcal`);
+        const dur = document.getElementById('summary-duration');
+        if (dur) dur.innerHTML = `${minutes}<small>min</small>`;
+        const cal = document.getElementById('summary-calories');
+        if (cal) cal.innerHTML = `${st.finalCalories}<small>kcal</small>`;
+        this._setText('cd-done-title', `${st.type === 'liss' ? 'LISS' : 'HIIT'} fatto`);
         const manual = document.getElementById('manual-calories');
         if (manual) manual.value = '';
         const notes = document.getElementById('conditioning-notes');
         if (notes) notes.value = '';
-
         this.showConditioningStep('complete');
+        this._focusFirst(document.getElementById('conditioning-step-complete'), '#save-conditioning-btn');
     },
 
     saveConditioningSession() {
         const st = this.conditioningState;
-        const manualRaw = parseInt(document.getElementById('manual-calories')?.value);
-        const manualCalories = Number.isFinite(manualRaw) && manualRaw > 0 ? manualRaw : null;
+        const manualRaw = Math.round(GT.num(document.getElementById('manual-calories')?.value));
+        const manualCalories = manualRaw > 0 && manualRaw < 5000 ? manualRaw : null;
         const notes = (document.getElementById('conditioning-notes')?.value || '').trim().slice(0, 500);
         const durationSec = st.finalDurationSec || 60;
         const isHiit = st.type === 'hiit';
-
         const session = {
             type: isHiit ? 'hiit' : 'liss',
             protocol: isHiit ? st.protocol : null,
@@ -622,19 +660,17 @@ Object.assign(App, {
             calories: manualCalories ?? (st.finalCalories || 0),
             notes
         };
-
         try {
             Storage.saveConditioningSession(session);
         } catch (e) {
             console.error('saveConditioningSession', e);
-            this.showNotification('Sessione NON salvata: memoria piena', 'error');
+            this.showNotification('Cardio NON salvato: memoria piena', 'error');
             return;
         }
-
-        this.showNotification('Sessione salvata', 'success');
+        this.showNotification(`${isHiit ? 'HIIT' : 'LISS'} salvato · ${session.duration} min`, 'success', { icon: isHiit ? 'bolt' : 'steps' });
         this.closeConditioningModal(true);
         this._resetConditioningState();
-        this.loadDashboard();
-        this._safe(() => this.loadConditioningProgress());
+        this._safe(() => this.loadDashboard());
+        this._safe(() => this.loadProgress());
     },
 });

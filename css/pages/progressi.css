@@ -1,11 +1,88 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/progressi.css: calendario, mappa del corpo, grafici, storico (i componenti grafici stanno in components.css 5.24).
-   Fonte: proto.css sezione 6. File dell'area Progressi (js/app/progressi.js).
+   GymTracker 2.0 — pages/progressi.css: costanza, muscoli, forza, record, peso, cicli, sedute;
+   fogli del dettaglio e della modifica di una seduta. I componenti (heat, body, bars, chart, meso,
+   stats, delta) stanno in components.css; qui solo le misure della pagina.
+   File dell'area Progressi (js/app/progressi.js).
    ===================================================================== */
 
-#page-progressi .card { display: flex; flex-direction: column; gap: var(--s-3); }
+.pg-meta { font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
+.pg-empty { font-size: var(--fs-sm); }
+.pg-empty-box { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-md); background: var(--surface-1); box-shadow: var(--shadow-1); color: var(--text-3); }
+.pg-empty-box p { color: var(--text-2); }
 
-/* Chart.js (finché i grafici non diventano SVG disegnati): con maintainAspectRatio:false
-   il contenitore DEVE avere un'altezza, altrimenti la tela cresce senza fine */
-.chart-container { position: relative; height: 160px; }
-.weight-chart-container { position: relative; height: 140px; }
+/* calendario: una colonna per settimana, i giorni futuri tengono il posto */
+.pg-heat { grid-template-columns: repeat(var(--weeks, 16), minmax(0, 1fr)); }
+.pg-heat i.is-future { visibility: hidden; }
+.pg-months { display: grid; grid-template-columns: repeat(var(--weeks, 16), minmax(0, 1fr)); gap: 3px; font-size: var(--fs-cap); font-weight: 600; color: var(--text-3); margin-top: calc(var(--s-1) * -1); }
+.pg-months span { white-space: nowrap; }
+.pg-legend { font-size: var(--fs-cap); }
+.pg-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.pg-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+@media (min-width: 960px) {
+  .pg-heat, .pg-months { max-width: 760px; }
+}
+
+/* numero grande + variazione (come .kv del prototipo, qui per la pagina) */
+.pg-kv { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.pg-kv .kv__big { font-size: var(--fn-lg); line-height: 1; display: flex; align-items: baseline; gap: var(--s-1); }
+.pg-kv .kv__big small { font-size: var(--fs-body); color: var(--text-2); font-weight: 560; font-stretch: 100%; margin-left: 4px; }
+.pg-kv .delta { font-size: var(--fs-body); }
+.pg-chart-legend { font-size: var(--fs-cap); align-items: center; }
+.pg-chart-legend svg { vertical-align: -1px; }
+.pg-str { display: flex; flex-direction: column; gap: var(--s-3); }
+#pg-str-chips .chip .ico { width: 16px; height: 16px; }
+
+/* barre dei muscoli: la cifra può avere il mezzo punto ("9,5") */
+#muscle-volume-bars .bar { grid-template-columns: 7.5rem 1fr 2.75rem; }
+@media (max-width: 380px) {
+  #muscle-volume-bars .bar { grid-template-columns: 6.5rem 1fr 2.5rem; }
+}
+
+/* peso: inserimento rapido */
+.pg-bwform { display: flex; gap: var(--s-2); align-items: stretch; }
+.pg-bwfield { position: relative; flex: 1; min-width: 0; }
+.pg-bwfield .input { font-size: var(--fs-lg); padding-right: 44px; }
+.pg-bwfield > span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: var(--fs-sm); pointer-events: none; }
+.pg-bwform .btn { min-height: 52px; }
+
+/* record, storico, cicli: righe del gruppo */
+.pg-val { font-size: var(--fn-sm); flex: none; }
+.pg-vol { color: var(--text-2); font-size: 1.0625rem; }
+.pg-pr--new { color: var(--accent-text); }
+.row__icon.pg-pr--new { background: var(--accent-soft); }
+.pg-meso { width: 96px; flex: none; }
+#workout-history-list .row__end { color: var(--text-3); }
+
+/* foglio: dettaglio di una seduta */
+.pg-dwhen { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: calc(var(--s-3) * -1); }
+.pg-dwhen .ico { width: 18px; height: 18px; }
+.pg-dstats .stat__v { font-size: 1.75rem; }
+.pg-dlist { display: flex; flex-direction: column; gap: var(--s-5); }
+.pg-dex { display: flex; flex-direction: column; gap: var(--s-2); }
+.pg-dex h3 { font-size: var(--fs-body); font-weight: 700; }
+.pg-sets { display: flex; flex-direction: column; border-radius: var(--r-sm); background: var(--surface-2); }
+.pg-set { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 44px; padding: 0 var(--s-3); }
+.pg-set + .pg-set { border-top: 1px solid var(--line); }
+.pg-set__val { display: flex; align-items: baseline; gap: 5px; font-size: var(--fn-sm); line-height: 1; }
+.pg-set__val small { font-size: var(--fs-sm); color: var(--text-3); font-weight: 500; font-stretch: 100%; }
+.pg-set__end { display: flex; align-items: center; gap: var(--s-2); }
+.pg-set__pr { color: var(--accent-text); display: inline-flex; }
+.pg-set.is-warm .pg-set__val { color: var(--text-3); }
+.pg-dactions { flex-direction: row; }
+.pg-dactions .btn { flex: 1; }
+.pg-dactions, .pg-edit-actions { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--gutter) * -1) calc(var(--s-5) * -1 - var(--safe-b)); padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
+
+/* foglio: modifica di una seduta */
+.pg-eex { display: flex; flex-direction: column; gap: var(--s-2); padding-bottom: var(--s-4); border-bottom: 1px solid var(--line); }
+.pg-eex + .pg-eex { padding-top: var(--s-4); }
+.pg-eex > .btn { align-self: flex-start; }
+.pg-eex__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.pg-eex__head h3 { font-size: var(--fs-body); font-weight: 700; min-width: 0; }
+.pg-esets { display: flex; flex-direction: column; gap: var(--s-2); }
+.pg-eset { display: grid; grid-template-columns: 24px minmax(0, 1fr) 14px minmax(0, 1fr) 44px; align-items: center; gap: var(--s-2); }
+.pg-eset:has(> .pg-ein:only-of-type) { grid-template-columns: 24px minmax(0, 1fr) 44px; }
+.pg-eset__n { color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
+.pg-eset__x { color: var(--text-3); text-align: center; }
+.pg-ein { min-height: 48px; text-align: center; font-size: var(--fs-lg); padding: 0 var(--s-2); }
+.pg-eset.is-warm .pg-ein { color: var(--text-2); }
+#workout-edit-exercises { display: flex; flex-direction: column; }

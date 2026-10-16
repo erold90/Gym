@@ -1,20 +1,49 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/profilo.css: profilo e impostazioni (una pagina), backup.
+   GymTracker 2.0 — pages/profilo.css: profilo e impostazioni (una pagina), backup, fogli del profilo.
    Fonte: proto.css sezione 6. File dell'area Profilo (js/app/profilo.js).
    ===================================================================== */
 
-/* Profilo */
+/* intestazione: avatar, nome, una riga di dati, matita */
 .me { display: flex; align-items: center; gap: var(--s-4); }
+.me__text { flex: 1; min-width: 0; }
 .avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-size: 1.75rem; font-weight: 800; font-stretch: 80%; flex: none; }
-.me__name { font-size: var(--fs-xl); font-weight: var(--w-title); line-height: 1.1; }
+.me__name { font-size: var(--fs-xl); font-weight: var(--w-title); line-height: 1.1; overflow-wrap: anywhere; }
 .me__sub { color: var(--text-2); font-size: var(--fs-sm); }
+
+/* righe con un controllo a tutta larghezza sotto (segmentato, chip, recuperi) */
+.pf-row-wrap { flex-wrap: wrap; }
+.pf-full { flex-basis: 100%; }
+.pf-row-wrap > .chips.pf-full { padding-top: var(--s-1); }
+#page-profilo .row__end > span:first-child { color: var(--text-2); }
+.pf-plate { min-width: 56px; justify-content: center; }
+.pf-plate .num { font-size: var(--fs-body); }
+.pf-danger { color: var(--danger-text); }
+.row__icon.pf-danger { background: var(--danger-soft); }
+
+/* recupero di base: due stepper piccoli */
+.pf-rests { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.pf-rest { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pf-rest__k { font-size: var(--fs-cap); font-weight: 650; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.pf-rest__box { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; height: 48px; border-radius: var(--r-sm); background: var(--surface-2); border: 1px solid var(--line-strong); }
+.pf-rest__box .btn { min-height: 44px; width: 44px; color: var(--text); }
+.pf-rest__v { text-align: center; font-size: var(--fn-sm); }
+
+/* backup: lo stato prima dei bottoni */
 .backup { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }
 .backup__state { display: flex; align-items: center; gap: var(--s-3); }
 .backup__btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
 .backup__btns .btn { flex-direction: column; gap: 2px; min-height: 64px; padding: 0 var(--s-2); font-size: var(--fs-sm); }
-.foot { text-align: center; font-size: var(--fs-sm); color: var(--text-3); display: flex; flex-direction: column; align-items: center; gap: var(--s-1); }
+.pf-bk--warn { background: var(--warn-soft); color: var(--warn-text); }
+.pf-bk--ok { background: var(--ok-soft); color: var(--ok-text); }
 
-/* righe delle impostazioni con un campo a destra */
-.row > .input { flex: none; min-height: 44px; }
-.storage-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.storage-used { height: 100%; width: 2%; background: var(--accent-mark); border-radius: 3px; }
+/* piede: la versione è un bottone (7 tocchi = strumenti di prova) */
+.foot { text-align: center; font-size: var(--fs-sm); color: var(--text-3); display: flex; flex-direction: column; align-items: center; gap: var(--s-1); }
+.foot .ico { vertical-align: -4px; }
+.pf-version { min-height: 44px; padding: 0 var(--s-3); border-radius: var(--r-sm); color: var(--text-3); font-size: var(--fs-sm); -webkit-user-select: none; user-select: none; }
+.pf-version .num { color: var(--text-2); }
+
+/* fogli del profilo */
+.pf-form { display: flex; flex-direction: column; gap: var(--s-4); }
+.pf-form__2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.pf-avoid .thumb--sm { width: 44px; height: 44px; }
+.pf-avoid .row { min-height: 64px; }

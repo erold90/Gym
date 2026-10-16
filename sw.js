@@ -36,7 +36,6 @@ const ASSETS_TO_CACHE = [
     './fonts/OFL.txt',
     // dati e moduli
     './js/modules/utils.js',
-    './js/vendor/chart.umd.min.js',
     './js/data/exercises.js',
     './js/data/warmups.js',
     './js/modules/storage.js',
