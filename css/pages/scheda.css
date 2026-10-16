@@ -1,24 +1,98 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/scheda.css: scheda attiva, giorni espandibili, superset.
-   Fonte: proto.css sezione 6. File dell'area Scheda (js/app/scheda.js).
+   GymTracker 2.0 — pages/scheda.css: scheda attiva, giorni espandibili, superset, anteprima,
+   editor della scheda. Fonte: proto.css sezione 6. File dell'area Scheda (js/app/scheda.js).
    ===================================================================== */
 
-/* Scheda */
+.scheda-meta { font-size: var(--fs-sm); text-align: right; }
+.scheda-empty { padding-top: var(--s-10); }
+.scheda-empty__title { font-size: var(--fs-xl); }
+.scheda-empty .btn--xl { width: 100%; max-width: 360px; }
+.scheda-days { gap: var(--s-3); }
+.scheda-days__list { display: flex; flex-direction: column; gap: var(--s-3); }
+.scheda-phase .phase { flex: 1; }
+.scheda-phase .num { font-size: var(--fs-sm); }
+#scheda-cycle-actions .row__title { font-weight: 600; }
+
+/* Giorno (card espandibile) */
 .dayc { border-radius: var(--r-lg); background: var(--surface-1); box-shadow: var(--shadow-1); overflow: hidden; }
-.dayc__head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-1) var(--s-3); padding: var(--s-4); width: 100%; text-align: left; min-height: 76px; }
-.dayc__name { font-size: var(--fs-lg); font-weight: var(--w-title); display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
-.dayc__sub { font-size: var(--fs-sm); color: var(--text-2); }
+.dayc__h { font: inherit; letter-spacing: 0; }
+.dayc__head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-1) var(--s-3); padding: var(--s-4); width: 100%; text-align: left; min-height: 76px; color: inherit; }
+.dayc__head:active { background: var(--surface-2); }
+.dayc__name { font-size: var(--fs-lg); font-weight: var(--w-title); display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; line-height: 1.2; }
+.dayc__tag { height: 24px; font-size: var(--fs-sm); }
+.dayc__sub { font-size: var(--fs-sm); color: var(--text-2); font-weight: 450; }
+.dayc__sub .num { color: var(--text); font-size: 1rem; }
 .dayc__chev { grid-row: 1 / 3; grid-column: 2; color: var(--text-3); transition: transform var(--dur-2) var(--ease-out); }
-.dayc[open] .dayc__chev, .dayc.is-open .dayc__chev { transform: rotate(180deg); }
-.dayc__list { padding: 0 var(--s-4) var(--s-3); }
-.dayc:not(.is-open) .dayc__list { display: none; }
-.exr { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; min-height: 60px; }
-.exr + .exr { border-top: 1px solid var(--line); }
+.dayc.is-open .dayc__chev { transform: rotate(180deg); }
+.dayc__list { padding: 0 var(--s-4) var(--s-2); }
+.dayc__list > li + li { border-top: 1px solid var(--line); }
+.dayc__list > li.ssgroup, .dayc__list > li.ssgroup + li { border-top: 0; }
+.dayc__empty { padding: 0 var(--s-4) var(--s-4); font-size: var(--fs-sm); }
+.dayc__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); padding: var(--s-2) var(--s-4) var(--s-4); }
+.dayc__start .ico { color: var(--accent-text); }
+
+/* Esercizio della scheda: tocco = come si fa */
+.exr { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; min-height: 60px; width: 100%; text-align: left; color: inherit; border-radius: 10px; }
+.exr:active { background: var(--surface-2); }
 .exr__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .exr__name { font-weight: 600; line-height: 1.25; }
 .exr__plan { font-size: var(--fs-sm); color: var(--text-2); }
 .exr__plan .num { font-size: 1rem; color: var(--text); }
+.exr .ex-letter, .ed__exname .ex-letter { display: inline-grid; place-items: center; min-width: 30px; height: 24px; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-cap); font-weight: 800; font-stretch: var(--narrow); letter-spacing: 0.02em; vertical-align: 2px; margin-right: 6px; }
+
+/* Superset raggruppati */
 .ssgroup { border-radius: var(--r-sm); background: var(--surface-2); padding: 2px var(--s-3); margin: var(--s-1) calc(var(--s-3) * -1); }
 .ssgroup__label { display: flex; align-items: center; gap: 6px; padding-top: var(--s-2); font-size: var(--fs-cap); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent-text); }
 .ssgroup__label .ico { width: 16px; height: 16px; }
-.ssgroup .exr + .exr { border-top-color: var(--line-strong); border-top-style: dashed; }
+.ssgroup__label .num { font-size: 0.875rem; letter-spacing: 0; }
+.ssgroup ol > li + li { border-top: 1px dashed var(--line-strong); }
+.ssgroup .exr:active { background: var(--surface-3); }
+
+/* Anteprima di un giorno */
+.pv-list { padding: 0; }
+.pv-prev { display: block; font-size: var(--fs-sm); color: var(--text-3); }
+.exr__plan .pv-prev .num { color: var(--text-2); font-size: 1rem; }
+.pv-foot { position: sticky; bottom: calc(-1 * (var(--s-5) + var(--safe-b))); margin-bottom: calc(-1 * (var(--s-5) + var(--safe-b))); padding: var(--s-3) 0 calc(var(--s-5) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); }
+
+/* Editor della scheda (nei fogli che scorrono i figli non si schiacciano) */
+.ed { gap: var(--s-4); }
+.ed > *, #scheda-preview-modal .sheet > * { flex-shrink: 0; }
+.ed__note { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--text-2); }
+.ed__note .ico { color: var(--accent-text); flex: none; }
+.ed__daycount { margin-left: 6px; font-size: var(--fs-sm); color: var(--text-3); }
+.chip[aria-pressed="true"] .ed__daycount { color: var(--text-2); }
+.ed__dayhead { display: flex; align-items: flex-end; gap: var(--s-2); }
+.ed__dayname { flex: 1; min-width: 0; }
+.ed__dayhead > .btn--icon { height: 52px; }
+.ed__list { display: flex; flex-direction: column; gap: var(--s-2); }
+.ed__ex { border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line); }
+.ed__ex.is-open { border-color: var(--line-strong); }
+.ed__exhead { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 64px; padding: var(--s-2) var(--s-3); text-align: left; color: inherit; border-radius: var(--r-md); }
+.ed__exbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ed__exname { font-weight: 600; line-height: 1.25; }
+.ed__explan { font-size: var(--fs-sm); color: var(--text-2); }
+.ed__explan .num { color: var(--text); font-size: 1rem; }
+.ed__chev { color: var(--text-3); transition: transform var(--dur-2) var(--ease-out); }
+.ed__ex.is-open .ed__chev { transform: rotate(180deg); }
+.ed__exedit { display: flex; flex-direction: column; gap: var(--s-2); padding: 0 var(--s-3) var(--s-3); }
+.ed__param { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.ed__plabel { font-size: var(--fs-sm); font-weight: var(--w-label); color: var(--text-2); }
+.ed__stepper { display: grid; grid-template-columns: var(--tap-min) 80px var(--tap-min); height: 48px; border-radius: var(--r-sm); background: var(--surface-1); border: 1px solid var(--line-strong); flex: none; }
+.ed__sbtn { display: grid; place-items: center; color: var(--text); border-radius: var(--r-sm); }
+.ed__sbtn:active { background: var(--surface-3); }
+.ed__sbtn .ico { width: 20px; height: 20px; stroke-width: 2.5; }
+.ed__val { width: 100%; min-width: 0; text-align: center; background: transparent; border: 0; padding: 0; color: var(--text); font-size: var(--fn-sm); font-weight: 760; font-stretch: var(--narrow); font-variant-numeric: tabular-nums; }
+.ed__val:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; border-radius: 8px; }
+.ed__exactions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); padding-top: var(--s-1); }
+.ed__exactions .btn { padding: 0 var(--s-2); }
+.ed__empty { padding: var(--s-5) var(--s-4); text-align: center; font-size: var(--fs-sm); }
+.ed__search { display: flex; flex-direction: column; gap: var(--s-2); }
+.ed__results:empty { display: none; }
+.ed__result:disabled { opacity: 0.5; cursor: default; }
+.ed__foot { position: sticky; bottom: calc(-1 * (var(--s-5) + var(--safe-b))); margin-bottom: calc(-1 * (var(--s-5) + var(--safe-b))); padding: var(--s-3) 0 calc(var(--s-5) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
+
+@media (min-width: 960px) {
+  .scheda-empty { align-items: flex-start; text-align: left; }
+  .ed__param { justify-content: flex-start; }
+  .ed__plabel { width: 9rem; }
+}

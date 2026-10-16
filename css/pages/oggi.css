@@ -1,14 +1,15 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/oggi.css: regole della pagina Oggi.
+   GymTracker 2.0 — pages/oggi.css: regole della pagina Oggi e del foglio "Quale seduta?".
    Fonte: proto.css sezione 6. File dell'area Oggi (js/app/oggi.js).
    ===================================================================== */
 
 /* Oggi */
 .today { display: flex; flex-direction: column; gap: var(--s-4); }
 .today__eyebrow { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); }
-.today__name { font-size: 3rem; font-weight: 820; font-stretch: 80%; letter-spacing: -0.02em; line-height: 0.95; }
-.today__focus { font-size: var(--fs-lg); font-weight: 560; color: var(--text-2); line-height: 1.25; }
+.today__name { font-size: 3rem; font-weight: 820; font-stretch: 80%; letter-spacing: -0.02em; line-height: 0.95; overflow-wrap: anywhere; }
+.today__focus { font-size: var(--fs-lg); font-weight: 560; color: var(--text-2); line-height: 1.25; margin-top: var(--s-1); }
 .today__meta { font-size: var(--fs-body); margin-top: calc(var(--s-2) * -1); }
+.today__meta:empty, .thumbs:empty { display: none; }
 .more-thumbs { width: 56px; height: 56px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); font-weight: 760; font-stretch: var(--narrow); font-size: var(--fs-lg); }
 .kv { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .kv__big { font-size: var(--fn-lg); line-height: 1; display: flex; align-items: center; gap: var(--s-2); }
@@ -17,9 +18,63 @@
 .notice > .ico { color: var(--warn-text); }
 .notice p { flex: 1; min-width: 0; font-weight: 560; line-height: 1.3; }
 .notice p small { display: block; font-size: var(--fs-sm); color: var(--text-2); font-weight: 450; }
+.notice .btn--sm { flex: none; }
 .divider { height: 1px; background: var(--line); border: 0; margin: 0; }
 
-/* Ponte provvisorio: updateWeekDays() mette ancora .completed / .today sui giorni (classi della v1) */
-.day.completed .day__dot { background: var(--ok); color: var(--on-color); }
-.day.today { color: var(--text); gap: 6px; }   /* .today è anche il blocco "oggi" in cima: qui vale il giorno */
-.day.today .day__dot { border: 2.5px solid var(--accent-mark); }
+/* Miniature senza GIF (offline, mancante): icona dell'attrezzo. Usata anche da Scheda. */
+.thumb__ico { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
+.thumb--sm .thumb__ico .ico { width: 20px; height: 20px; }
+
+/* stato vuoto (nessuna scheda) */
+.oggi-empty { padding-top: var(--s-12); }
+.oggi-empty__title { font-size: var(--fs-xl); }
+
+/* settimana: oggi già fatto = verde con l'anello giallo */
+.day--done.day--today .day__dot { border: 0; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4.5px var(--accent-mark); }
+.day--done.day--today .day__dot::after { display: none; }
+
+/* piccoli ritocchi di colore (solo token) */
+.oggi-strong { color: var(--text); }
+.oggi-accent { color: var(--accent-text); }
+.oggi-ok { display: inline-flex; color: var(--ok-text); vertical-align: -3px; }
+.oggi-fire { color: var(--accent-text); }
+.oggi-record { font-size: var(--fs-sm); white-space: nowrap; }
+.oggi-note { font-size: var(--fs-sm); }
+.oggi-note:empty { display: none; }
+
+/* righe del gruppo: niente filetto sopra la prima visibile */
+#oggi-rows > .row[hidden] + .row::before { display: none; }
+#oggi-rows .row__title .num { font-size: 1.0625rem; }
+
+/* avviso di scarico anticipato: colore della fase di scarico, non l'arancio del backup */
+.notice--deload { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--s-3); row-gap: var(--s-2); background: var(--surface-1); box-shadow: inset 0 0 0 1.5px var(--phase-del), var(--shadow-1); padding: var(--s-3) var(--s-2) var(--s-3) var(--s-4); }
+.notice--deload #oggi-deload-yes { grid-column: 2 / 4; justify-self: start; }
+.notice--deload > .ico { color: var(--phase-del); }
+.notice--deload .btn--icon { color: var(--text-2); }
+
+/* fogli dell'area: i figli non si schiacciano quando il foglio scorre */
+.og-sheet > * { flex-shrink: 0; }
+
+/* Foglio "Quale seduta?" */
+.dp-short { display: flex; flex-direction: column; gap: var(--s-2); }
+.dp-short__label { display: flex; align-items: center; gap: 6px; }
+.dp-short .seg button { min-height: var(--tap-min); }
+.dp-list { gap: var(--s-2); }
+.dp-day { min-height: 68px; }
+.dp-day .choice__icon { font-size: var(--fs-lg); color: var(--text-2); }
+.dp-day[data-suggested] { border-color: var(--accent-mark); }
+.dp-day[data-suggested] .choice__icon { background: var(--accent-soft); color: var(--accent-text); }
+.dp-day .tag { flex: none; height: 26px; }
+.dp-day:disabled { opacity: 0.45; cursor: default; }
+.choice__body .dp-warn, .choice__body .dp-warn .num { color: var(--warn-text); }
+.choice__body .num { color: var(--text); }
+
+/* riepilogo di fine ciclo: numeri in griglia 2 × 2 */
+.cs-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4) var(--s-4); }
+.cs-stats .stat { padding: 0; border-left: 0; }
+.cs-stats .stat__v { font-size: 2rem; }
+
+@media (min-width: 960px) {
+  .today__name { font-size: 3.5rem; }
+  .oggi-empty { padding-top: var(--s-8); align-items: flex-start; text-align: left; }
+}

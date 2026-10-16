@@ -113,10 +113,10 @@ const App = {
             this.showNotification('Alcuni dati erano danneggiati: copia di sicurezza salvata', 'warning');
         }
 
-        const profile = Storage.getProfile();
-        if (!resumed && !profile.name) {
-            this.navigateTo('profilo');
-            this.showNotification('Benvenuto! Nome, livello e attrezzatura per iniziare', 'info');
+        // Senza nome o senza scheda (e senza seduta da riprendere) si apre il primo avvio
+        if (!resumed && typeof this._oggiNeedsOnboarding === 'function' && this._oggiNeedsOnboarding()
+            && typeof this.openOnboarding === 'function') {
+            this.openOnboarding({ replace: true, auto: true });
         } else if (!this.currentPage) {
             this._routeFromHash();
         }

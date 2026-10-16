@@ -1,13 +1,23 @@
 /* =====================================================================
-   GymTracker 2.0 — pages/onboarding.css: primo avvio in 4 passi (#onboarding).
-   Fonte: proto.css sezione 6. File dell'area Oggi (js/app/oggi.js).
+   GymTracker 2.0 — pages/onboarding.css: primo avvio in 4 passi (#onboarding), anche "Rigenera".
+   Fonte: onboarding.html (stile in testa) e proto.css. File dell'area Oggi (js/app/oggi.js).
    ===================================================================== */
 
-.ob { gap: var(--s-6); max-width: 560px; margin: 0 auto; width: 100%; }
+.ob { display: flex; flex-direction: column; gap: var(--s-6); max-width: 560px; margin: 0 auto; width: 100%; }
 .ob__top { display: flex; align-items: center; gap: var(--s-2); min-height: var(--tap-min); }
 .ob__top .steps { flex: 1; }
+.ob__lead { flex: none; }
+.ob__fill { flex: 1; }
+.ob__count { font-size: var(--fs-sm); color: var(--text-3); font-weight: 560; white-space: nowrap; }
+.ob .steps { grid-template-columns: repeat(var(--n, 4), 1fr); }
 .ob__q { display: flex; flex-direction: column; gap: var(--s-2); }
 .ob__q h1 { font-size: var(--fs-xl); }
 .ob__q p { color: var(--text-2); }
+.ob__err { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 560; color: var(--danger-text); }
+.ob .input[aria-invalid="true"] { border-color: var(--danger-text); }
+.ob [role="radiogroup"][aria-invalid="true"] .choice { border-color: var(--danger-text); }
+/* fastidi: quattro scelte facoltative in una riga */
+.ob__pain { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.ob__pain .chip { justify-content: center; padding: 0 6px; min-height: var(--tap-min); }
 .brand { font-weight: 820; font-stretch: 75%; font-size: 1.25rem; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
 .brand .ico { color: var(--accent-text); }

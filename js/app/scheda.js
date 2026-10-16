@@ -1,197 +1,109 @@
 /**
- * GymTracker 2.0 — area SCHEDA: scheda attiva, generatore (wizard), editor manuale, anteprima.
+ * GymTracker 2.0 — area SCHEDA: scheda attiva (ciclo, giorni espandibili, superset), anteprima
+ * di un giorno, editor manuale (esercizi, serie, ripetizioni, recuperi, ordine, giorni).
+ * La scheda si crea e si rigenera dal primo avvio (#onboarding, in oggi.js).
  */
 
 Object.assign(App, {
     // ========================================
-    // GUSCIO DELL'AREA: markup della pagina e dei fogli, listener, ingresso nella pagina
+    // GUSCIO DELL'AREA
     // ========================================
 
     // Pagina #scheda. La lente apre la libreria (#esercizi, sottopagina).
     htmlScheda() {
         return `
             <header class="head">
-                <h1>Scheda</h1>
+                <h1 id="scheda-title">Scheda</h1>
                 <div class="head__actions">
-                    <a class="btn btn--ghost btn--icon" href="#esercizi" data-page="esercizi" aria-label="Libreria esercizi">${this.ico('search')}</a>
+                    <a class="btn btn--ghost btn--icon" href="#esercizi" data-page="esercizi" aria-label="Cerca esercizi">${this.ico('search')}</a>
+                    <button type="button" class="btn btn--ghost btn--icon" id="edit-program-btn" aria-label="Modifica la scheda" hidden>${this.ico('edit')}</button>
                 </div>
             </header>
 
-            <!-- Scheda attiva (visibile quando esiste) -->
-            <section class="card active-program" id="active-program-card" style="display: none;" aria-labelledby="active-program-title">
-                <div class="program-header section__head">
-                    <h2 id="active-program-title">Scheda attiva</h2>
-                    <div class="program-header-actions head__actions">
-                        <button type="button" class="btn btn--ghost btn--icon" id="edit-program-btn" aria-label="Modifica la scheda">${this.ico('edit')}</button>
-                        <button type="button" class="btn btn--ghost btn--icon" id="delete-program-btn" aria-label="Elimina la scheda">${this.ico('trash')}</button>
-                    </div>
-                </div>
-                <div id="active-program-content"></div>
-            </section>
+            <div class="empty scheda-empty" id="no-program-state" hidden>
+                <span class="empty__icon">${this.ico('plan', 'ico--xl')}</span>
+                <h2 class="scheda-empty__title">Nessuna scheda</h2>
+                <p>Quattro domande e la crei.</p>
+                <button type="button" class="btn btn--primary btn--xl" id="open-ai-generator-btn">Crea la mia scheda</button>
+                <button type="button" class="btn btn--ghost" id="open-manual-builder-btn">${this.ico('edit')}Costruiscila a mano</button>
+            </div>
 
-            <!-- Nessuna scheda -->
-            <div id="no-program-state">
-                <div class="choices">
-                    <button type="button" class="choice" id="open-ai-generator-btn">
-                        <span class="choice__icon">${this.ico('target')}</span>
-                        <span class="choice__body"><b>Crea la scheda</b><span>Costruita sul tuo profilo</span></span>
-                        <span class="row__end">${this.ico('next')}</span>
-                    </button>
-                    <button type="button" class="choice" id="open-manual-builder-btn">
-                        <span class="choice__icon">${this.ico('edit')}</span>
-                        <span class="choice__body"><b>A mano</b><span>Esercizi, serie e recuperi scelti da te</span></span>
-                        <span class="row__end">${this.ico('next')}</span>
-                    </button>
+            <div class="wide" id="active-program-card" hidden>
+                <div class="col">
+                    <section class="section" id="scheda-cycle" aria-labelledby="scheda-cycle-title">
+                        <div class="section__head">
+                            <h2 id="scheda-cycle-title">Ciclo</h2>
+                            <span class="muted scheda-meta" id="scheda-meta"></span>
+                        </div>
+                        <div class="meso" id="scheda-meso" role="img"></div>
+                        <div class="meso-labels" id="scheda-meso-labels" aria-hidden="true"></div>
+                        <div class="group" id="scheda-phases"></div>
+                        <div class="group" id="scheda-cycle-actions"></div>
+                    </section>
+                </div>
+                <div class="col">
+                    <section class="section scheda-days" aria-labelledby="scheda-days-title">
+                        <div class="section__head">
+                            <h2 id="scheda-days-title">Giorni</h2>
+                            <span class="muted scheda-meta" id="scheda-days-count"></span>
+                        </div>
+                        <div class="scheda-days__list" id="scheda-days"></div>
+                    </section>
+                    <button type="button" class="btn btn--secondary btn--block" id="regen-program-btn">${this.ico('cycle')}Rigenera scheda</button>
                 </div>
             </div>
 
-            <!-- Avvio (nascosto durante una seduta) -->
-            <div id="workout-not-started">
-                <section class="section" aria-labelledby="scheda-start-title">
-                    <div class="section__head"><h2 id="scheda-start-title">Seduta</h2></div>
-                    <div class="group">
-                        <button type="button" class="row" id="start-scheduled-workout">
-                            <span class="row__icon">${this.ico('play')}</span>
-                            <span class="row__body"><span class="row__title">Inizia un giorno</span></span>
-                            <span class="row__end">${this.ico('next')}</span>
-                        </button>
-                        <button type="button" class="row" id="preview-workout-btn">
-                            <span class="row__icon">${this.ico('plan')}</span>
-                            <span class="row__body"><span class="row__title">Anteprima</span></span>
-                            <span class="row__end">${this.ico('next')}</span>
-                        </button>
-                        <button type="button" class="row" id="start-free-workout">
-                            <span class="row__icon">${this.ico('dumbbell')}</span>
-                            <span class="row__body"><span class="row__title">Seduta libera</span></span>
-                            <span class="row__end">${this.ico('next')}</span>
-                        </button>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Anteprima (sola lettura) -->
-            <div id="workout-preview" style="display: none;">
-                <div class="preview-bar section__head">
-                    <span class="tag tag--accent">Anteprima</span>
-                    <button type="button" class="btn btn--secondary btn--sm" id="close-preview-btn">Chiudi</button>
-                </div>
-                <div id="preview-day-nav" class="preview-day-nav chips chips--scroll"></div>
-                <div id="preview-content"></div>
-            </div>
+            <!-- compatibilità: la seduta v1 accende/spegne questi due; restano vuoti e nascosti -->
+            <div id="workout-not-started" hidden></div>
+            <div id="workout-preview" hidden></div>
         `;
     },
 
-    // Fogli dell'area: generatore (wizard) ed editor manuale
+    // Fogli dell'area: anteprima di un giorno, editor della scheda
     sheetsScheda() {
-        const card = (value, icon, title, desc) => `
-            <button type="button" class="wizard-card choice" data-value="${value}">
-                ${icon ? `<span class="wizard-card-icon choice__icon">${this.ico(icon)}</span>` : ''}
-                <span class="choice__body"><b class="wizard-card-title">${title}</b><span class="wizard-card-desc">${desc}</span></span>
-            </button>`;
-        const pick = (value, unit) => `
-            <button type="button" class="wizard-card wizard-card-small" data-value="${value}">
-                <span class="wizard-card-title num">${value}</span>
-                <small class="wizard-card-desc">${unit}</small>
-            </button>`;
         return `
-            <div class="modal" id="ai-generator-modal">
-                <section class="sheet sheet--tall modal-wizard" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
+            <div class="modal" id="scheda-preview-modal">
+                <section class="sheet sheet--tall" role="dialog" aria-modal="true" aria-labelledby="scheda-preview-title">
                     <span class="sheet__grip" aria-hidden="true"></span>
                     <div class="sheet__head">
-                        <h2 id="wizard-title">Crea la scheda</h2>
-                        <button type="button" class="btn btn--ghost btn--icon sheet__close" id="close-ai-generator" aria-label="Chiudi il generatore">${this.ico('close')}</button>
+                        <h2 id="scheda-preview-title">Anteprima</h2>
+                        <button type="button" class="btn btn--ghost btn--icon sheet__close" id="scheda-preview-close" aria-label="Chiudi l'anteprima">${this.ico('close')}</button>
                     </div>
-
-                    <div class="wizard-progress" aria-hidden="true">
-                        <div class="wizard-progress-bar" id="wizard-progress-fill" style="width: 25%"></div>
-                    </div>
-                    <div class="wizard-steps-indicator steps" aria-hidden="true">
-                        <span class="wizard-step-dot active" data-step="1">1</span>
-                        <span class="wizard-step-dot" data-step="2">2</span>
-                        <span class="wizard-step-dot" data-step="3">3</span>
-                        <span class="wizard-step-dot" data-step="4">4</span>
-                    </div>
-
-                    <div class="wizard-step" id="wizard-step-1">
-                        <h3 class="wizard-step-title">Obiettivo</h3>
-                        <div class="wizard-cards choices" id="wizard-goal-cards">
-                            ${card('hypertrophy', 'm-arms', 'Ipertrofia', 'Più massa muscolare')}
-                            ${card('strength', 'barbell', 'Forza', 'Carichi massimi')}
-                            ${card('recomp', 'cycle', 'Ricomposizione', 'Meno grasso, più muscolo')}
-                            ${card('endurance', 'heart', 'Resistenza', 'Tante ripetizioni')}
-                            ${card('toning', 'm-glutes', 'Tonificazione', 'Glutei, gambe, definizione')}
-                        </div>
-                    </div>
-
-                    <div class="wizard-step hidden" id="wizard-step-2">
-                        <h3 class="wizard-step-title">Giorni a settimana</h3>
-                        <div class="wizard-suggestion" id="wizard-days-suggestion"></div>
-                        <div class="wizard-cards wizard-cards-row pick" style="--n: 4" id="wizard-days-cards">
-                            ${pick(3, 'giorni')}${pick(4, 'giorni')}${pick(5, 'giorni')}${pick(6, 'giorni')}
-                        </div>
-                    </div>
-
-                    <div class="wizard-step hidden" id="wizard-step-3">
-                        <h3 class="wizard-step-title">Divisione</h3>
-                        <div class="wizard-suggestion" id="wizard-split-suggestion"></div>
-                        <div class="wizard-cards choices" id="wizard-split-cards">
-                            ${card('upper-lower', 'stack', 'Upper / Lower', 'Alto e basso alternati')}
-                            ${card('push-pull-legs', 'swap', 'Push / Pull / Legs', 'Spingi, tira, gambe')}
-                            ${card('full-body', 'bodyweight', 'Full Body', 'Tutto il corpo ogni volta')}
-                        </div>
-                    </div>
-
-                    <div class="wizard-step hidden" id="wizard-step-4">
-                        <h3 class="wizard-step-title">Durata</h3>
-                        <div class="wizard-suggestion" id="wizard-duration-suggestion"></div>
-                        <div class="wizard-cards wizard-cards-row pick" style="--n: 4" id="wizard-duration-cards">
-                            ${pick(45, 'min')}${pick(60, 'min')}${pick(75, 'min')}${pick(90, 'min')}
-                        </div>
-                    </div>
-
-                    <div class="wizard-step hidden" id="wizard-step-summary">
-                        <h3 class="wizard-step-title">Riepilogo</h3>
-                        <div class="wizard-summary" id="wizard-summary-content"></div>
-                    </div>
-
-                    <div class="wizard-nav sheet__actions">
-                        <button type="button" class="btn btn--primary btn--xl" id="generate-program-btn" style="display: none">${this.ico('check')}Crea la scheda</button>
-                        <button type="button" class="btn btn--ghost btn--block" id="wizard-back" style="visibility: hidden">${this.ico('back')}Indietro</button>
+                    <p class="muted" id="scheda-preview-meta"></p>
+                    <ol class="dayc__list pv-list" id="scheda-preview-list"></ol>
+                    <div class="sheet__actions pv-foot">
+                        <button type="button" class="btn btn--primary btn--xl" id="scheda-preview-start">${this.ico('play')}Inizia</button>
                     </div>
                 </section>
             </div>
 
             <div class="modal" id="manual-builder-modal">
-                <section class="sheet sheet--tall" role="dialog" aria-modal="true" aria-labelledby="builder-modal-title">
+                <section class="sheet sheet--tall ed" role="dialog" aria-modal="true" aria-labelledby="builder-modal-title">
                     <span class="sheet__grip" aria-hidden="true"></span>
                     <div class="sheet__head">
-                        <h2 id="builder-modal-title">Scheda a mano</h2>
+                        <h2 id="builder-modal-title">Modifica scheda</h2>
                         <button type="button" class="btn btn--ghost btn--icon sheet__close" id="close-manual-builder" aria-label="Chiudi l'editor">${this.ico('close')}</button>
                     </div>
-
-                    <div class="builder-step" id="builder-step-days">
-                        <h3 class="cap">Giorni</h3>
-                        <div id="builder-days-list"></div>
-                        <button type="button" class="btn btn--secondary" id="builder-add-day-btn">${this.ico('plus')}Giorno</button>
-                        <div class="builder-nav sheet__actions">
-                            <button type="button" class="btn btn--primary btn--xl" id="builder-to-exercises-btn">Avanti${this.ico('next')}</button>
+                    <p class="ed__note" id="ed-note" hidden>${this.ico('info', 'ico--sm')}<span>Se la modifichi, a fine ciclo resta così</span></p>
+                    <div class="chips chips--scroll ed__days" id="builder-day-tabs" role="group" aria-label="Giorni della scheda"></div>
+                    <div class="ed__dayhead">
+                        <div class="field ed__dayname">
+                            <label for="ed-day-name">Nome del giorno</label>
+                            <input class="input" id="ed-day-name" type="text" maxlength="40" autocomplete="off">
                         </div>
+                        <button type="button" class="btn btn--ghost btn--icon" id="ed-day-remove" aria-label="Togli questo giorno">${this.ico('trash')}</button>
                     </div>
-
-                    <div class="builder-step" id="builder-step-exercises" style="display: none;">
-                        <div class="builder-day-tabs chips chips--scroll" id="builder-day-tabs"></div>
-                        <div id="builder-current-day-exercises"></div>
-                        <div class="builder-add-exercise-section">
-                            <div class="search exercise-search-bar">
-                                ${this.ico('search')}
-                                <input type="search" class="input" id="builder-exercise-search" placeholder="Cerca un esercizio" aria-label="Cerca un esercizio" autocomplete="off">
-                            </div>
-                            <div id="builder-exercise-results" class="builder-exercise-results"></div>
+                    <ol class="ed__list" id="builder-current-day-exercises"></ol>
+                    <button type="button" class="btn btn--secondary btn--block" id="ed-add-ex">${this.ico('plus')}Aggiungi esercizio</button>
+                    <div class="ed__search" id="ed-search" hidden>
+                        <div class="search">
+                            ${this.ico('search')}
+                            <input type="search" class="input" id="builder-exercise-search" placeholder="Cerca un esercizio" aria-label="Cerca un esercizio da aggiungere" autocomplete="off">
                         </div>
-                        <div class="builder-nav sheet__actions">
-                            <button type="button" class="btn btn--primary btn--xl" id="builder-save-btn">${this.ico('check')}Salva la scheda</button>
-                            <button type="button" class="btn btn--ghost btn--block" id="builder-back-to-days-btn">${this.ico('back')}Indietro</button>
-                        </div>
+                        <div id="builder-exercise-results" class="group ed__results"></div>
+                    </div>
+                    <div class="sheet__actions ed__foot">
+                        <button type="button" class="btn btn--primary btn--xl" id="builder-save-btn">${this.ico('check')}Salva la scheda</button>
                     </div>
                 </section>
             </div>
@@ -200,50 +112,101 @@ Object.assign(App, {
 
     bindScheda() {
         const on = (id, ev, fn) => this._on(id, ev, fn);
-        const closeOnBackdrop = (id, fn) => this._closeOnBackdrop(id, fn);
 
-        // Schede
-        on('generate-program-btn', 'click', () => this.generateProgram());
-        on('delete-program-btn', 'click', () => this.deleteActiveProgram());
+        // Testata e stato vuoto
         on('edit-program-btn', 'click', () => this.editActiveProgram());
-        on('open-manual-builder-btn', 'click', () => this.openManualBuilder());
-        on('open-ai-generator-btn', 'click', () => this.openWizard());
-        on('close-ai-generator', 'click', () => this._closeModal('ai-generator-modal'));
-        closeOnBackdrop('ai-generator-modal', () => this._closeModal('ai-generator-modal'));
-        on('wizard-back', 'click', () => this.wizardBack());
+        on('open-ai-generator-btn', 'click', () => this.openOnboarding());
+        on('open-manual-builder-btn', 'click', () => this.openManualBuilder(false));
+        on('regen-program-btn', 'click', () => this.openOnboarding({ fromStep: 'goal' }));
 
-        // Builder manuale
+        // Giorni: apri/chiudi, esercizio, anteprima, inizia
+        on('scheda-days', 'click', (e) => {
+            const head = e.target.closest('[data-dayc-toggle]');
+            if (head) {
+                this._schedaToggleDay(parseInt(head.dataset.daycToggle, 10));
+                return;
+            }
+            const act = e.target.closest('[data-dayc-act]');
+            if (act) {
+                const i = parseInt(act.dataset.day, 10);
+                if (act.dataset.daycAct === 'preview') this.openDayPreview(i);
+                else this._schedaStartDay(i);
+                return;
+            }
+            const ex = e.target.closest('[data-ex]');
+            if (ex) this._schedaOpenExercise(ex.dataset.ex, ex.dataset.exName);
+        });
+
+        // Ciclo
+        on('scheda-cycle-actions', 'click', (e) => {
+            const btn = e.target.closest('[data-cycle-act]');
+            if (!btn) return;
+            const act = btn.dataset.cycleAct;
+            if (act === 'deload') this.startDeloadNow();
+            else if (act === 'stop-deload') this.stopDeloadNow();
+            else if (act === 'close') {
+                this._cycleSummaryDismissed = false;
+                this.completeCycleWithSummary();
+            }
+        });
+
+        // Anteprima
+        this._closeOnBackdrop('scheda-preview-modal', () => this._closeModal('scheda-preview-modal'));
+        on('scheda-preview-close', 'click', () => this._closeModal('scheda-preview-modal'));
+        on('scheda-preview-start', 'click', () => {
+            const i = this._previewDay;
+            this._closeModal('scheda-preview-modal');
+            this._schedaStartDay(i);
+        });
+        on('scheda-preview-list', 'click', (e) => {
+            const ex = e.target.closest('[data-ex]');
+            if (ex) this._schedaOpenExercise(ex.dataset.ex, ex.dataset.exName);
+        });
+
+        // Editor
         on('close-manual-builder', 'click', () => this.closeManualBuilder());
-        closeOnBackdrop('manual-builder-modal', () => this.closeManualBuilder());
-        on('builder-add-day-btn', 'click', () => this.builderAddDay());
-        on('builder-to-exercises-btn', 'click', () => this.builderGoToExercises());
-        on('builder-back-to-days-btn', 'click', () => this.builderGoToDays());
-        on('builder-save-btn', 'click', () => this.builderSaveProgram());
+        this._closeOnBackdrop('manual-builder-modal', () => this.closeManualBuilder());
+        on('builder-day-tabs', 'click', (e) => {
+            const chip = e.target.closest('[data-ed-day], [data-ed-add-day]');
+            if (!chip) return;
+            if (chip.hasAttribute('data-ed-add-day')) this.builderAddDay();
+            else this.builderSelectDay(parseInt(chip.dataset.edDay, 10));
+        });
+        on('ed-day-name', 'input', (e) => this.builderUpdateDayName(this.builderState.currentDayIndex, e.target.value));
+        on('ed-day-name', 'change', () => this._edRenderDays());
+        on('ed-day-remove', 'click', () => this.builderRemoveDay(this.builderState.currentDayIndex));
+        on('ed-add-ex', 'click', () => this._edAddExercise());
         on('builder-exercise-search', 'input', (e) => this.builderSearchExercises(e.target.value));
-
-        // Avvio e anteprima
-        on('start-scheduled-workout', 'click', () => this.startScheduledWorkout());
-        on('start-free-workout', 'click', () => this.startFreeWorkout());
-        on('preview-workout-btn', 'click', () => this.showWorkoutPreview());
-        on('close-preview-btn', 'click', () => this.closeWorkoutPreview());
+        on('builder-exercise-results', 'click', (e) => {
+            const el = e.target.closest('[data-add-ex]');
+            if (el && !el.disabled) this.builderAddExercise(el.dataset.addEx);
+        });
+        on('builder-save-btn', 'click', () => this.builderSaveProgram());
+        on('builder-current-day-exercises', 'click', (e) => this._edListClick(e));
+        on('builder-current-day-exercises', 'change', (e) => this._edListChange(e));
+        on('builder-current-day-exercises', 'keydown', (e) => {
+            if (e.key === 'Enter' && e.target.matches('[data-ed-field]')) {
+                e.preventDefault();
+                this._edListChange(e);
+            }
+        });
     },
 
     enterScheda() {
         this._safe(() => this.loadPrograms());
     },
 
-    // Manual builder state
+    // Stato dell'editor
     builderState: {
-        days: [],           // [{name, exercises: [{exerciseId, name, sets, reps, rest, _src}], _src}]
+        days: [],           // [{name, _src, exercises: [{exerciseId, name, sets, reps, rest, metric, superset…, _src}]}]
         currentDayIndex: 0,
-        isEditing: false
+        isEditing: false,
+        openEx: null,
+        snapshot: ''
     },
 
-    // ========================================
-    // WIZARD - Step-by-step program generator
-    // ========================================
-
-    // Scientific recommendations per goal (Pelland 2025, Singer 2024, Schoenfeld 2021)
+    // Consigli per obiettivo (Pelland 2025, Singer 2024, Schoenfeld 2021): giorni, divisione e
+    // durata proposti dal primo avvio (oggi.js, _obResolveTime/_obSplit)
     WIZARD_RECOMMENDATIONS: {
         hypertrophy: {
             days: { recommended: 4, alt: 6, reason: 'Pelland 2025: 12-20 serie/muscolo/settimana. 4 giorni U/L o 6 giorni PPL permettono il volume ottimale con 2+ stimoli/muscolo/settimana.' },
@@ -251,7 +214,7 @@ Object.assign(App, {
                 3: { recommended: 'full-body', reason: 'Con 3 giorni, il Full Body garantisce frequenza 3x/muscolo/settimana (Schoenfeld 2016: frequenza 2+ superiore per ipertrofia).' },
                 4: { recommended: 'upper-lower', reason: 'Upper/Lower 4x è lo split più bilanciato: ogni muscolo 2x/settimana con volume adeguato per sessione (Remmert 2025: ~11 serie/sessione PUOS).' },
                 5: { recommended: 'upper-lower', reason: 'U/L 5 giorni aggiunge un giorno braccia/spalle per volume extra sui punti deboli, mantenendo frequenza 2x/settimana.' },
-                6: { recommended: 'push-pull-legs', reason: 'PPL 6x massimizza volume e frequenza (2x/settimana per gruppo). Rating 9.7/10 nelle analisi comparative 2025.' }
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x massimizza volume e frequenza (2x/settimana per gruppo).' }
             },
             duration: { recommended: 60, range: '60-75', reason: 'Singer 2024: recupero 2-2.5 min tra serie compound. Remmert 2025: PUOS ~11 serie/sessione = 60-75 min ottimali.' }
         },
@@ -268,681 +231,950 @@ Object.assign(App, {
         recomp: {
             days: { recommended: 4, alt: 3, reason: 'Frontiers Nutrition 2024: 3-4 sessioni/sett di resistenza ottimali per ricomposizione. Più sessioni = più dispendio calorico preservando massa.' },
             split: {
-                3: { recommended: 'full-body', reason: 'Full Body 3x massimizza il dispendio calorico per sessione e la frequenza muscolare. Healthcare 2024: massa magra visibile a 8 settimane.' },
+                3: { recommended: 'full-body', reason: 'Full Body 3x massimizza il dispendio calorico per sessione e la frequenza muscolare.' },
                 4: { recommended: 'upper-lower', reason: 'U/L 4x è il miglior compromesso: volume moderato (10-15 serie/muscolo/sett), gestibile in deficit calorico (JEHS 2024).' },
                 5: { recommended: 'upper-lower', reason: 'U/L 5 giorni per chi vuole più dispendio. Attenzione al recupero in deficit calorico: non eccedere con il volume.' },
                 6: { recommended: 'push-pull-legs', reason: 'PPL 6x solo se deficit moderato (300-500 kcal). Volume alto in deficit aggressivo è controproducente (Int J Obesity 2025).' }
             },
-            duration: { recommended: 45, range: '45-60', reason: 'Sessioni efficienti per gestire la fatica in deficit. Recuperi 1-2 min. Proteine 1.6-2.2 g/kg/giorno cruciali (meta-analisi 2024).' }
+            duration: { recommended: 45, range: '45-60', reason: 'Sessioni efficienti per gestire la fatica in deficit. Recuperi 1-2 min.' }
         },
         endurance: {
             days: { recommended: 3, alt: 4, reason: 'Schoenfeld 2021: endurance muscolare richiede alto volume di ripetizioni (15-25+). 3-4 giorni con recuperi brevi sono sufficienti.' },
             split: {
                 3: { recommended: 'full-body', reason: 'Full Body con circuiti o superset: i recuperi brevi (30-60s) sono il driver principale dell\'adattamento all\'endurance (Schoenfeld 2021).' },
-                4: { recommended: 'upper-lower', reason: 'U/L 4x permette più volume per sessione con recuperi brevi. Ideale per endurance specifica di singoli gruppi muscolari.' },
-                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni con sessioni corte e intense. Il volume alto è distribuibile ma attenzione al sovrallenamento.' },
-                6: { recommended: 'push-pull-legs', reason: 'PPL 6x per atleti condizionati: alto volume con recuperi brevi. Solo per avanzati con buona capacità di recupero.' }
+                4: { recommended: 'upper-lower', reason: 'U/L 4x permette più volume per sessione con recuperi brevi.' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5 giorni con sessioni corte e intense.' },
+                6: { recommended: 'push-pull-legs', reason: 'PPL 6x per atleti condizionati: alto volume con recuperi brevi.' }
             },
-            duration: { recommended: 45, range: '30-50', reason: 'Recuperi brevi (30-60s) rendono le sessioni naturalmente corte. 30-50 min sufficienti per stimolo endurance completo.' }
+            duration: { recommended: 45, range: '30-50', reason: 'Recuperi brevi (30-60s) rendono le sessioni naturalmente corte.' }
         },
         toning: {
-            days: { recommended: 4, alt: 3, reason: 'Schoenfeld 2016: glutei 2-4x/settimana. 4 giorni U/L con priorità lower body (62% volume) è ottimale. Contreras 2015: hip thrust + squat + hinge coprono tutti gli angoli glutei.' },
+            days: { recommended: 4, alt: 3, reason: 'Schoenfeld 2016: glutei 2-4x/settimana. 4 giorni U/L con priorità alla parte bassa.' },
             split: {
-                3: { recommended: 'upper-lower', reason: 'U/L 3x: 2 giorni lower (glutei-quad + glutei-femorali) + 1 upper. Glutei allenati 2x/sett con recupero ottimale (Barbalho 2019).' },
-                4: { recommended: 'upper-lower', reason: 'U/L 4x è lo split ideale per tonificazione: 2 giorni glutei/gambe + 2 upper leggeri. Volume 62% lower / 38% upper (Frontiers 2025).' },
-                5: { recommended: 'upper-lower', reason: 'U/L 5x con giorno extra Glute Burn: 3 giorni lower + 2 upper. Glutei 3x/settimana per massimo sviluppo (Barbalho 2020).' },
-                6: { recommended: 'upper-lower', reason: 'U/L 6x: 3 lower + 3 upper. Permette massimo volume glutei (16-22 serie/sett) con recupero adeguato tra sessioni.' }
+                3: { recommended: 'upper-lower', reason: 'U/L 3x: 2 giorni lower (glutei-quad + glutei-femorali) + 1 upper (Barbalho 2019).' },
+                4: { recommended: 'upper-lower', reason: 'U/L 4x: 2 giorni glutei/gambe + 2 upper leggeri.' },
+                5: { recommended: 'upper-lower', reason: 'U/L 5x con giorno extra Glute Burn: 3 giorni lower + 2 upper (Barbalho 2020).' },
+                6: { recommended: 'upper-lower', reason: 'U/L 6x: 3 lower + 3 upper.' }
             },
-            duration: { recommended: 60, range: '45-60', reason: 'Harty 2018: le donne recuperano 25-50% più velocemente tra le serie. Con pause 60-90s compound e 30-60s isolation, 45-60 min sono sufficienti.' }
+            duration: { recommended: 60, range: '45-60', reason: 'Harty 2018: le donne recuperano più velocemente tra le serie: 45-60 min sono sufficienti.' }
         }
     },
 
+    // Il vecchio generatore a foglio è diventato il primo avvio (stesso flusso di "Rigenera")
     openWizard() {
-        this.wizardState = { step: 1, goal: null, days: null, split: null, duration: null };
-
-        document.querySelectorAll('.wizard-step').forEach(s => s.classList.add('hidden'));
-        document.getElementById('wizard-step-1')?.classList.remove('hidden');
-        document.querySelectorAll('.wizard-card').forEach(c => c.classList.remove('selected'));
-        document.querySelectorAll('.wizard-step-dot').forEach(d => d.classList.remove('active', 'done'));
-        document.querySelector('.wizard-step-dot[data-step="1"]')?.classList.add('active');
-        const fill = document.getElementById('wizard-progress-fill');
-        if (fill) fill.style.width = '25%';
-        const back = document.getElementById('wizard-back');
-        if (back) back.style.visibility = 'hidden';
-        const gen = document.getElementById('generate-program-btn');
-        if (gen) gen.style.display = 'none';
-        this._setText('wizard-title', 'Crea la scheda');
-
-        this._setupWizardCardClicks();
-        this._openModal('ai-generator-modal', '#wizard-goal-cards .wizard-card');
+        this.openOnboarding({ fromStep: 'goal' });
     },
 
-    _setupWizardCardClicks() {
-        const bind = (containerId, handler) => {
-            document.querySelectorAll(`#${containerId} .wizard-card`).forEach(card => {
-                card.onclick = () => handler(card);
-                this._makeKeyboardClickable(card);   // card raggiungibili da tastiera (H10)
-            });
-        };
-        const select = (containerId, card) => {
-            document.querySelectorAll(`#${containerId} .wizard-card`).forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-        };
-
-        // Step 1: obiettivo — avanza da solo
-        bind('wizard-goal-cards', (card) => {
-            select('wizard-goal-cards', card);
-            this.wizardState.goal = card.dataset.value;
-            this.wizardState.days = null;
-            this.wizardState.split = null;
-            this.wizardState.duration = null;
-            setTimeout(() => this.wizardNext(), 250);
-        });
-
-        // Step 2: giorni
-        bind('wizard-days-cards', (card) => {
-            select('wizard-days-cards', card);
-            this.wizardState.days = parseInt(card.dataset.value);
-            this.wizardState.split = null;
-            setTimeout(() => this.wizardNext(), 250);
-        });
-
-        // Step 3: split — PPL solo con 5+ giorni
-        bind('wizard-split-cards', (card) => {
-            if (card.dataset.value === 'push-pull-legs' && this.wizardState.days <= 4) {
-                this.showNotification('Push/Pull/Legs: servono almeno 5 giorni', 'warning');
-                return;
-            }
-            select('wizard-split-cards', card);
-            this.wizardState.split = card.dataset.value;
-            setTimeout(() => this.wizardNext(), 250);
-        });
-
-        // Step 4: durata → riepilogo
-        bind('wizard-duration-cards', (card) => {
-            select('wizard-duration-cards', card);
-            this.wizardState.duration = parseInt(card.dataset.value);
-            setTimeout(() => this.wizardNext(), 250);
-        });
-    },
-
-    wizardNext() {
-        const s = this.wizardState;
-        if (s.step === 1 && !s.goal) return;
-        if (s.step === 2 && !s.days) return;
-        if (s.step === 3 && !s.split) return;
-        if (s.step === 4 && !s.duration) return;
-
-        s.step++;
-        this._renderWizardStep();
-    },
-
-    wizardBack() {
-        if (this.wizardState.step <= 1) return;
-        this.wizardState.step--;
-        this._renderWizardStep();
-    },
-
-    _renderWizardStep() {
-        const s = this.wizardState;
-        const recs = this.WIZARD_RECOMMENDATIONS[s.goal];
-
-        // Hide all steps
-        document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
-
-        // Update progress
-        const totalSteps = 5; // 4 steps + summary
-        const progressStep = Math.min(s.step, 4);
-        document.getElementById('wizard-progress-fill').style.width = `${(progressStep / 4) * 100}%`;
-
-        // Update dots
-        document.querySelectorAll('.wizard-step-dot').forEach(d => {
-            const dotStep = parseInt(d.dataset.step);
-            d.classList.remove('active', 'done');
-            if (dotStep < s.step) d.classList.add('done');
-            else if (dotStep === s.step) d.classList.add('active');
-        });
-
-        // Back button visibility
-        document.getElementById('wizard-back').style.visibility = s.step > 1 ? 'visible' : 'hidden';
-
-        // Generate button
-        document.getElementById('generate-program-btn').style.display = 'none';
-
-        if (s.step === 2) {
-            this._renderDaysSuggestion(recs);
-            document.getElementById('wizard-step-2').classList.remove('hidden');
-            if (s.days) {
-                document.querySelectorAll('#wizard-days-cards .wizard-card').forEach(c => {
-                    c.classList.toggle('selected', parseInt(c.dataset.value) === s.days);
-                });
-            }
-            this._highlightRecommended('wizard-days-cards', String(recs.days.recommended));
-        } else if (s.step === 3) {
-            this._renderSplitSuggestion(recs, s.days);
-            document.getElementById('wizard-step-3').classList.remove('hidden');
-            // Disable PPL for 3-4 days (frequency too low)
-            document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
-                if (c.dataset.value === 'push-pull-legs') {
-                    c.classList.toggle('wizard-disabled', s.days <= 4);
-                } else {
-                    c.classList.remove('wizard-disabled');
-                }
-            });
-            if (s.split) {
-                document.querySelectorAll('#wizard-split-cards .wizard-card').forEach(c => {
-                    c.classList.toggle('selected', c.dataset.value === s.split);
-                });
-            }
-            const recSplit = recs.split[s.days]?.recommended;
-            if (recSplit) this._highlightRecommended('wizard-split-cards', recSplit);
-        } else if (s.step === 4) {
-            this._renderDurationSuggestion(recs);
-            document.getElementById('wizard-step-4').classList.remove('hidden');
-            if (s.duration) {
-                document.querySelectorAll('#wizard-duration-cards .wizard-card').forEach(c => {
-                    c.classList.toggle('selected', parseInt(c.dataset.value) === s.duration);
-                });
-            }
-            this._highlightRecommended('wizard-duration-cards', String(recs.duration.recommended));
-        } else if (s.step >= 5) {
-            this._renderWizardSummary();
-            document.getElementById('wizard-step-summary').classList.remove('hidden');
-            document.getElementById('generate-program-btn').style.display = '';
-        } else {
-            // Step 1
-            document.getElementById('wizard-step-1').classList.remove('hidden');
-            if (s.goal) {
-                document.querySelectorAll('#wizard-goal-cards .wizard-card').forEach(c => {
-                    c.classList.toggle('selected', c.dataset.value === s.goal);
-                });
-            }
-        }
-    },
-
-    _highlightRecommended(containerId, value) {
-        document.querySelectorAll(`#${containerId} .wizard-card`).forEach(c => {
-            c.classList.remove('wizard-recommended');
-            if (c.dataset.value === value) {
-                c.classList.add('wizard-recommended');
-            }
-        });
-    },
-
-    _renderDaysSuggestion(recs) {
-        const el = document.getElementById('wizard-days-suggestion');
-        el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${recs.days.recommended} giorni</strong><br>${recs.days.reason}</div>`;
-    },
-
-    _renderSplitSuggestion(recs, days) {
-        const el = document.getElementById('wizard-split-suggestion');
-        const splitRec = recs.split[days];
-        if (splitRec) {
-            el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${this._splitLabel(splitRec.recommended)}</strong><br>${splitRec.reason}</div>`;
-        } else {
-            el.innerHTML = '';
-        }
-    },
-
-    _renderDurationSuggestion(recs) {
-        const el = document.getElementById('wizard-duration-suggestion');
-        el.innerHTML = `<div class="wizard-tip"><strong>Consigliato: ${recs.duration.recommended} min (range ${recs.duration.range})</strong><br>${recs.duration.reason}</div>`;
-    },
-
-    _renderWizardSummary() {
-        const s = this.wizardState;
-        const recs = this.WIZARD_RECOMMENDATIONS[s.goal];
-        const splitRec = recs.split[s.days];
-        const isRecommendedSplit = splitRec && splitRec.recommended === s.split;
-        const isRecommendedDays = s.days === recs.days.recommended;
-        const isRecommendedDuration = s.duration === recs.duration.recommended;
-
-        document.getElementById('wizard-summary-content').innerHTML = `
-            <div class="wizard-summary-row">
-                <span class="wizard-summary-label">Obiettivo</span>
-                <span class="wizard-summary-value">${this._goalLabel(s.goal)}</span>
-            </div>
-            <div class="wizard-summary-row">
-                <span class="wizard-summary-label">Frequenza</span>
-                <span class="wizard-summary-value">${s.days} giorni/sett ${isRecommendedDays ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
-            </div>
-            <div class="wizard-summary-row">
-                <span class="wizard-summary-label">Split</span>
-                <span class="wizard-summary-value">${this._splitLabel(s.split)} ${isRecommendedSplit ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
-            </div>
-            <div class="wizard-summary-row">
-                <span class="wizard-summary-label">Durata</span>
-                <span class="wizard-summary-value">${s.duration} min ${isRecommendedDuration ? '<span class="wizard-badge-ok">consigliato</span>' : ''}</span>
-            </div>
-            <div class="wizard-summary-note">
-                La scheda includerà periodizzazione a mesociclo con fasi di accumulo, intensificazione e deload.
-                Gli esercizi ruoteranno automaticamente tra i cicli per stimolo continuo.
-            </div>
-        `;
-    },
-
-    generateProgram() {
-        const profile = Storage.getProfile();
-
-        if (!profile.name) {
-            this.showNotification('Prima il nome nel profilo', 'warning');
-            this._closeModal('ai-generator-modal');
-            this.navigateTo('profilo');
-            return;
-        }
-
-        const existing = Storage.getActiveProgram();
-        if (existing && !confirm(`Sostituire «${existing.name || 'la scheda attiva'}»? Lo storico resta`)) {
-            return;
-        }
-
-        const ws = this.wizardState || {};
-        const options = {
-            goal: ws.goal || 'hypertrophy',
-            daysPerWeek: ws.days || 3,
-            split: ws.split || 'full-body',
-            sessionDuration: ws.duration || 60
-        };
-
-        let program = null;
-        try {
-            program = TrainingAlgorithm.generateProgram(profile, options);
-        } catch (e) {
-            console.error('generateProgram', e);
-        }
-        if (!program?.days?.length) {
-            this.showNotification('Scheda non generata: prova un\'altra combinazione', 'error');
-            return;
-        }
-
-        this._alignCycleStart(program);
-        Storage.setActiveProgram(program);
-        this._cycleSummaryDismissed = false;
-        this._closeModal('ai-generator-modal');
-
-        this.loadPrograms();
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
-        this.showNotification('Scheda generata', 'success');
-    },
-
-    // Il ciclo parte dal lunedì di questa settimana: le settimane del ciclo coincidono con il calendario
-    _alignCycleStart(program) {
-        const cycle = program?.metadata?.cycle;
-        if (!cycle) return;
-        cycle.currentWeek = 1;
-        cycle.startDate = GT.startOfWeek(new Date()).toISOString();
-    },
+    // ========================================
+    // SCHEDA ATTIVA
+    // ========================================
 
     loadPrograms() {
         this.displayActiveProgram();
     },
 
+    _schedaIsManual(program) {
+        const md = program?.metadata || {};
+        return !!(md.isManual || md.isCustom || md.split === 'custom');
+    },
+
+    // Titolo della pagina: la divisione per le schede generate, il nome per quelle a mano
+    _schedaTitle(program) {
+        if (!program) return 'Scheda';
+        const split = { 'upper-lower': 'Upper/Lower', 'push-pull-legs': 'Push/Pull/Legs', 'full-body': 'Full body' }[program.metadata?.split];
+        if (split && !program.metadata?.isCustom) return split;
+        return program.name || 'Scheda';
+    },
+
     displayActiveProgram() {
         const program = Storage.getActiveProgram();
         const card = document.getElementById('active-program-card');
-        const content = document.getElementById('active-program-content');
-        const noState = document.getElementById('no-program-state');
-        if (!card || !content) return;
+        const empty = document.getElementById('no-program-state');
+        const edit = document.getElementById('edit-program-btn');
+        if (!card || !empty) return;
 
-        if (!program) {
-            card.style.display = 'none';
-            if (noState) noState.style.display = 'block';
+        if (!program || !program.days?.length) {
+            card.hidden = true;
+            empty.hidden = false;
+            if (edit) edit.hidden = true;
+            this._setText('scheda-title', 'Scheda');
             return;
         }
-
-        card.style.display = 'block';
-        if (noState) noState.style.display = 'none';
-
-        const meta = program.metadata || {};
-        const tempoInfo = meta.tempo
-            ? `<p><strong>Esecuzione:</strong> ${GT.esc(meta.tempo.description)} ${meta.tempo.detail ? `<span class="tempo-detail">(${GT.esc(meta.tempo.detail)})</span>` : ''}</p>`
-            : '';
-        const cycleInfo = meta.cycle ? Storage.getCycleInfo() : null;
-
-        let html = `
-            <div class="program-info">
-                <p><strong>Tipo:</strong> ${GT.esc(program.name || 'Scheda')}</p>
-                <p><strong>Obiettivo:</strong> ${GT.esc(this._goalLabel(meta.goal) || 'Non specificato')}</p>
-                <p><strong>Giorni:</strong> ${(program.days || []).length} a settimana</p>
-                ${cycleInfo ? `<p><strong>Ciclo:</strong> ${GT.esc(meta.cycleNumber || 1)} · sett. ${cycleInfo.currentWeek}/${cycleInfo.duration}</p>` : ''}
-                ${tempoInfo}
-            </div>
-            <div class="program-days">
-        `;
-
-        (program.days || []).forEach(day => {
-            html += `
-                <div class="program-day">
-                    <h4>
-                        ${GT.esc(day.name)}
-                        <span class="day-type">${GT.esc(day.type || '')}</span>
-                    </h4>
-                    ${day.focus ? `<p class="day-focus">${GT.esc(day.focus)}</p>` : ''}
-                    <div class="day-exercises">
-                        ${(day.exercises || []).map(ex => `
-                            <div class="program-exercise program-exercise-item">
-                                <div class="program-exercise-content">
-                                    <span class="exercise-name">${GT.esc(ex.name)}</span>
-                                    <span class="exercise-details">${GT.esc(ex.sets)} x ${GT.esc(ex.reps)} ${ex.rest ? '• ' + GT.esc(ex.rest) + 's' : ''}</span>
-                                </div>
-                                <button type="button" class="btn btn--ghost btn--icon exercise-info-btn" data-exercise-id="${GT.esc(ex.exerciseId || '')}" data-exercise-name="${GT.esc(ex.name)}" aria-label="Come si esegue: ${GT.esc(ex.name)}">
-                                    ${this.ico('info')}
-                                </button>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-
-        if (meta.weeklyVolume && typeof meta.weeklyVolume === 'object') {
-            html += `
-                <div class="volume-summary">
-                    <h4>Serie a settimana</h4>
-                    <div class="volume-grid">
-                        ${Object.entries(meta.weeklyVolume).map(([muscle, sets]) =>
-                            `<div class="volume-item"><span>${GT.esc(muscle)}</span><strong>${GT.esc(sets)}</strong></div>`
-                        ).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        content.innerHTML = html;
-
-        content.querySelectorAll('.exercise-info-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showExerciseInfoModal(btn.dataset.exerciseId || null, btn.dataset.exerciseName, 'workout');
-            });
-        });
+        card.hidden = false;
+        empty.hidden = true;
+        if (edit) edit.hidden = false;
+        this._setText('scheda-title', this._schedaTitle(program));
+        this._renderSchedaCycle(program);
+        this._renderSchedaDays(program);
     },
 
-    deleteActiveProgram() {
+    _renderSchedaCycle(program) {
+        const section = document.getElementById('scheda-cycle');
+        if (!section) return;
+        const info = Storage.getCycleInfo();
+        const md = program.metadata || {};
+        const days = program.days.length;
+        const min = parseInt(md.sessionDuration, 10);
+        const goal = this._schedaIsManual(program) && !md.cycle ? '' : this._goalLabel(md.goal);
+        const meta = [
+            goal ? GT.esc(goal) : '',
+            min > 0 ? `<span class="num">${days}</span> × <span class="num">${min}</span>&nbsp;min` : `<span class="num">${days}</span> giorni`
+        ].filter(Boolean).join(' · ');
+        this._schedaMetaHtml = meta;
+        if (!info) {
+            section.hidden = true;
+            return;
+        }
+        section.hidden = false;
+        this._setText('scheda-cycle-title', `Ciclo ${info.cycleNumber || md.cycleNumber || 1}`);
+        const metaEl = document.getElementById('scheda-meta');
+        if (metaEl) metaEl.innerHTML = meta;
+
+        const isDeload = Storage.isDeloadActive();
+        const meso = document.getElementById('scheda-meso');
+        const n = info.duration;
+        if (meso) {
+            meso.style.setProperty('--weeks', String(n));
+            meso.innerHTML = this._oggiMesoHtml(info);
+            meso.setAttribute('aria-label', `Ciclo di ${n} settimane. ` + this._oggiMesoLabel(info, isDeload ? 'deload' : info.currentPhase));
+        }
+        const labels = document.getElementById('scheda-meso-labels');
+        if (labels) {
+            labels.style.setProperty('--weeks', String(n));
+            labels.innerHTML = Array.from({ length: n }, (_, i) => {
+                const w = i + 1;
+                return w === info.currentWeek ? `<span class="is-now">S${w} · ora</span>` : `<span>S${w}</span>`;
+            }).join('');
+        }
+
+        // Fasi raggruppate: "Accumulo S1-3 · RIR 2-3", "Scarico S6 · metà serie"
+        const groups = [];
+        (info.phases || []).slice().sort((a, b) => a.week - b.week).forEach(p => {
+            const key = this._oggiPhaseKey(p);
+            const last = groups[groups.length - 1];
+            const rir = this._schedaRirRange(p);
+            if (last && last.key === key) {
+                last.to = p.week;
+                last.lo = Math.min(last.lo, rir.lo);
+                last.hi = Math.max(last.hi, rir.hi);
+            } else {
+                groups.push({ key, from: p.week, to: p.week, lo: rir.lo, hi: rir.hi });
+            }
+        });
+        const phases = document.getElementById('scheda-phases');
+        if (phases) {
+            phases.innerHTML = groups.map(g => {
+                const weeks = g.from === g.to ? `S${g.from}` : `S${g.from}-${g.to}`;
+                const what = g.key === 'del' ? 'metà serie' : (Number.isFinite(g.lo) ? `RIR ${g.lo === g.hi ? g.lo : `${g.lo}-${g.hi}`}` : '');
+                return `<div class="row scheda-phase"><span class="phase" data-ph="${g.key}">${this._oggiPhaseLabel(g.key === 'del' ? 'deload' : g.key === 'int' ? 'intensification' : 'accumulation')}</span><span class="muted num">${weeks}${what ? ' · ' + what : ''}</span></div>`;
+            }).join('');
+        }
+
+        // Azioni del ciclo: scarico anticipato (o la sua fine), chiusura
+        const actions = document.getElementById('scheda-cycle-actions');
+        if (actions) {
+            const rows = [];
+            if (this._shouldCompleteCycle()) {
+                rows.push(this._schedaCycleRow('close', 'cycle', 'Chiudi il ciclo', 'Riepilogo ed esercizi nuovi'));
+            }
+            if (info.isManualDeload) {
+                const until = this._oggiDeloadUntil(info);
+                rows.push(`<div class="row"><span class="row__icon">${this.ico('deload')}</span><span class="row__body"><span class="row__title">Scarico in corso</span><span class="row__sub">${until ? 'Fino a ' + GT.esc(until) : '7 giorni'}</span></span><button type="button" class="btn btn--secondary btn--sm" data-cycle-act="stop-deload">Termina</button></div>`);
+            } else if (!isDeload) {
+                rows.push(this._schedaCycleRow('deload', 'deload', 'Scarico anticipato', '7 giorni, metà serie'));
+            }
+            actions.innerHTML = rows.join('');
+            actions.hidden = !rows.length;
+        }
+    },
+
+    _schedaCycleRow(act, icon, title, sub) {
+        return `<button type="button" class="row" data-cycle-act="${act}"><span class="row__icon">${this.ico(icon)}</span><span class="row__body"><span class="row__title">${title}</span><span class="row__sub">${sub}</span></span><span class="row__end">${this.ico('next')}</span></button>`;
+    },
+
+    _schedaRirRange(phase) {
+        if (phase?.rir && Number.isFinite(Number(phase.rir.compound))) {
+            const c = Number(phase.rir.compound);
+            const i = Number.isFinite(Number(phase.rir.isolation)) ? Number(phase.rir.isolation) : c;
+            return { lo: Math.min(c, i), hi: Math.max(c, i) };
+        }
+        if (phase?.rirTarget) return { lo: Number(phase.rirTarget.min), hi: Number(phase.rirTarget.max) };
+        return { lo: NaN, hi: NaN };
+    },
+
+    // Giorni della scheda fatti questa settimana: indice → data dell'ultima volta
+    _schedaDoneMap(program) {
+        const out = new Map();
+        const pid = program?.metadata?.programId;
+        const days = program?.days || [];
+        Storage.getWorkoutsThisWeek().forEach(w => {
+            if (!w || w.isFreeWorkout) return;
+            let idx = -1;
+            const di = parseInt(w.dayIndex, 10);
+            if (pid != null && w.programId != null && String(w.programId) === String(pid) && Number.isInteger(di)) idx = di;
+            if (idx < 0 || idx >= days.length) idx = days.findIndex(d => d.type && d.type === w.type);
+            if (idx < 0) return;
+            const t = new Date(w.date);
+            if (!out.has(idx) || t > out.get(idx)) out.set(idx, t);
+        });
+        return out;
+    },
+
+    _renderSchedaDays(program) {
+        const list = document.getElementById('scheda-days');
+        if (!list) return;
+        const pid = program.metadata?.programId ?? '';
+        if (!this._schedaOpen || this._schedaOpenPid !== pid) {
+            this._schedaOpen = new Set([this.getSuggestedDayIndex(program)]);
+            this._schedaOpenPid = pid;
+        }
+        const done = this._schedaDoneMap(program);
+        const count = document.getElementById('scheda-days-count');
+        if (count) {
+            const cycleHidden = document.getElementById('scheda-cycle')?.hidden;
+            count.innerHTML = cycleHidden && this._schedaMetaHtml
+                ? this._schedaMetaHtml
+                : `<span class="num">${done.size}</span> di <span class="num">${program.days.length}</span> fatti`;
+        }
+        list.innerHTML = program.days.map((day, i) => this._schedaDayCard(program, day, i, done)).join('');
+    },
+
+    _schedaDayCard(program, day, i, done) {
+        const open = this._schedaOpen.has(i);
+        const suggested = this.getSuggestedDayIndex(program);
+        const todayDone = Storage.getWorkoutsThisWeek().some(w => GT.dateKey(new Date(w.date)) === GT.dateKey(new Date()));
+        const name = day.type || day.name || `Giorno ${i + 1}`;
+        const n = day.exercises?.length || 0;
+        let tag = '';
+        if (done.has(i)) {
+            const wd = done.get(i).toLocaleDateString('it-IT', { weekday: 'long' });
+            tag = `<span class="tag tag--ok dayc__tag">${this.ico('check')}${GT.esc(wd)}</span>`;
+        } else if (i === suggested && n) {
+            tag = `<span class="tag tag--accent dayc__tag">${todayDone ? 'prossima' : 'oggi'}</span>`;
+        }
+        const est = n ? this._estimateDuration(this._applyPhase(day), program) : 0;
+        const focus = this._oggiFocus(day);
+        const sub = [
+            focus ? GT.esc(focus) : '',
+            n ? `<span class="num">${n}</span>&nbsp;${n === 1 ? 'esercizio' : 'esercizi'}` : 'Nessun esercizio',
+            est ? `<span class="num">~${est}</span>&nbsp;min` : ''
+        ].filter(Boolean).join(' · ');
+        return `
+            <article class="dayc${open ? ' is-open' : ''}" data-day="${i}">
+                <h3 class="dayc__h">
+                    <button class="dayc__head" type="button" aria-expanded="${open}" aria-controls="dayc-body-${i}" data-dayc-toggle="${i}">
+                        <span class="dayc__name">${GT.esc(name)} ${tag}</span>
+                        <span class="dayc__sub">${sub}</span>
+                        ${this.ico('chevron-down', 'dayc__chev')}
+                    </button>
+                </h3>
+                <div class="dayc__body" id="dayc-body-${i}"${open ? '' : ' hidden'}>${open ? this._schedaDayBody(program, day, i) : ''}</div>
+            </article>`;
+    },
+
+    // Elenco degli esercizi (superset raggruppati) + Anteprima e Inizia
+    _schedaDayBody(program, day, i) {
+        const exs = day.exercises || [];
+        if (!exs.length) return '<p class="muted dayc__empty">Nessun esercizio: aggiungili con la matita.</p>';
+        const name = day.type || day.name || `Giorno ${i + 1}`;
+        return `
+            <ol class="dayc__list">${this._schedaExrList(exs, (ex, inSs) => this._schedaExrPlan(ex, program, inSs))}</ol>
+            <div class="dayc__actions">
+                <button type="button" class="btn btn--secondary" data-dayc-act="preview" data-day="${i}" aria-label="Anteprima di ${GT.esc(name)}">${this.ico('plan')}Anteprima</button>
+                <button type="button" class="btn btn--secondary dayc__start" data-dayc-act="start" data-day="${i}" aria-label="Inizia ${GT.esc(name)}">${this.ico('play')}Inizia</button>
+            </div>`;
+    },
+
+    // Righe .exr, superset in .ssgroup con l'etichetta "Superset · 1:30 dopo A2"
+    _schedaExrList(exs, planFn) {
+        const sizes = {};
+        exs.forEach(ex => { if (ex?.supersetGroup) sizes[ex.supersetGroup] = (sizes[ex.supersetGroup] || 0) + 1; });
+        let html = '';
+        let k = 0;
+        while (k < exs.length) {
+            const ex = exs[k];
+            const g = ex?.supersetGroup;
+            if (g && sizes[g] >= 2) {
+                const members = [];
+                while (k < exs.length && exs[k]?.supersetGroup === g) members.push(exs[k++]);
+                const last = `${g}${members.length}`;
+                const rest = parseInt(members[0].supersetRest, 10) || Math.round(Math.max(...members.map(m => parseInt(m.rest, 10) || 0)) * 0.8);
+                const giant = members.length > 2 || members.some(m => m.isGiantSet);
+                html += `<li class="ssgroup">
+                    <span class="ssgroup__label">${this.ico('superset')}${giant ? 'Giant set' : 'Superset'}${rest ? ` · <span class="num">${this._schedaRest(rest)}</span> dopo ${GT.esc(last)}` : ''}</span>
+                    <ol>${members.map((m, j) => `<li>${this._schedaExr(m, planFn(m, true), `${g}${j + 1}`)}</li>`).join('')}</ol>
+                </li>`;
+            } else {
+                html += `<li>${this._schedaExr(ex, planFn(ex, false))}</li>`;
+                k++;
+            }
+        }
+        return html;
+    },
+
+    _schedaExr(ex, planHtml, letter = '') {
+        const name = ex.name || EXERCISES_DB[ex.exerciseId]?.name || ex.exerciseId || '';
+        return `<button type="button" class="exr" data-ex="${GT.esc(ex.exerciseId || '')}" data-ex-name="${GT.esc(name)}">
+            <span class="thumb thumb--sm">${this._oggiThumb(ex.exerciseId, '')}</span>
+            <span class="exr__body">
+                <span class="exr__name">${letter ? `<span class="ex-letter">${GT.esc(letter)}</span>` : ''}${GT.esc(name)}</span>
+                <span class="exr__plan">${planHtml}</span>
+            </span>
+        </button>`;
+    },
+
+    // "4 × 8-12 · 2:00 · 140 kg" (a tempo: "3 × 30-45 s"; corpo libero: "corpo libero")
+    _schedaExrPlan(ex, program, inSuperset) {
+        const sets = parseInt(ex.sets, 10) || 3;
+        const time = ex.metric === 'time';
+        const reps = GT.esc(String(ex.reps ?? ex.targetReps ?? ''));
+        const parts = [`<span class="num">${sets} × ${reps}${time ? '&nbsp;s' : ''}</span>`];
+        const rest = parseInt(ex.rest, 10);
+        if (!inSuperset && rest > 0) parts.push(`<span class="num">${this._schedaRest(rest)}</span>`);
+        const w = this._schedaWeight(ex, program);
+        if (w) parts.push(w);
+        return parts.join(' · ');
+    },
+
+    // Peso previsto: suggerimento della progressione se c'è uno storico, "corpo libero" se non serve
+    _schedaWeight(ex, program) {
+        const id = ex.exerciseId;
+        if (!id) return '';
+        const bw = this._safe(() => Storage.isBodyweightExercise(id));
+        let last = null;
+        try { last = Storage.getLastPerformance(id); } catch (e) { last = null; }
+        let kg = 0;
+        if (last) {
+            kg = Number(last.weight) || 0;
+            try {
+                const s = Storage.getProgressionSuggestion(id, ex.reps || ex.targetReps, program?.metadata?.goal);
+                if (Number(s?.suggestedWeight) > 0) kg = Number(s.suggestedWeight);
+            } catch (e) { /* resta l'ultimo peso */ }
+        }
+        if (kg > 0) return `<span class="num">${this.fmt(kg)}</span>&nbsp;kg`;
+        return bw ? 'corpo libero' : '';
+    },
+
+    // Recupero sempre come m:ss ("0:45", "2:30")
+    _schedaRest(sec) {
+        const s = Math.max(0, Math.round(Number(sec) || 0));
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    },
+
+    _schedaToggleDay(i) {
+        const program = Storage.getActiveProgram();
+        const day = program?.days?.[i];
+        const card = document.querySelector(`#scheda-days .dayc[data-day="${i}"]`);
+        if (!day || !card) return;
+        if (!this._schedaOpen) this._schedaOpen = new Set();
+        const open = !this._schedaOpen.has(i);
+        if (open) this._schedaOpen.add(i);
+        else this._schedaOpen.delete(i);
+        card.classList.toggle('is-open', open);
+        card.querySelector('.dayc__head')?.setAttribute('aria-expanded', String(open));
+        const body = card.querySelector('.dayc__body');
+        if (body) {
+            if (open) body.innerHTML = this._schedaDayBody(program, day, i);
+            body.hidden = !open;
+        }
+    },
+
+    _schedaStartDay(i) {
+        const program = Storage.getActiveProgram();
+        const day = program?.days?.[i];
+        if (!day?.exercises?.length) {
+            this.showNotification('Giorno senza esercizi', 'warning');
+            return;
+        }
+        this.startWorkout(day, { dayIndex: i });
+    },
+
+    // Scheda dell'esercizio: quella nuova di Esercizi se c'è, altrimenti il foglio "Come si fa"
+    _schedaOpenExercise(exerciseId, name) {
+        if (!exerciseId) return;
+        if (typeof this.openExercise === 'function') this.openExercise(exerciseId);
+        else if (typeof this.showExerciseInfoModal === 'function') this.showExerciseInfoModal(exerciseId, name, 'workout');
+    },
+
+    async deleteActiveProgram() {
         const program = Storage.getActiveProgram();
         if (!program) return;
-        if (!confirm(`Eliminare «${program.name || 'la scheda'}»? Lo storico resta`)) return;
+        const ok = await this.confirmSheet({
+            title: `Eliminare ${this._oggiProgramLabel(program)}?`,
+            text: 'Lo storico resta.',
+            ok: 'Elimina la scheda',
+            cancel: 'Tieni la scheda',
+            danger: true
+        });
+        if (!ok) return;
         Storage.clearActiveProgram();
         this.loadPrograms();
         this.loadDashboard();
         this._safe(() => this.loadProgress());
-        this.showNotification('Scheda eliminata', 'info');
+        this.showNotification('Scheda eliminata', 'info', { icon: 'trash' });
     },
 
     // ========================================
-    // MANUAL PROGRAM BUILDER
+    // ANTEPRIMA DI UN GIORNO (come sarà oggi: serie della fase, RIR, volta scorsa)
     // ========================================
+
+    openDayPreview(i) {
+        const program = Storage.getActiveProgram();
+        const day = program?.days?.[i];
+        if (!day?.exercises?.length) return;
+        this._previewDay = i;
+        const info = Storage.getCycleInfo();
+        const isDeload = Storage.isDeloadActive();
+        const phase = this._currentPhase(info, isDeload);
+        const phased = this._applyPhase(day, phase);
+        const name = day.type || day.name || `Giorno ${i + 1}`;
+        const est = this._estimateDuration(phased, program);
+        this._setText('scheda-preview-title', name);
+        const meta = document.getElementById('scheda-preview-meta');
+        if (meta) {
+            const rir = this._oggiPhaseRir(phase);
+            meta.innerHTML = [
+                info ? `${this._oggiPhaseLabel(isDeload ? 'deload' : phase)}, settimana <span class="num">${info.currentWeek}</span>` : '',
+                rir ? `RIR <span class="num">${rir}</span>` : '',
+                est ? `<span class="num">~${est}</span>&nbsp;min` : ''
+            ].filter(Boolean).join(' · ');
+        }
+        const list = document.getElementById('scheda-preview-list');
+        if (list) {
+            list.innerHTML = this._schedaExrList(phased.exercises || [], (ex, inSs) => {
+                const sets = parseInt(ex.sets, 10) || 3;
+                const time = ex.metric === 'time';
+                const parts = [`<span class="num">${sets} × ${GT.esc(String(ex.reps ?? ''))}${time ? '&nbsp;s' : ''}</span>`];
+                if (Number.isFinite(Number(ex.targetRir))) parts.push(`RIR <span class="num">${Number(ex.targetRir)}</span>`);
+                const rest = parseInt(ex.rest, 10);
+                if (!inSs && rest > 0) parts.push(`<span class="num">${this._schedaRest(rest)}</span>`);
+                let last = null;
+                try { last = Storage.getLastPerformance(ex.exerciseId); } catch (e) { last = null; }
+                const prev = last ? `<span class="pv-prev">Volta scorsa <span class="num">${Number(last.weight) > 0 ? `${this.fmt(last.weight)} × ` : ''}${GT.esc(last.reps)}</span></span>` : '';
+                return parts.join(' · ') + prev;
+            });
+        }
+        const start = document.getElementById('scheda-preview-start');
+        if (start) start.innerHTML = `${this.ico('play')}Inizia ${GT.esc(name)}`;
+        this._openModal('scheda-preview-modal', '#scheda-preview-start');
+    },
+
+    // ========================================
+    // EDITOR DELLA SCHEDA (anche scheda nuova a mano)
+    // Conserva ciclo, superset, programId e tutto quello che non mostra (_src). Modificare una
+    // scheda generata la marca isManual: la rotazione di fine ciclo non cancella le modifiche.
+    // ========================================
+
+    SUPERSET_KEYS: ['supersetGroup', 'supersetOrder', 'supersetRest', 'transitionTime', 'isGiantSet'],
+
+    REP_LADDER: ['1-3', '3-5', '4-6', '5-8', '6-8', '6-10', '8-10', '8-12', '10-12', '10-15', '12-15', '12-20', '15-20', '15-25', '20-25', '20-30'],
+    TIME_LADDER: ['10-15', '15-20', '20-30', '30-45', '45-60', '60-90'],
 
     openManualBuilder(editMode = false) {
-        this.builderState = {
-            days: [],
-            currentDayIndex: 0,
-            isEditing: editMode
-        };
-
-        if (editMode) {
-            // Si tiene una copia dei dati originali (_src): al salvataggio non si perde
-            // nulla di quello che il builder non mostra (superset, note, warmup, metadata)
-            const program = Storage.getActiveProgram();
-            this.builderState.days = (program?.days || []).map(day => ({
-                name: day.type || day.name,
-                _src: day,
-                exercises: (day.exercises || []).map(ex => ({
-                    exerciseId: ex.exerciseId,
-                    name: ex.name,
-                    sets: ex.sets,
-                    reps: ex.reps,
-                    rest: ex.rest,
-                    _src: ex
-                }))
-            }));
-            this._setText('builder-modal-title', 'Modifica scheda');
-        } else {
-            this.builderState.days = [{ name: 'Giorno 1', exercises: [] }];
-            this._setText('builder-modal-title', 'Scheda a mano');
+        if (this.activeWorkout) {
+            this._promptActiveSession();
+            return;
         }
-
-        if (!this.builderState.days.length) this.builderState.days = [{ name: 'Giorno 1', exercises: [] }];
-
-        this.builderRenderDays();
-        const stepDays = document.getElementById('builder-step-days');
-        const stepEx = document.getElementById('builder-step-exercises');
-        if (stepDays) stepDays.style.display = 'block';
-        if (stepEx) stepEx.style.display = 'none';
+        const program = editMode ? Storage.getActiveProgram() : null;
+        const exOf = (ex) => {
+            const out = {
+                exerciseId: ex.exerciseId,
+                name: ex.name || EXERCISES_DB[ex.exerciseId]?.name || ex.exerciseId,
+                sets: this._clampInt(ex.sets, 3, 1, 10),
+                reps: String(ex.reps ?? '8-12'),
+                rest: this._clampInt(ex.rest, this._defaultRest(ex.exerciseId), 15, 600),
+                metric: ex.metric,
+                _src: ex
+            };
+            this.SUPERSET_KEYS.forEach(k => { if (ex[k] !== undefined) out[k] = ex[k]; });
+            return out;
+        };
+        this.builderState = {
+            days: editMode && program?.days?.length
+                ? program.days.map(day => ({ name: day.type || day.name, _src: day, exercises: (day.exercises || []).filter(Boolean).map(exOf) }))
+                : [{ name: 'Giorno 1', exercises: [] }],
+            currentDayIndex: 0,
+            isEditing: !!(editMode && program),
+            openEx: null,
+            generated: !!(editMode && program && !this._schedaIsManual(program))
+        };
+        if (editMode && program) {
+            const sug = this.getSuggestedDayIndex(program);
+            this.builderState.currentDayIndex = Math.min(Math.max(0, sug), this.builderState.days.length - 1);
+        }
+        this.builderState.snapshot = this._edSnapshot();
+        this._setText('builder-modal-title', this.builderState.isEditing ? 'Modifica scheda' : 'Nuova scheda');
+        const note = document.getElementById('ed-note');
+        if (note) note.hidden = !this.builderState.generated;
+        this._edHideSearch();
+        this._edRender();
         this._openModal('manual-builder-modal');
-    },
-
-    closeManualBuilder() {
-        this._closeModal('manual-builder-modal');
     },
 
     editActiveProgram() {
         this.openManualBuilder(true);
     },
 
-    builderAddDay() {
-        const num = this.builderState.days.length + 1;
-        this.builderState.days.push({ name: `Giorno ${num}`, exercises: [] });
-        this.builderRenderDays();
+    // Fotografia dei dati modificabili: serve a sapere se ci sono modifiche
+    _edSnapshot() {
+        return JSON.stringify((this.builderState.days || []).map(d => ({
+            n: d.name,
+            e: d.exercises.map(ex => [ex.exerciseId, ex.sets, ex.reps, ex.rest, ex.supersetGroup || ''])
+        })));
     },
 
-    builderRemoveDay(index) {
+    _edDirty() {
+        return this._edSnapshot() !== this.builderState.snapshot;
+    },
+
+    async closeManualBuilder() {
+        if (this._edDirty()) {
+            const ok = await this.confirmSheet({
+                title: 'Uscire senza salvare?',
+                text: 'Le modifiche alla scheda si perdono.',
+                ok: 'Esci senza salvare',
+                cancel: 'Continua a modificare',
+                danger: true
+            });
+            if (!ok) return;
+        }
+        this._closeModal('manual-builder-modal');
+    },
+
+    _edRender() {
+        this._edRenderDays();
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        const nameInput = document.getElementById('ed-day-name');
+        if (nameInput && document.activeElement !== nameInput) nameInput.value = day?.name || '';
+        const remove = document.getElementById('ed-day-remove');
+        if (remove) {
+            remove.hidden = this.builderState.days.length <= 1;
+            remove.setAttribute('aria-label', `Togli il giorno ${day?.name || ''}`.trim());
+        }
+        this.builderRenderCurrentDayExercises();
+    },
+
+    _edRenderDays() {
+        const tabs = document.getElementById('builder-day-tabs');
+        if (!tabs) return;
+        tabs.innerHTML = this.builderState.days.map((d, i) => `
+            <button type="button" class="chip" aria-pressed="${i === this.builderState.currentDayIndex}" data-ed-day="${i}">${GT.esc(d.name || `Giorno ${i + 1}`)}<span class="num ed__daycount">${d.exercises.length}</span><span class="sr-only"> esercizi</span></button>
+        `).join('') + `<button type="button" class="chip" data-ed-add-day>${this.ico('plus')}Giorno</button>`;
+    },
+
+    builderRenderDays() {
+        this._edRenderDays();
+    },
+
+    builderRenderDayTabs() {
+        this._edRenderDays();
+    },
+
+    builderAddDay() {
+        const num = this.builderState.days.length + 1;
+        if (num > 7) {
+            this.showNotification('Al massimo 7 giorni', 'warning');
+            return;
+        }
+        this.builderState.days.push({ name: `Giorno ${num}`, exercises: [] });
+        this.builderState.currentDayIndex = this.builderState.days.length - 1;
+        this.builderState.openEx = null;
+        this._edRender();
+        setTimeout(() => document.getElementById('ed-day-name')?.select?.(), 30);
+    },
+
+    async builderRemoveDay(index) {
         if (this.builderState.days.length <= 1) {
             this.showNotification('Serve almeno un giorno', 'warning');
             return;
         }
         const day = this.builderState.days[index];
-        if (day?.exercises?.length && !confirm(`Togliere ${day.name}? ${day.exercises.length} esercizi`)) return;
+        if (!day) return;
+        if (day.exercises.length) {
+            const ok = await this.confirmSheet({
+                title: `Togliere ${day.name || 'il giorno'}?`,
+                text: `${day.exercises.length} ${day.exercises.length === 1 ? 'esercizio' : 'esercizi'} spariscono dalla scheda.`,
+                ok: 'Togli il giorno',
+                cancel: 'Tieni il giorno',
+                danger: true
+            });
+            if (!ok) return;
+        }
         this.builderState.days.splice(index, 1);
-        this.builderRenderDays();
-    },
-
-    builderRenderDays() {
-        const container = document.getElementById('builder-days-list');
-        if (!container) return;
-        container.innerHTML = this.builderState.days.map((day, i) => `
-            <div class="builder-day-row">
-                <span class="day-number">${i + 1}</span>
-                <input type="text" value="${GT.esc(day.name)}" placeholder="Es: Push, Pull, Gambe..." maxlength="40"
-                    aria-label="Nome giorno ${i + 1}"
-                    onchange="App.builderUpdateDayName(${i}, this.value)">
-                <span style="color:var(--text-muted);font-size:0.8rem;">${day.exercises.length} es.</span>
-                <button type="button" class="remove-day-btn" onclick="App.builderRemoveDay(${i})" aria-label="Rimuovi giorno ${i + 1}">${this.ico('close')}</button>
-            </div>
-        `).join('');
+        this.builderState.currentDayIndex = Math.max(0, Math.min(index, this.builderState.days.length - 1));
+        this.builderState.openEx = null;
+        this._edRender();
     },
 
     builderUpdateDayName(index, name) {
         if (this.builderState.days[index]) this.builderState.days[index].name = String(name).slice(0, 40);
     },
 
-    builderGoToExercises() {
-        if (this.builderState.days.length === 0) {
-            this.showNotification('Aggiungi almeno un giorno', 'warning');
-            return;
-        }
-        for (const day of this.builderState.days) {
-            if (!String(day.name || '').trim()) {
-                this.showNotification('Dai un nome a tutti i giorni', 'warning');
-                return;
-            }
-        }
-
-        this.builderState.currentDayIndex = 0;
-        document.getElementById('builder-step-days').style.display = 'none';
-        document.getElementById('builder-step-exercises').style.display = 'block';
-        this.builderRenderDayTabs();
-        this.builderRenderCurrentDayExercises();
-    },
-
-    builderGoToDays() {
-        document.getElementById('builder-step-days').style.display = 'block';
-        document.getElementById('builder-step-exercises').style.display = 'none';
-        document.getElementById('builder-exercise-results').innerHTML = '';
-        document.getElementById('builder-exercise-search').value = '';
-        this.builderRenderDays();
-    },
-
-    builderRenderDayTabs() {
-        const container = document.getElementById('builder-day-tabs');
-        if (!container) return;
-        container.innerHTML = this.builderState.days.map((day, i) => `
-            <button type="button" class="builder-day-tab ${i === this.builderState.currentDayIndex ? 'active' : ''}"
-                onclick="App.builderSelectDay(${i})">
-                ${GT.esc(day.name)}
-                <span style="opacity:0.6;margin-left:4px;">(${day.exercises.length})</span>
-            </button>
-        `).join('');
-    },
-
     builderSelectDay(index) {
+        if (!this.builderState.days[index]) return;
         this.builderState.currentDayIndex = index;
-        this.builderRenderDayTabs();
-        this.builderRenderCurrentDayExercises();
-        document.getElementById('builder-exercise-search').value = '';
-        document.getElementById('builder-exercise-results').innerHTML = '';
+        this.builderState.openEx = null;
+        this._edHideSearch();
+        this._edRender();
+    },
+
+    // Lettere dei superset nell'ordine attuale (solo gruppi con almeno due esercizi)
+    _edLetters(exs) {
+        const sizes = {};
+        exs.forEach(ex => { if (ex.supersetGroup) sizes[ex.supersetGroup] = (sizes[ex.supersetGroup] || 0) + 1; });
+        const seen = {};
+        return exs.map(ex => {
+            const g = ex.supersetGroup;
+            if (!g || sizes[g] < 2) return '';
+            seen[g] = (seen[g] || 0) + 1;
+            return `${g}${seen[g]}`;
+        });
     },
 
     builderRenderCurrentDayExercises() {
-        const day = this.builderState.days[this.builderState.currentDayIndex];
         const container = document.getElementById('builder-current-day-exercises');
-        if (!container) return;
-
-        if (!day || day.exercises.length === 0) {
-            container.innerHTML = '<div class="builder-empty-day">Nessun esercizio: cercalo qui sotto</div>';
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        if (!container || !day) return;
+        if (!day.exercises.length) {
+            container.innerHTML = `<li class="ed__empty muted">Nessun esercizio in ${GT.esc(day.name || 'questo giorno')}</li>`;
             return;
         }
+        const letters = this._edLetters(day.exercises);
+        const n = day.exercises.length;
+        container.innerHTML = day.exercises.map((ex, i) => {
+            const open = this.builderState.openEx === i;
+            const time = ex.metric === 'time';
+            const nm = GT.esc(ex.name);
+            const stepper = (field, label, value, minus, plus, mode) => `
+                <div class="ed__param">
+                    <label class="ed__plabel" for="ed-${field}-${i}">${label}</label>
+                    <div class="ed__stepper">
+                        <button type="button" class="ed__sbtn" data-ed-step="${field}" data-d="-1" data-i="${i}" aria-label="${minus}">${this.ico('minus')}</button>
+                        <input class="ed__val" id="ed-${field}-${i}" type="text" inputmode="${mode}" value="${GT.esc(value)}" data-ed-field="${field}" data-i="${i}" autocomplete="off" spellcheck="false">
+                        <button type="button" class="ed__sbtn" data-ed-step="${field}" data-d="1" data-i="${i}" aria-label="${plus}">${this.ico('plus')}</button>
+                    </div>
+                </div>`;
+            return `
+                <li class="ed__ex${open ? ' is-open' : ''}">
+                    <button type="button" class="ed__exhead" aria-expanded="${open}" aria-controls="ed-ex-${i}" data-ed-toggle="${i}">
+                        <span class="thumb thumb--sm">${this._oggiThumb(ex.exerciseId, '')}</span>
+                        <span class="ed__exbody">
+                            <span class="ed__exname">${letters[i] ? `<span class="ex-letter">${letters[i]}</span>` : ''}${nm}</span>
+                            <span class="ed__explan"><span class="num">${ex.sets} × ${GT.esc(ex.reps)}${time ? '&nbsp;s' : ''}</span> · <span class="num">${this._schedaRest(ex.rest)}</span></span>
+                        </span>
+                        ${this.ico('chevron-down', 'ed__chev')}
+                    </button>
+                    <div class="ed__exedit" id="ed-ex-${i}"${open ? '' : ' hidden'}>
+                        ${stepper('sets', 'Serie', String(ex.sets), `Meno una serie di ${nm}`, `Più una serie di ${nm}`, 'numeric')}
+                        ${stepper('reps', time ? 'Secondi' : 'Ripetizioni', ex.reps, `Meno ${time ? 'secondi' : 'ripetizioni'} per ${nm}`, `Più ${time ? 'secondi' : 'ripetizioni'} per ${nm}`, 'text')}
+                        ${stepper('rest', 'Recupero', this._schedaRest(ex.rest), `Recupero di ${nm} 15 secondi più corto`, `Recupero di ${nm} 15 secondi più lungo`, 'text')}
+                        <div class="ed__exactions">
+                            <button type="button" class="btn btn--secondary btn--sm" data-ed-move="-1" data-i="${i}"${i === 0 ? ' disabled' : ''} aria-label="Sposta su ${nm}">${this.ico('chevron-up')}Su</button>
+                            <button type="button" class="btn btn--secondary btn--sm" data-ed-move="1" data-i="${i}"${i === n - 1 ? ' disabled' : ''} aria-label="Sposta giù ${nm}">${this.ico('chevron-down')}Giù</button>
+                            <button type="button" class="btn btn--danger btn--sm" data-ed-remove="${i}" aria-label="Togli ${nm}">${this.ico('trash')}Togli</button>
+                        </div>
+                    </div>
+                </li>`;
+        }).join('');
+    },
 
-        container.innerHTML = day.exercises.map((ex, i) => `
-            <div class="builder-exercise-item" data-index="${i}">
-                <span class="drag-handle" aria-hidden="true">⠿</span>
-                <span class="ex-name">${GT.esc(ex.name)}</span>
-                <div class="ex-params">
-                    <input type="number" value="${GT.esc(ex.sets)}" min="1" max="10" aria-label="Serie"
-                        onchange="App.builderUpdateExercise(${i}, 'sets', this.value)">
-                    <span>×</span>
-                    <input type="text" value="${GT.esc(ex.reps)}" aria-label="Ripetizioni (es. 8-12)" style="width:60px;" maxlength="9"
-                        onchange="App.builderUpdateExercise(${i}, 'reps', this.value)">
-                    ${this.ico('timer', 'ico--sm')}
-                    <input type="number" value="${GT.esc(ex.rest)}" min="15" max="600" step="15" aria-label="Recupero in secondi"
-                        onchange="App.builderUpdateExercise(${i}, 'rest', this.value)">
-                    <span>s</span>
-                </div>
-                <button type="button" class="remove-exercise-btn" onclick="App.builderRemoveExercise(${i})" aria-label="Rimuovi ${GT.esc(ex.name)}">${this.ico('close')}</button>
-            </div>
-        `).join('');
+    _edListClick(e) {
+        const toggle = e.target.closest('[data-ed-toggle]');
+        if (toggle) {
+            const i = parseInt(toggle.dataset.edToggle, 10);
+            this.builderState.openEx = this.builderState.openEx === i ? null : i;
+            this.builderRenderCurrentDayExercises();
+            document.querySelector(`#builder-current-day-exercises [data-ed-toggle="${i}"]`)?.focus({ preventScroll: true });
+            return;
+        }
+        const step = e.target.closest('[data-ed-step]');
+        if (step) {
+            this._edStep(parseInt(step.dataset.i, 10), step.dataset.edStep, parseInt(step.dataset.d, 10));
+            document.querySelector(`#builder-current-day-exercises [data-ed-step="${step.dataset.edStep}"][data-d="${step.dataset.d}"][data-i="${step.dataset.i}"]`)?.focus({ preventScroll: true });
+            return;
+        }
+        const move = e.target.closest('[data-ed-move]');
+        if (move && !move.disabled) {
+            const to = this._edMove(parseInt(move.dataset.i, 10), parseInt(move.dataset.edMove, 10));
+            if (to != null) {
+                const btn = document.querySelector(`#builder-current-day-exercises [data-ed-move="${move.dataset.edMove}"][data-i="${to}"]`);
+                (btn && !btn.disabled ? btn : document.querySelector(`#builder-current-day-exercises [data-ed-toggle="${to}"]`))?.focus({ preventScroll: true });
+            }
+            return;
+        }
+        const rm = e.target.closest('[data-ed-remove]');
+        if (rm) this.builderRemoveExercise(parseInt(rm.dataset.edRemove, 10));
+    },
+
+    _edListChange(e) {
+        const input = e.target.closest('[data-ed-field]');
+        if (!input) return;
+        this.builderUpdateExercise(parseInt(input.dataset.i, 10), input.dataset.edField, input.value);
+    },
+
+    // Membri dello stesso superset (serie e recupero restano uguali nel gruppo)
+    _edGroupOf(day, ex) {
+        return ex.supersetGroup ? day.exercises.filter(o => o.supersetGroup === ex.supersetGroup) : [ex];
+    },
+
+    _edStep(i, field, d) {
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        const ex = day?.exercises[i];
+        if (!ex) return;
+        if (field === 'sets') {
+            const v = this._clampInt(ex.sets + d, ex.sets, 1, 10);
+            this._edGroupOf(day, ex).forEach(o => { o.sets = v; });
+        } else if (field === 'rest') {
+            const v = Math.max(15, Math.min(600, (Math.round(ex.rest / 15) * 15) + d * 15));
+            this._edGroupOf(day, ex).forEach(o => { o.rest = v; if (o.supersetGroup) o.supersetRest = v; });
+        } else if (field === 'reps') {
+            ex.reps = this._schedaStepReps(ex.reps, d, ex.metric === 'time');
+        }
+        this.builderRenderCurrentDayExercises();
+    },
+
+    // Scala delle ripetizioni: 6-8 → 8-10 → 8-12 … (a tempo: secondi)
+    _schedaStepReps(reps, d, time = false) {
+        const ladder = time ? this.TIME_LADDER : this.REP_LADDER;
+        const s = String(reps || '').replace(/\s/g, '');
+        let idx = ladder.indexOf(s);
+        if (idx < 0) {
+            const [a, b] = s.split('-').map(Number);
+            const mid = Number.isFinite(b) ? (a + b) / 2 : (Number.isFinite(a) ? a : 10);
+            let best = 0;
+            ladder.forEach((r, k) => {
+                const [x, y] = r.split('-').map(Number);
+                if (Math.abs((x + y) / 2 - mid) < Math.abs(ladder[best].split('-').map(Number).reduce((p, q) => p + q, 0) / 2 - mid)) best = k;
+            });
+            idx = best;
+            const [x, y] = ladder[idx].split('-').map(Number);
+            const m = (x + y) / 2;
+            if ((d > 0 && m > mid) || (d < 0 && m < mid)) return ladder[idx];
+        }
+        return ladder[Math.max(0, Math.min(ladder.length - 1, idx + d))];
+    },
+
+    // Recupero scritto: "90", "1:30", "1.30" → secondi
+    _schedaParseRest(value, def) {
+        const s = String(value ?? '').trim().replace('.', ':');
+        const m = s.match(/^(\d{1,2}):(\d{1,2})$/);
+        if (m) return Math.max(15, Math.min(600, parseInt(m[1], 10) * 60 + parseInt(m[2], 10)));
+        return this._clampInt(s, def, 15, 600);
     },
 
     builderUpdateExercise(exerciseIndex, field, value) {
         const day = this.builderState.days[this.builderState.currentDayIndex];
         const ex = day?.exercises[exerciseIndex];
         if (!ex) return;
-        if (field === 'sets') ex.sets = this._clampInt(value, 3, 1, 10);
-        else if (field === 'rest') ex.rest = this._clampInt(value, this._defaultRest(ex.exerciseId), 15, 600);
-        else if (field === 'reps') ex.reps = this._cleanReps(value, ex.reps || '8-12');
+        if (field === 'sets') {
+            const v = this._clampInt(value, ex.sets, 1, 10);
+            this._edGroupOf(day, ex).forEach(o => { o.sets = v; });
+        } else if (field === 'rest') {
+            const v = this._schedaParseRest(value, ex.rest);
+            this._edGroupOf(day, ex).forEach(o => { o.rest = v; if (o.supersetGroup) o.supersetRest = v; });
+        } else if (field === 'reps') {
+            ex.reps = this._cleanReps(value, ex.reps || '8-12');
+        }
         this.builderRenderCurrentDayExercises();
     },
 
-    builderRemoveExercise(exerciseIndex) {
+    // Blocchi contigui (un esercizio o un superset intero): lo spostamento non spezza i superset
+    _edBlocks(exs) {
+        const blocks = [];
+        exs.forEach((ex, i) => {
+            const last = blocks[blocks.length - 1];
+            if (last && ex.supersetGroup && exs[i - 1]?.supersetGroup === ex.supersetGroup) last.push(i);
+            else blocks.push([i]);
+        });
+        return blocks;
+    },
+
+    // Sposta su (d = −1) o giù (+1). Dentro un superset scambia i due; fuori sposta il blocco intero.
+    // Restituisce il nuovo indice dell'esercizio.
+    _edMove(i, d) {
         const day = this.builderState.days[this.builderState.currentDayIndex];
-        day.exercises.splice(exerciseIndex, 1);
+        const exs = day?.exercises;
+        if (!exs || !exs[i]) return null;
+        const j = i + d;
+        if (j < 0 || j >= exs.length) return null;
+        const ex = exs[i];
+        if (ex.supersetGroup && exs[j].supersetGroup === ex.supersetGroup) {
+            [exs[i], exs[j]] = [exs[j], exs[i]];
+            this.builderState.openEx = j;
+            this.builderRenderCurrentDayExercises();
+            return j;
+        }
+        const blocks = this._edBlocks(exs);
+        const b = blocks.findIndex(bl => bl.includes(i));
+        const nb = b + d;
+        if (nb < 0 || nb >= blocks.length) return null;
+        const order = blocks.slice();
+        [order[b], order[nb]] = [order[nb], order[b]];
+        const flat = order.flat();
+        day.exercises = flat.map(k => exs[k]);
+        const to = day.exercises.indexOf(ex);
+        this.builderState.openEx = to;
         this.builderRenderCurrentDayExercises();
-        this.builderRenderDayTabs();
+        return to;
+    },
+
+    builderRemoveExercise(exerciseIndex) {
+        const dayIndex = this.builderState.currentDayIndex;
+        const day = this.builderState.days[dayIndex];
+        const ex = day?.exercises[exerciseIndex];
+        if (!ex) return;
+        day.exercises.splice(exerciseIndex, 1);
+        this.builderState.openEx = null;
+        this._edRender();
+        document.getElementById('ed-add-ex')?.focus({ preventScroll: true });
+        this.showNotification(`${ex.name} tolto`, 'info', {
+            icon: 'trash',
+            action: {
+                label: 'Annulla',
+                onClick: () => {
+                    const d = this.builderState.days[dayIndex];
+                    if (!d) return;
+                    d.exercises.splice(Math.min(exerciseIndex, d.exercises.length), 0, ex);
+                    this._edRender();
+                }
+            }
+        });
+    },
+
+    // Aggiungi: la libreria in modalità scelta (foglio di Esercizi, sopra l'editor) se c'è,
+    // altrimenti la ricerca qui sotto
+    _edAddExercise() {
+        const day = this.builderState.days[this.builderState.currentDayIndex];
+        if (typeof this.pickExercise === 'function') {
+            const have = new Set((day?.exercises || []).map(e => e.exerciseId));
+            this.pickExercise({
+                title: `Aggiungi a ${day?.name || 'questo giorno'}`,
+                filter: (ex) => !!ex && !have.has(ex.id),
+                onPick: (id) => { if (id) this.builderAddExercise(id); }
+            });
+            return;
+        }
+        const box = document.getElementById('ed-search');
+        if (!box) return;
+        box.hidden = false;
+        const input = document.getElementById('builder-exercise-search');
+        input?.focus();
+        if (input?.value) this.builderSearchExercises(input.value);
+    },
+
+    _edHideSearch() {
+        const box = document.getElementById('ed-search');
+        if (box) box.hidden = true;
+        const input = document.getElementById('builder-exercise-search');
+        if (input) input.value = '';
+        const res = document.getElementById('builder-exercise-results');
+        if (res) res.innerHTML = '';
     },
 
     builderSearchExercises(query) {
         const container = document.getElementById('builder-exercise-results');
         if (!container) return;
-
-        if (!query || query.length < 2) {
+        const q = String(query || '').trim();
+        if (q.length < 2) {
             container.innerHTML = '';
+            container.hidden = true;
             return;
         }
-
-        const results = searchExercises(query).filter(ex => !ex.hidden).slice(0, 15);
+        container.hidden = false;
+        let results = [];
+        try {
+            results = (typeof searchExercises === 'function' ? searchExercises(q) : Object.values(EXERCISES_DB).filter(e => e.name.toLowerCase().includes(q.toLowerCase())))
+                .filter(ex => ex && !ex.hidden).slice(0, 15);
+        } catch (e) {
+            results = [];
+        }
         const day = this.builderState.days[this.builderState.currentDayIndex];
-        const existingIds = new Set(day.exercises.map(e => e.exerciseId));
-
-        if (results.length === 0) {
-            container.innerHTML = '<div style="padding:12px;color:var(--text-muted);text-align:center;">Nessun esercizio trovato</div>';
+        const existing = new Set(day.exercises.map(e => e.exerciseId));
+        if (!results.length) {
+            container.innerHTML = `<p class="row muted">Nessun esercizio per «${GT.esc(q)}»</p>`;
             return;
         }
-
         container.innerHTML = results.map(ex => {
-            const alreadyAdded = existingIds.has(ex.id);
-            return `
-                <div class="builder-search-result ${alreadyAdded ? 'already-added' : ''}" data-id="${GT.esc(ex.id)}"
-                    ${alreadyAdded ? 'aria-disabled="true" style="opacity:0.4;cursor:default;"' : 'tabindex="0" role="button"'}>
-                    <div>
-                        <div class="result-name">${GT.esc(ex.name)}</div>
-                        <div class="result-muscles">${GT.esc((ex.primaryMuscles || []).join(', '))} • ${GT.esc(ex.type)}</div>
-                    </div>
-                    <span class="result-add">${this.ico(alreadyAdded ? 'check' : 'plus')}</span>
-                </div>
-            `;
+            const added = existing.has(ex.id);
+            return `<button type="button" class="row ed__result" data-add-ex="${GT.esc(ex.id)}"${added ? ' disabled aria-disabled="true"' : ''}>
+                <span class="thumb thumb--sm">${this._oggiThumb(ex.id, '')}</span>
+                <span class="row__body"><span class="row__title">${GT.esc(ex.name)}</span><span class="row__sub">${GT.esc((ex.primaryMuscles || []).join(', '))}</span></span>
+                <span class="row__end">${this.ico(added ? 'check' : 'plus')}</span>
+            </button>`;
         }).join('');
-
-        container.querySelectorAll('.builder-search-result:not(.already-added)').forEach(el => {
-            el.addEventListener('click', () => this.builderAddExercise(el.dataset.id));
-            this._makeKeyboardClickable(el);
-        });
     },
 
     builderAddExercise(exerciseId) {
         const exercise = EXERCISES_DB[exerciseId];
         if (!exercise) return;
-
         const day = this.builderState.days[this.builderState.currentDayIndex];
-        if (day.exercises.some(e => e.exerciseId === exerciseId)) return;
+        if (!day) return;
+        if (day.exercises.some(e => e.exerciseId === exerciseId)) {
+            this.showNotification(`${exercise.name} c'è già`, 'info');
+            return;
+        }
         const isCompound = exercise.type === 'compound';
-
+        const time = exercise.metric === 'time';
         day.exercises.push({
             exerciseId: exercise.id,
             name: exercise.name,
             sets: isCompound ? 4 : 3,
-            reps: isCompound ? '6-10' : '10-15',
-            rest: this._defaultRest(exercise.id)
+            reps: time ? '30-45' : (isCompound ? '6-10' : '10-15'),
+            rest: this._defaultRest(exercise.id),
+            metric: time ? 'time' : undefined
         });
-
-        this.builderRenderCurrentDayExercises();
-        this.builderRenderDayTabs();
-
-        const searchInput = document.getElementById('builder-exercise-search');
-        if (searchInput?.value) this.builderSearchExercises(searchInput.value);
-
-        this.showNotification(`${exercise.name} aggiunto`, 'success');
+        this.builderState.openEx = day.exercises.length - 1;
+        this._edRender();
+        const search = document.getElementById('builder-exercise-search');
+        if (search?.value) this.builderSearchExercises(search.value);
+        setTimeout(() => {
+            try { document.querySelector(`#builder-current-day-exercises [data-ed-toggle="${day.exercises.length - 1}"]`)?.scrollIntoView({ block: 'nearest' }); } catch (e) { /* no-op */ }
+        }, 30);
+        this.showNotification(`${exercise.name} aggiunto`, 'success', { icon: 'plus' });
     },
 
-    builderSaveProgram() {
+    async builderSaveProgram() {
         const days = this.builderState.days;
-        if (days.length === 0) {
+        if (!days.length) {
             this.showNotification('Aggiungi almeno un giorno', 'warning');
             return;
         }
-
-        // Niente giorni vuoti: diventerebbero allenamenti a 0 esercizi (C12)
-        const emptyDay = days.find(d => !d.exercises.length);
-        if (emptyDay) {
-            this.showNotification(`${emptyDay.name}: nessun esercizio`, 'warning');
+        const nameless = days.findIndex(d => !String(d.name || '').trim());
+        if (nameless >= 0) {
+            this.builderSelectDay(nameless);
+            this.showNotification('Dai un nome a tutti i giorni', 'warning');
+            document.getElementById('ed-day-name')?.focus();
+            return;
+        }
+        // Niente giorni vuoti: diventerebbero sedute a 0 esercizi
+        const emptyIdx = days.findIndex(d => !d.exercises.length);
+        if (emptyIdx >= 0) {
+            this.builderSelectDay(emptyIdx);
+            this.showNotification(`${days[emptyIdx].name}: nessun esercizio`, 'warning');
             return;
         }
 
         const old = this.builderState.isEditing ? Storage.getActiveProgram() : null;
         if (!this.builderState.isEditing) {
             const existing = Storage.getActiveProgram();
-            if (existing && !confirm(`Sostituire «${existing.name || 'la scheda attiva'}»? Lo storico resta`)) return;
+            if (existing?.days?.length) {
+                const ok = await this.confirmSheet({
+                    title: `Sostituire ${this._oggiProgramLabel(existing)}?`,
+                    text: 'Lo storico resta.',
+                    ok: 'Sostituisci la scheda',
+                    cancel: 'Tieni questa'
+                });
+                if (!ok) return;
+            }
         }
 
+        const dirty = this._edDirty();
         const profile = Storage.getProfile();
-
         const newDays = days.map((day, i) => {
             const srcDay = day._src || null;
             const exercises = day.exercises.map(ex => {
                 const base = ex._src ? { ...ex._src } : {};
-                return {
+                const out = {
                     ...base,
                     exerciseId: ex.exerciseId,
                     name: ex.name,
@@ -952,6 +1184,12 @@ Object.assign(App, {
                     type: EXERCISES_DB[ex.exerciseId]?.type || base.type || 'compound',
                     notes: base.notes || ''
                 };
+                if (ex.metric) out.metric = ex.metric;
+                this.SUPERSET_KEYS.forEach(k => {
+                    if (ex[k] === undefined) delete out[k];
+                    else out[k] = ex[k];
+                });
+                return out;
             });
             this._fixSupersetGroups(exercises);
 
@@ -968,12 +1206,17 @@ Object.assign(App, {
 
         let metadata;
         if (old?.metadata) {
-            // Modifica: si conserva tutto (ciclo, tempo, goal, programId, numero ciclo…) (A6)
+            // Modifica: si conserva tutto (ciclo, tempo, goal, programId, numero ciclo…)
             metadata = {
                 ...old.metadata,
                 daysPerWeek: newDays.length,
                 weeklyVolume: this.builderCalcWeeklyVolume(newDays)
             };
+            // Scheda generata modificata a mano: la rotazione di fine ciclo non la riscrive
+            if (dirty && !this._schedaIsManual(old)) {
+                metadata.isManual = true;
+                metadata.editedAt = new Date().toISOString();
+            }
         } else {
             const goal = profile.goal || 'hypertrophy';
             const level = profile.level || 'beginner';
@@ -997,17 +1240,21 @@ Object.assign(App, {
 
         const program = {
             ...(old || {}),
-            name: old?.name || 'Scheda Personalizzata',
+            name: old?.name || 'Scheda a mano',
             days: newDays,
             metadata
         };
 
-        Storage.setActiveProgram(program);
-        this.closeManualBuilder();
+        if (Storage.setActiveProgram(program) === false) {
+            this.showNotification('Memoria piena: scheda non salvata', 'error');
+            return;
+        }
+        this.builderState.snapshot = this._edSnapshot();
+        this._closeModal('manual-builder-modal');
         this.loadPrograms();
         this.loadDashboard();
         this._safe(() => this.loadProgress());
-        this.showNotification(this.builderState.isEditing ? 'Scheda aggiornata' : 'Scheda creata', 'success');
+        this.showNotification(this.builderState.isEditing ? 'Scheda aggiornata' : 'Scheda creata', 'success', { icon: 'check' });
     },
 
     // Un superset con un solo esercizio rimasto torna un esercizio normale
@@ -1068,7 +1315,7 @@ Object.assign(App, {
         const push = sum(['petto', 'spalle', 'tricipiti']);
         const pull = sum(['schiena', 'bicipiti', 'trapezio', 'avambracci']);
         const upper = push + pull;
-        const db = Warmups.WARMUPS_DB || {};
+        const db = (typeof Warmups !== 'undefined' && Warmups.WARMUPS_DB) || {};
         const pick = (key, fallback) => (db[key] ? key : fallback);
 
         if (lower && upper) {
@@ -1095,103 +1342,5 @@ Object.assign(App, {
             });
         });
         return volume;
-    },
-
-    // ========================================
-    // WORKOUT PREVIEW (read-only, no tracking)
-    // ========================================
-
-    showWorkoutPreview() {
-        if (this.activeWorkout) {
-            this._promptActiveSession();
-            return;
-        }
-        const program = Storage.getActiveProgram();
-        if (!program?.days?.length) {
-            this.showNotification('Nessuna scheda attiva', 'warning');
-            return;
-        }
-
-        document.getElementById('workout-not-started').style.display = 'none';
-        document.getElementById('workout-active').style.display = 'none';
-        document.getElementById('workout-preview').style.display = 'block';
-
-        const startIndex = Math.min(this.getSuggestedDayIndex(program), program.days.length - 1);
-        const navContainer = document.getElementById('preview-day-nav');
-        navContainer.innerHTML = program.days.map((day, i) => `
-            <button type="button" class="preview-day-tab ${i === startIndex ? 'active' : ''}" data-day-index="${i}">
-                ${GT.esc(day.type || day.name)}
-            </button>
-        `).join('');
-
-        navContainer.querySelectorAll('.preview-day-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                navContainer.querySelectorAll('.preview-day-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                this.renderPreviewDay(program.days[parseInt(tab.dataset.dayIndex)]);
-            });
-        });
-
-        this.renderPreviewDay(program.days[startIndex]);
-    },
-
-    renderPreviewDay(day) {
-        const container = document.getElementById('preview-content');
-        if (!container || !day) return;
-
-        const cycleInfo = Storage.getCycleInfo();
-        const isDeload = Storage.isDeloadActive();
-        const phase = this._currentPhase(cycleInfo, isDeload);
-        const phased = this._applyPhase(day, phase);
-        const exercises = phased.exercises || [];
-
-        let html = '';
-        let currentGroup = null;
-        exercises.forEach((ex, i) => {
-            const gifUrl = getExerciseGif(ex.exerciseId);
-            const lastPerf = Storage.getLastPerformance(ex.exerciseId);
-            const hint = lastPerf ? `<span class="preview-hint">Ultima: ${GT.esc(lastPerf.weight)} kg × ${GT.esc(lastPerf.reps)}</span>` : '';
-            const group = ex.supersetGroup ? GT.esc(ex.supersetGroup) : null;
-
-            if (group && ex.supersetGroup !== currentGroup) {
-                if (currentGroup) html += '</div>';
-                currentGroup = ex.supersetGroup;
-                html += `<div class="preview-superset-group">
-                    <div class="preview-superset-label">
-                        <span class="superset-badge superset-badge-${group}" style="font-size:0.6rem;padding:1px 6px;">${ex.isGiantSet ? 'Giant Set' : 'Superset'} ${group}</span>
-                    </div>`;
-            } else if (!group && currentGroup) {
-                html += '</div>';
-                currentGroup = null;
-            }
-
-            const pause = group ? `${GT.esc(ex.transitionTime || 10)}s cambio` : `${GT.esc(ex.rest || this._defaultRest(ex.exerciseId))}s pausa`;
-            html += `
-                <div class="preview-exercise-row">
-                    <span class="preview-ex-num">${i + 1}</span>
-                    ${gifUrl ? `<img src="${GT.esc(gifUrl)}" class="preview-ex-gif" alt="" loading="lazy" onerror="this.style.display='none'">` : '<div class="preview-ex-gif-placeholder"></div>'}
-                    <div class="preview-ex-info">
-                        <div class="preview-ex-name">${GT.esc(ex.name)}${group ? ` <span class="superset-badge superset-badge-${group}" style="font-size:0.55rem;padding:1px 4px;">${group}${GT.esc(ex.supersetOrder || '')}</span>` : ''}</div>
-                        <div class="preview-ex-details">${GT.esc(ex.sets)} x ${GT.esc(ex.reps)} · ${pause}</div>
-                        ${hint}
-                    </div>
-                </div>
-            `;
-        });
-        if (currentGroup) html += '</div>';
-
-        const rir = phase?.rirTarget ? GT.esc(`RIR ${phase.rirTarget.min}-${phase.rirTarget.max}`) : '';
-        container.innerHTML = `
-            <div class="card preview-day-card">
-                <h3>${GT.esc(day.focus || day.type || day.name)}</h3>
-                ${cycleInfo ? `<p class="preview-phase-info">${GT.esc(phase?.phaseName || '')} · Sett. ${cycleInfo.currentWeek}/${cycleInfo.duration}${rir ? ' · ' + rir : ''}</p>` : ''}
-                <div class="preview-exercises">${html}</div>
-            </div>
-        `;
-    },
-
-    closeWorkoutPreview() {
-        document.getElementById('workout-preview').style.display = 'none';
-        if (!this.activeWorkout) document.getElementById('workout-not-started').style.display = 'block';
     },
 });

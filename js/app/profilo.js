@@ -248,7 +248,7 @@ Object.assign(App, {
             const b = e.target.closest('[data-plate]');
             if (!b) return;
             const kg = parseFloat(b.dataset.plate);
-            const plates = new Set(this._gym().plates || this.PF_PLATES);
+            const plates = new Set(this._pfGym().plates || this.PF_PLATES);
             if (plates.has(kg)) {
                 if (plates.size === 1) {
                     this.showNotification('Serve almeno un disco', 'warning');
@@ -608,7 +608,7 @@ Object.assign(App, {
     // PALESTRA (settings.gym)
     // ========================================
 
-    _gym() {
+    _pfGym() {
         if (typeof Storage.getGymConfig === 'function') {
             const g = this._safe(() => Storage.getGymConfig());
             if (g) return g;
@@ -624,7 +624,7 @@ Object.assign(App, {
     },
 
     _renderGym() {
-        const g = this._gym();
+        const g = this._pfGym();
         const bar = String(g.barKg === 15 ? 15 : 20);
         document.querySelectorAll('#pf-bar [data-val]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.val === bar)));
         const plates = new Set((Array.isArray(g.plates) ? g.plates : this.PF_PLATES).map(Number));

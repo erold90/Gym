@@ -822,7 +822,7 @@ Object.assign(App, {
     // CICLI
     // ========================================
 
-    _phaseKey(p) {
+    _progPhaseKey(p) {
         const s = String((p && (p.phase || p.phaseName)) || p || '').toLowerCase();
         if (/intens/.test(s)) return 'int';
         if (/deload|scaric/.test(s)) return 'del';
@@ -854,9 +854,9 @@ Object.assign(App, {
         const rows = [];
         const info = this._safe(() => Storage.getCycleInfo());
         if (info) {
-            const keys = (info.phases || []).map(p => this._phaseKey(p));
+            const keys = (info.phases || []).map(p => this._progPhaseKey(p));
             const deload = this._safe(() => Storage.isDeloadActive());
-            const phase = deload ? 'del' : this._phaseKey(info.currentPhase);
+            const phase = deload ? 'del' : this._progPhaseKey(info.currentPhase);
             rows.push(`<div class="row">
                 <span class="row__body"><span class="row__title">Ciclo ${GT.esc(info.cycleNumber || 1)} · in corso</span>
                 <span class="row__sub">dal ${GT.esc(this._shortDate(info.startDate))} · sett. <span class="num">${info.currentWeek}</span> di <span class="num">${info.duration}</span> · ${this._phaseLabel(phase)}</span></span>
@@ -867,7 +867,7 @@ Object.assign(App, {
         const history = this._safe(() => Storage.getCycleHistory()) || [];
         history.slice(0, 5).forEach((c, i) => {
             const st = c.statistics || {};
-            const keys = (Array.isArray(c.phases) ? c.phases : []).map(p => this._phaseKey(p));
+            const keys = (Array.isArray(c.phases) ? c.phases : []).map(p => this._progPhaseKey(p));
             const parts = [this._monthRange(c.startDate, c.endDate || c.completedAt)];
             if (st.totalWorkouts) parts.push(`<span class="num">${GT.esc(st.totalWorkouts)}</span>&nbsp;sedute`);
             if (st.prsAchieved) parts.push(`<span class="num">${GT.esc(st.prsAchieved)}</span>&nbsp;record`);
