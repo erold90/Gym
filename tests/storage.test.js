@@ -1055,7 +1055,9 @@ test('R1-10: cache in memoria di storico e scheda, azzerata da scritture, rimozi
     ls.getItem = (k) => { if (k === 'gymtracker_workouts') reads++; return get(k); };
     S.getWorkouts(); S.getWorkouts(); S.getWorkouts();
     eq(reads, 0, 'storico già in cache dopo la migrazione: nessuna rilettura');
-    ok(S.getActiveProgram() === S.getActiveProgram(), 'stessa scheda');
+    ok(JSON.stringify(S.getActiveProgram()) === JSON.stringify(S.getActiveProgram()), 'stessa scheda');
+    const mut = S.getActiveProgram(); mut.name = 'Modificata senza salvare';
+    ok(S.getActiveProgram().name !== 'Modificata senza salvare', 'una copia modificata senza salvare non cambia la cache');
     const p = S._programCopy();
     p.name = 'Nuova';
     ok(S.getActiveProgram().name !== 'Nuova', 'la copia non tocca la cache');

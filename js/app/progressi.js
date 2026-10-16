@@ -811,7 +811,11 @@ Object.assign(App, {
             el.placeholder = GT.num(lastOf(k)) > 0 ? this.fmt(lastOf(k), 1) : '';
         });
         const focus = first ? document.getElementById('measure-waist') : w;
-        setTimeout(() => { focus?.focus(); focus?.select?.(); }, 30);
+        // Il fuoco va al primo campo solo se nel frattempo non se ne è già scelto un altro
+        setTimeout(() => {
+            if (form.contains(document.activeElement) && document.activeElement?.tagName === 'INPUT') return;
+            focus?.focus(); focus?.select?.();
+        }, 30);
     },
 
     saveMeasurement() {

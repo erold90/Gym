@@ -75,6 +75,11 @@ const Storage = {
         return v !== null && typeof v === 'object' && !Array.isArray(v);
     },
 
+    _copyCached(v) {
+        if (v === null || typeof v !== 'object') return v;
+        try { return typeof structuredClone === 'function' ? structuredClone(v) : this._clone(v); } catch (e) { return this._clone(v); }
+    },
+
     _clone(v) {
         return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
     },
@@ -125,7 +130,9 @@ const Storage = {
      */
     _read(key, fallback, check, opts = {}) {
         const cached = this._CACHED_KEYS.includes(key);
-        if (cached && this._cache.has(key)) return this._cache.get(key);
+        // La cache evita il JSON.parse, ma chi legge riceve sempre una COPIA: un chiamante che modifica
+        // l'oggetto senza salvarlo non deve cambiare quello che leggeranno gli altri
+        if (cached && this._cache.has(key)) return this._copyCached(this._cache.get(key));
         let raw = null;
         try {
             raw = localStorage.getItem(key);
@@ -147,7 +154,10 @@ const Storage = {
         if (opts.normalize) {
             try { val = opts.normalize(val); } catch (e) { /* si tiene il valore letto */ }
         }
-        if (cached) this._cache.set(key, this._devFreeze() ? this._deepFreeze(val) : val);
+        if (cached) {
+            this._cache.set(key, this._devFreeze() ? this._deepFreeze(val) : val);
+            return this._copyCached(val);
+        }
         return val;
     },
 
