@@ -94,10 +94,7 @@ const App = {
         this._safe(() => this.setupNavigation());
         this._safe(() => this.setupEventListeners());
         this._safe(() => this.loadTheme());
-        this._safe(() => this.loadSettings());
-        this._safe(() => this.loadProfile());
-        this._safe(() => this.loadPrograms());
-        this._safe(() => this.renderExercises());
+        // Le pagine si disegnano solo quando si aprono (enter<Pagina>): niente lavoro per quelle non viste (R1-10)
 
         // Chiede al browser di non cancellare i dati (Safari non installato li cancella dopo 7 giorni)
         this._safe(() => Storage.requestPersistence());
@@ -105,9 +102,10 @@ const App = {
         // Sessione rimasta aperta (iOS che chiude la PWA, ricarica): si riprende
         let resumed = false;
         this._safe(() => { resumed = this.restoreActiveSession(); });
-
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
+        // Cardio rimasto in corso: riprende dal suo orario di partenza (R1-20)
+        if (!resumed && typeof this.restoreConditioning === 'function') this._safe(() => this.restoreConditioning());
+        // Stato del ciclo allineato al calendario anche se si apre direttamente un'altra pagina
+        if (typeof this.syncAppState === 'function') this._safe(() => this.syncAppState());
 
         if (Array.isArray(Storage.corruptionLog) && Storage.corruptionLog.length) {
             this.showNotification('Alcuni dati erano danneggiati: copia di sicurezza salvata', 'warning');
@@ -170,14 +168,30 @@ const App = {
                 this.goBack(back.dataset.back || undefined);
                 return;
             }
+            // "?" accanto a un termine (RIR, fasi, protocolli): spiegazione in un foglio, una riga per voce
+            const help = e.target.closest('[data-help]');
+            if (help) {
+                e.preventDefault();
+                this.helpSheet(help.dataset.help);
+                return;
+            }
             const link = e.target.closest('[data-page]');
             if (!link) return;
             e.preventDefault();
             const page = this._resolvePage(link.dataset.page);
-            // Tocco sulla scheda già aperta: si torna in cima
-            if (page === this.currentPage) window.scrollTo?.({ top: 0, behavior: 'smooth' });
+            // Tocco sulla scheda già aperta: si torna in cima (senza animazione se il sistema la riduce)
+            if (page === this.currentPage) window.scrollTo?.({ top: 0, behavior: this._scrollBehavior() });
             else this.navigateTo(page);
         });
+    },
+
+    // 'smooth', o 'auto' con "riduci movimento" (R2-21)
+    _scrollBehavior() {
+        try {
+            return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        } catch (e) {
+            return 'auto';
+        }
     },
 
     // Nome (anche della v1) → pagina apribile adesso
@@ -195,6 +209,13 @@ const App = {
     _routeFromHash() {
         const raw = decodeURIComponent((location.hash || '').replace(/^#\/?/, ''));
         const page = this._resolvePage(raw || 'oggi');
+        // Indietro (gesto di Safari, tasto di Android) con un foglio aperto: si chiude il foglio e si
+        // resta sulla pagina; il passo tolto dalla cronologia si rimette (R2-02)
+        if (this.currentPage && page !== this.currentPage && this._openSheets().length) {
+            this._closeTopModal();
+            this._setHash(this.currentPage);
+            return;
+        }
         if (page !== raw) this._setHash(page, true);
         if (page !== this.currentPage) this.showPage(page, { restoreScroll: true });
     },
@@ -518,37 +539,97 @@ const App = {
         });
     },
 
+    /**
+     * Chiusura propria di un foglio (Esc, velo, Indietro del telefono passano tutti da qui).
+     * Serve ai fogli che non si chiudono e basta: es. una nota con testo non salvato.
+     * @param {string} id - id del .modal (statico o al volo)
+     * @param {Function|null} fn - null toglie la regola
+     */
+    onSheetClose(id, fn) {
+        this._sheetClosers = this._sheetClosers || {};
+        if (typeof fn === 'function') this._sheetClosers[id] = fn;
+        else delete this._sheetClosers[id];
+    },
+
+    // Chiude il foglio più in alto con la sua regola. true = c'era un foglio
     _closeTopModal() {
+        const sheets = this._openSheets();
+        // Il più in alto è l'ultimo nel DOM: i fogli al volo stanno in fondo al body, dopo #sheets
+        const top = sheets[sheets.length - 1];
+        if (!top) return false;
+        const id = top.id;
+        const custom = (this._g4Close && this._g4Close[id]) || (this._sheetClosers && this._sheetClosers[id]);
+        if (custom) {
+            custom();
+            return true;
+        }
         const dynamicClose = {
             'workout-edit-modal': () => this.closeWorkoutEdit(),
             'workout-detail-modal': () => this.closeWorkoutDetail(),
-            'rotation-detail-modal': () => this._removeDynamicModal('rotation-detail-modal'),
             'cycle-summary-modal': () => this.closeCycleSummary(),
             'week-advance-modal': () => this.dismissWeekAdvancement(),
             'deload-suggestion-modal': () => this.dismissDeloadSuggestion(),
             'workout-completion-modal': () => this.closeWorkoutCompletionSummary(),
             'confirm-sheet': () => this._confirmResolve?.(false)
         };
-        // Il più in alto è l'ultimo inserito nel body
-        const open = [...document.querySelectorAll(Object.keys(dynamicClose).map(id => '#' + id).join(','))];
-        const top = open[open.length - 1];
-        if (top) {
-            dynamicClose[top.id]();
-            return;
-        }
-
-        // Fogli statici: il più in alto è l'ultimo aperto nel DOM
-        const sheets = this._openSheets().filter(m => !m.classList.contains('modal--dyn'));
-        const topSheet = sheets[sheets.length - 1];
-        if (!topSheet) return;
-        const id = topSheet.id;
-        if (id === 'conditioning-modal') this.closeConditioningModal();
+        if (dynamicClose[id]) dynamicClose[id]();
+        else if (top.classList.contains('modal--dyn')) this._removeDynamicModal(id);
+        else if (id === 'conditioning-modal') this.closeConditioningModal();
         else if (id === 'manual-builder-modal') this.closeManualBuilder();
         else if (id === 'cooldown-modal') {
-            topSheet.style.display = 'none';
+            top.style.display = 'none';
             this._syncSheets();
             this._restoreFocus();
         } else this._closeModal(id);
+        return true;
+    },
+
+    // ========================================
+    // AIUTO "?": una riga per termine (R2-22)
+    // ========================================
+
+    HELP: {
+        ciclo: ['Ciclo', 'Settimane in salita, poi lo scarico'],
+        acc: ['Accumulo', 'Più serie, lontano dal cedimento'],
+        int: ['Intensificazione', 'Meno serie, più vicino al cedimento'],
+        del: ['Scarico', 'Metà serie, carichi più leggeri'],
+        rir: ['RIR', 'Ripetizioni che avresti ancora fatto'],
+        hiit: ['HIIT', 'Intervalli intensi con pause brevi'],
+        liss: ['LISS', 'Ritmo costante: riesci a parlare'],
+        circuit: ['Circuito', 'Esercizi in fila, poi si ripete il giro'],
+        emom: ['EMOM', 'Ogni minuto un esercizio, poi pausa'],
+        block: ['Tabata', '20 s a tutta, 10 s di pausa, 8 volte']
+    },
+
+    HELP_GROUPS: {
+        ciclo: { title: 'Ciclo', intro: 'ciclo', keys: ['acc', 'int', 'del', 'rir'] },
+        cardio: { title: 'Cardio', keys: ['hiit', 'liss'] },
+        protocolli: { title: 'Protocolli', keys: ['circuit', 'emom', 'block'] }
+    },
+
+    /** Foglio d'aiuto: "ciclo" | "cardio" | "protocolli" (gruppi) o un termine di HELP. */
+    helpSheet(key) {
+        const group = this.HELP_GROUPS[key] || (this.HELP[key] ? { title: this.HELP[key][0], keys: [key] } : null);
+        if (!group) return null;
+        const rows = group.keys.filter(k => this.HELP[k]).map(k => `
+            <div class="row help-row"><span class="row__body"><span class="row__title">${GT.esc(this.HELP[k][0])}</span><span class="row__sub">${GT.esc(this.HELP[k][1])}</span></span></div>`).join('');
+        const intro = group.intro && this.HELP[group.intro] ? `<p class="muted help-intro">${GT.esc(this.HELP[group.intro][1])}</p>` : '';
+        const modal = this._showDynamicModal('help-sheet', `
+            <div id="help-sheet">
+                <section class="sheet">
+                    <div class="sheet__head"><h2>${GT.esc(group.title)}</h2>
+                        <button type="button" class="btn btn--ghost btn--icon sheet__close" data-help-close aria-label="Chiudi l'aiuto">${this.ico('close')}</button></div>
+                    ${intro}
+                    <div class="group">${rows}</div>
+                </section>
+            </div>`);
+        modal?.querySelector('[data-help-close]')?.addEventListener('click', () => this._removeDynamicModal('help-sheet'));
+        return modal;
+    },
+
+    // Bottone "?" (44 px) da mettere accanto a un titolo
+    _helpBtn(key, label) {
+        return `<button type="button" class="btn btn--ghost btn--icon btn--sm help-btn" data-help="${key}" aria-label="${GT.esc(label)}">${this.ico('help')}</button>`;
     },
 
     // ========================================
@@ -579,14 +660,126 @@ const App = {
         return el;
     },
 
+    // ========================================
+    // ETICHETTE: una tabella sola per primo avvio, Profilo, Scheda, Oggi (R2-13)
+    // ========================================
+
+    LABELS: {
+        // [valore, nome, una riga, icona]
+        goals: [
+            ['toning', 'Tonificazione', 'Glutei e gambe in primo piano', 'm-glutes'],
+            ['hypertrophy', 'Ipertrofia', 'Più muscolo', 'm-arms'],
+            ['recomp', 'Ricomposizione', 'Meno grasso, più muscolo', 'scale'],
+            ['strength', 'Forza', 'Carichi più alti, poche ripetizioni', 'barbell'],
+            ['endurance', 'Resistenza', 'Tante ripetizioni, recuperi brevi', 'heart']
+        ],
+        // [valore, nome, da quanto (per esteso), da quanto (breve)]
+        levels: [
+            ['beginner', 'Principiante', 'meno di 1 anno', '0-1 anni'],
+            ['intermediate', 'Intermedio', 'da 1 a 3 anni', '1-3 anni'],
+            ['advanced', 'Avanzato', 'da 3 a 5 anni', '3-5 anni'],
+            ['expert', 'Esperto', 'più di 5 anni', '5+ anni']
+        ],
+        // [valore, nome, icona]
+        equipment: [
+            ['bilanciere', 'Bilanciere', 'barbell'], ['manubri', 'Manubri', 'dumbbell'], ['macchine', 'Macchine', 'machine'],
+            ['cavi', 'Cavi', 'cable'], ['panca', 'Panca', 'bench'], ['sbarra', 'Sbarra', 'pullup'],
+            ['parallele', 'Parallele', 'bodyweight'], ['accessori', 'Accessori', 'band']
+        ],
+        pain: [['shoulder', 'Spalle'], ['elbow', 'Gomiti'], ['knee', 'Ginocchia'], ['lowBack', 'Zona lombare']],
+        splits: { 'upper-lower': 'Upper/Lower', 'push-pull-legs': 'Push/Pull/Legs', 'full-body': 'Full body' },
+        // giorni della settimana come in profile.trainingDays: 1 = lunedì … 7 = domenica
+        weekdays: [[1, 'Lunedì', 'L'], [2, 'Martedì', 'M'], [3, 'Mercoledì', 'M'], [4, 'Giovedì', 'G'], [5, 'Venerdì', 'V'], [6, 'Sabato', 'S'], [7, 'Domenica', 'D']]
+    },
+
     _splitLabel(value) {
-        const labels = { 'upper-lower': 'Upper/Lower', 'push-pull-legs': 'Push/Pull/Legs', 'full-body': 'Full Body' };
-        return labels[value] || value;
+        return this.LABELS.splits[value] || value;
     },
 
     _goalLabel(value) {
-        const labels = { hypertrophy: 'Ipertrofia', strength: 'Forza', recomp: 'Ricomposizione', endurance: 'Resistenza', toning: 'Tonificazione' };
-        return labels[value] || value;
+        return (this.LABELS.goals.find(g => g[0] === value) || [])[1] || value;
+    },
+
+    _levelLabel(value, short = false) {
+        const l = this.LABELS.levels.find(x => x[0] === value);
+        return l ? (short ? l[3] : l[1]) : '';
+    },
+
+    // ========================================
+    // GIORNI FISSI DELLA SETTIMANA (profile.trainingDays, 1 = lunedì … 7 = domenica)
+    // ========================================
+
+    // Proposta ben distribuita per N giorni a settimana
+    TRAINING_DAYS_DEFAULT: { 1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 4, 5, 6], 6: [1, 2, 3, 5, 6, 7], 7: [1, 2, 3, 4, 5, 6, 7] },
+
+    _defaultTrainingDays(n) {
+        return (this.TRAINING_DAYS_DEFAULT[Math.max(1, Math.min(7, parseInt(n, 10) || 3))] || [1, 3, 5]).slice();
+    },
+
+    // Giorni fissi del profilo (validi, ordinati) o [] = nessun giorno fisso
+    _trainingDays(profile = Storage.getProfile()) {
+        const raw = Array.isArray(profile?.trainingDays) ? profile.trainingDays : [];
+        return [...new Set(raw.map(Number).filter(d => Number.isInteger(d) && d >= 1 && d <= 7))].sort((a, b) => a - b);
+    },
+
+    // 1 = lunedì … 7 = domenica
+    _isoWeekday(d = new Date()) {
+        return ((d.getDay() + 6) % 7) + 1;
+    },
+
+    _weekdayName(n, lower = true) {
+        const w = this.LABELS.weekdays.find(x => x[0] === n);
+        if (!w) return '';
+        return lower ? w[1].toLowerCase() : w[1];
+    },
+
+    // Chip L M M G V S D (aria-pressed); attrs: attributi in più per il gruppo
+    _weekdayChips(selected, dataAttr) {
+        const on = new Set(selected || []);
+        return this.LABELS.weekdays.map(([n, name, ini]) => `<button type="button" class="chip wd-chip" aria-pressed="${on.has(n)}" ${dataAttr}="${n}" aria-label="${name}"><span aria-hidden="true">${ini}</span></button>`).join('');
+    },
+
+    // ========================================
+    // SALVATAGGI CHE NON DEVONO FALLIRE IN SILENZIO (R1-09, R1-20)
+    // ========================================
+
+    // Perché la memoria non accetta dati: Storage.lastWriteError.code QUOTA | SECURITY | WRITE (R1-20);
+    // senza codice si deduce: errore di spazio con pochi dati salvati = navigazione privata
+    _storageWhy(err = Storage.lastError) {
+        const code = (err && err.code) || (Storage.lastWriteError && Storage.lastWriteError.code) || '';
+        const cause = err && (err.cause || err);
+        if (code === 'SECURITY' || (cause && cause.name === 'SecurityError')) return 'bloccato dal browser';
+        if (code === 'QUOTA') return 'memoria piena';
+        if (code === 'WRITE') return 'memoria non disponibile';
+        let used = 0;
+        try {
+            for (let i = 0; i < localStorage.length; i++) used += (localStorage.getItem(localStorage.key(i)) || '').length;
+        } catch (e) {
+            return 'bloccato dal browser';
+        }
+        return used > 200000 ? 'memoria piena' : 'memoria non disponibile';
+    },
+
+    /**
+     * Esegue un salvataggio; se lancia o restituisce false mostra "<msg>: memoria piena".
+     * @returns {*} il risultato (true se fn non restituisce nulla), false se non è riuscito
+     */
+    _save(fn, msg) {
+        let res;
+        try {
+            Storage.lastError = null;
+            res = fn();
+        } catch (e) {
+            console.error('GymTracker:', msg, e);
+            if (!Storage.lastError) Storage.lastError = e;
+            res = false;
+        }
+        // false senza errore di scrittura = niente da fare (es. nessun ciclo): nessun avviso
+        if ((res === false || res === null) && Storage.lastError) {
+            this.showNotification(`${msg}: ${this._storageWhy()}`, 'error');
+            return false;
+        }
+        return res === undefined ? true : res;
     },
 
     // Valori sempre validi: serie 1-10, recupero 15-600 s, reps "8-12" o "10"
@@ -638,9 +831,8 @@ const App = {
         this._syncThemeColor();
 
         if (save) {
-            const settings = Storage.getSettings();
-            settings.theme = value;
-            Storage.saveSettings(settings);
+            // Il tema si vede subito; se non si salva lo si dice (alla prossima apertura tornerebbe quello di prima)
+            this._save(() => Storage.saveSettings({ theme: value }), 'Tema non salvato');
             if (this.currentPage === 'progressi') this._safe(() => this.initCharts());
         }
     },
@@ -721,7 +913,21 @@ const App = {
         }
         toast.addEventListener('click', remove);
         stack.appendChild(toast);
+        // Una riga (R2-17): se il testo non ci sta si rimpicciolisce; solo se ancora non basta va a capo
+        // (meglio due righe che una parola tagliata)
+        try {
+            if (msg.scrollWidth > msg.clientWidth + 1) {
+                toast.classList.add('toast--fit');
+                if (msg.scrollWidth > msg.clientWidth + 1) toast.classList.add('toast--wrap');
+            }
+        } catch (e) { /* no-op */ }
         timer = setTimeout(remove, opts.duration || (opts.action ? 6000 : 4000));
+        toast._gtRemove = remove;
         return toast;
+    },
+
+    // Chiude un avviso prima del tempo (es. quello che chiedeva una scelta appena fatta)
+    closeNotification(toast) {
+        if (toast && typeof toast._gtRemove === 'function') toast._gtRemove();
     },
 };

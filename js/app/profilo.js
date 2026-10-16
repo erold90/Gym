@@ -10,26 +10,12 @@
  */
 
 Object.assign(App, {
-    PF_GOALS: [
-        ['hypertrophy', 'Ipertrofia', 'Più massa muscolare', 'm-arms'],
-        ['strength', 'Forza', 'Carichi più alti, poche ripetizioni', 'barbell'],
-        ['recomp', 'Ricomposizione', 'Meno grasso, stesso muscolo', 'cycle'],
-        ['toning', 'Tonificazione', 'Glutei e gambe in primo piano', 'm-glutes'],
-        ['endurance', 'Resistenza', 'Tante ripetizioni, recuperi brevi', 'heart']
-    ],
-    PF_LEVELS: [
-        ['beginner', 'Principiante', 'meno di 1 anno', '0-1 anni'],
-        ['intermediate', 'Intermedio', 'da 1 a 3 anni', '1-3 anni'],
-        ['advanced', 'Avanzato', 'da 3 a 5 anni', '3-5 anni'],
-        ['expert', 'Esperto', 'più di 5 anni', '5+ anni']
-    ],
+    // Etichette: la tabella unica del core (App.LABELS), le stesse del primo avvio (R2-13)
+    PF_GOALS: App.LABELS.goals,
+    PF_LEVELS: App.LABELS.levels,
     PF_BACKGROUNDS: [['none', 'Nessuna'], ['bodybuilding', 'Bodybuilding'], ['powerlifting', 'Powerlifting'], ['crossfit', 'CrossFit'], ['calisthenics', 'Calisthenics'], ['sport', 'Altro sport']],
-    PF_EQUIPMENT: [
-        ['bilanciere', 'Bilanciere', 'barbell'], ['manubri', 'Manubri', 'dumbbell'], ['macchine', 'Macchine', 'machine'],
-        ['cavi', 'Cavi', 'cable'], ['panca', 'Panca', 'bench'], ['sbarra', 'Sbarra', 'pullup'],
-        ['parallele', 'Parallele', 'bodyweight'], ['accessori', 'Accessori', 'band']
-    ],
-    PF_PAIN: [['shoulder', 'Spalla'], ['elbow', 'Gomito'], ['knee', 'Ginocchio'], ['lowBack', 'Zona lombare']],
+    PF_EQUIPMENT: App.LABELS.equipment,
+    PF_PAIN: App.LABELS.pain,
     PF_PLATES: [25, 20, 15, 10, 5, 2.5, 1.25],
 
     // ========================================
@@ -264,7 +250,7 @@ Object.assign(App, {
         on('setting-rest-sound', 'click', (e) => {
             const b = e.target.closest('[data-val]');
             if (!b) return;
-            Storage.saveSettings({ restSound: b.dataset.val });
+            this._save(() => Storage.saveSettings({ restSound: b.dataset.val }), 'Impostazione NON salvata');
             this.loadSettings();
         });
         ['setting-vibration', 'setting-keep-awake', 'setting-background-alerts'].forEach(id => {
@@ -273,7 +259,7 @@ Object.assign(App, {
                 const value = btn.getAttribute('aria-checked') !== 'true';
                 btn.setAttribute('aria-checked', String(value));
                 const key = { 'setting-vibration': 'vibration', 'setting-keep-awake': 'keepAwake', 'setting-background-alerts': 'backgroundAlerts' }[id];
-                Storage.saveSettings({ [key]: value });
+                if (this._save(() => Storage.saveSettings({ [key]: value }), 'Impostazione NON salvata') === false) btn.setAttribute('aria-checked', String(!value));
                 if (id === 'setting-keep-awake' && (this.activeWorkout || this.conditioningState.startedAt)) this._safe(() => this._setKeepAwake(value));
             });
         });
@@ -282,7 +268,7 @@ Object.assign(App, {
             const key = btn.dataset.rest === 'compound' ? 'restTimeCompound' : 'restTimeIsolation';
             const s = Storage.getSettings();
             const v = this._clampInt((s[key] || 0) + parseInt(btn.dataset.by, 10), s[key], 15, 600);
-            Storage.saveSettings({ [key]: v });
+            this._save(() => Storage.saveSettings({ [key]: v }), 'Recupero NON salvato');
             this.loadSettings();
         }));
 
@@ -314,7 +300,7 @@ Object.assign(App, {
                 tools.hidden = false;
                 this.updateStorageUsage();
                 this.showNotification('Strumenti di prova attivi', 'info', { icon: 'settings' });
-                tools.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+                tools.scrollIntoView?.({ block: 'center', behavior: this._scrollBehavior() });
             }
         });
         on('simulate-workout-btn', 'click', () => this.startSimulatedWorkout());
@@ -333,11 +319,10 @@ Object.assign(App, {
     // PROFILO: lettura e salvataggio
     // ========================================
 
+    // Un tocco in Profilo salva e ridisegna solo Profilo: Oggi si ridisegna quando la si apre (R1-10)
     _saveProfilePatch(patch) {
-        const ok = Storage.saveProfile(patch);
-        if (ok === false) this.showNotification('Profilo NON salvato: memoria piena', 'error');
+        const ok = this._save(() => Storage.saveProfile(patch), 'Profilo NON salvato');
         this._ctxCache = this.activeWorkout ? {} : null;   // il peso corporeo entra nel corpo libero
-        this._safe(() => this.loadDashboard());
         return ok !== false;
     },
 
@@ -369,7 +354,13 @@ Object.assign(App, {
         const level = this.PF_LEVELS.find(l => l[0] === p.level);
         this._setText('pf-level-val', level ? level[3] : '');
         const daysVal = document.getElementById('pf-days-val');
-        if (daysVal) daysVal.innerHTML = `<span class="num">${GT.esc(p.daysPerWeek || 3)}</span> × <span class="num">${GT.esc(p.sessionTime || 60)}</span>&nbsp;min`;
+        const td = this._trainingDays(p);
+        if (daysVal) {
+            // Con i giorni fissi: "L M V · 60 min"; senza: "3 × 60 min"
+            daysVal.innerHTML = td.length
+                ? `<span class="pf-wd" aria-label="${GT.esc(td.map(d => this._weekdayName(d, false)).join(', '))}">${td.map(d => this.LABELS.weekdays[d - 1][2]).join('\u2009')}</span> · <span class="num">${GT.esc(p.sessionTime || 60)}</span>&nbsp;min`
+                : `<span class="num">${GT.esc(p.daysPerWeek || 3)}</span> × <span class="num">${GT.esc(p.sessionTime || 60)}</span>&nbsp;min`;
+        }
 
         const eq = new Set(Array.isArray(p.equipment) ? p.equipment : []);
         document.querySelectorAll('#equipment-checkboxes [data-eq]').forEach(c => c.setAttribute('aria-pressed', String(eq.has(c.dataset.eq))));
@@ -502,9 +493,13 @@ Object.assign(App, {
         const pick = (key, list, cur, unit) => `<div class="pick" style="--n:${list.length}" role="radiogroup" aria-labelledby="pf-${key}-l">
             ${list.map(v => `<button type="button" role="radio" aria-checked="${+cur === v}" data-${key}="${v}">${v}<small>${unit}</small></button>`).join('')}</div>`;
         const before = { d: p.daysPerWeek, m: p.sessionTime };
+        const td0 = this._trainingDays(p);
         const root = this._sheet('pf-days-sheet', `
             ${this._sheetHead('Giorni e durata', 'Chiudi giorni e durata')}
             <div class="field"><span class="label" id="pf-days-l">Giorni a settimana</span>${pick('days', [2, 3, 4, 5, 6], p.daysPerWeek || 3, 'gg')}</div>
+            <div class="field"><span class="label" id="pf-wd-l">Quali giorni · facoltativo</span>
+                <div class="wd" role="group" aria-labelledby="pf-wd-l" id="pf-wdays">${this._weekdayChips(td0, 'data-wd')}</div>
+                <p class="pf-hint" id="pf-wd-hint">${td0.length ? 'Oggi ti dice quando riposare' : 'Nessun giorno fisso: decidi tu'}</p></div>
             <div class="field"><span class="label" id="pf-min-l">Minuti a seduta</span>${pick('min', [30, 45, 60, 75, 90], p.sessionTime || 60, 'min')}</div>
             <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`,
         {
@@ -516,15 +511,39 @@ Object.assign(App, {
                 }
             }
         });
+        const syncWd = () => {
+            const td = this._trainingDays();
+            root.querySelectorAll('[data-wd]').forEach(x => x.setAttribute('aria-pressed', String(td.includes(parseInt(x.dataset.wd, 10)))));
+            this._setText('pf-wd-hint', td.length ? 'Oggi ti dice quando riposare' : 'Nessun giorno fisso: decidi tu');
+        };
         root.addEventListener('click', (e) => {
             const d = e.target.closest('[data-days]');
             const m = e.target.closest('[data-min]');
+            const wd = e.target.closest('[data-wd]');
             if (d) {
-                this._saveProfilePatch({ daysPerWeek: parseInt(d.dataset.days, 10) });
+                const n = parseInt(d.dataset.days, 10);
+                const patch = { daysPerWeek: n };
+                // Giorni fissi che non tornano più col numero: la proposta per N giorni
+                const td = this._trainingDays();
+                if (td.length && td.length !== n) patch.trainingDays = this._defaultTrainingDays(n);
+                this._saveProfilePatch(patch);
                 root.querySelectorAll('[data-days]').forEach(x => x.setAttribute('aria-checked', String(x === d)));
+                syncWd();
             } else if (m) {
                 this._saveProfilePatch({ sessionTime: parseInt(m.dataset.min, 10) });
                 root.querySelectorAll('[data-min]').forEach(x => x.setAttribute('aria-checked', String(x === m)));
+            } else if (wd) {
+                const n = parseInt(wd.dataset.wd, 10);
+                const set = new Set(this._trainingDays());
+                if (set.has(n)) set.delete(n); else set.add(n);
+                const td = [...set].sort((a, b) => a - b);
+                const patch = { trainingDays: td };
+                // Con 2-6 giorni fissi anche il numero dei giorni segue
+                if (td.length >= 2 && td.length <= 6) patch.daysPerWeek = td.length;
+                this._saveProfilePatch(patch);
+                syncWd();
+                const cur = Storage.getProfile().daysPerWeek;
+                root.querySelectorAll('[data-days]').forEach(x => x.setAttribute('aria-checked', String(+x.dataset.days === +cur)));
             } else return;
             this.loadProfile();
         });
@@ -756,8 +775,6 @@ Object.assign(App, {
         Storage.clearProgressData();
         this._cycleSummaryDismissed = false;
         this.showNotification('Progressi cancellati', 'success', { icon: 'trash' });
-        this._safe(() => this.loadDashboard());
-        this._safe(() => this.loadProgress());
         this.updateStorageUsage();
         this._renderBackupState();
     },
@@ -788,9 +805,8 @@ Object.assign(App, {
     },
 
     _markBackup() {
-        Storage.saveSettings({ lastBackupAt: new Date().toISOString() });
+        this._save(() => Storage.saveSettings({ lastBackupAt: new Date().toISOString() }), 'Data del backup NON salvata');
         this._renderBackupState();
-        this._safe(() => this.loadDashboard());
     },
 
     _renderBackupState() {
@@ -888,7 +904,13 @@ Object.assign(App, {
             const nNow = Storage.getWorkouts().length;
             const when = data.exportDate && GT.isValidDate(data.exportDate) ? ` del ${this._shortDate(data.exportDate)}` : '';
             const prog = Storage.getActiveProgram();
-            const ok = await this.confirmSheet({
+            // Telefono nuovo (primo avvio): niente da perdere, la conferma è semplice
+            const empty = !nNow && !prog?.days?.length;
+            const ok = await this.confirmSheet(empty ? {
+                title: `Importare il backup${when}?`,
+                text: `${nNew} ${nNew === 1 ? 'seduta' : 'sedute'}, profilo e scheda.`,
+                ok: 'Importa il backup', cancel: 'Annulla', icon: 'upload'
+            } : {
                 title: `Importare il backup${when}?`,
                 text: `Sostituisce profilo, ${prog ? 'scheda, ' : ''}${nNow} sedute e record di adesso con le ${nNew} sedute del backup.`,
                 ok: 'Importa e sostituisci', cancel: 'Tieni i dati di adesso', danger: true

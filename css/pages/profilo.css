@@ -47,3 +47,7 @@
 .pf-form__2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
 .pf-avoid .thumb--sm { width: 44px; height: 44px; }
 .pf-avoid .row { min-height: 64px; }
+
+/* giorni fissi: iniziali nella riga "Giorni e durata", nota sotto le chip */
+.pf-wd { font-weight: 650; letter-spacing: 0.02em; color: var(--text); }
+.pf-hint { font-size: var(--fs-sm); color: var(--text-2); }

@@ -142,15 +142,26 @@ Object.assign(App, {
                         <div id="prs-list"></div>
                     </section>
 
-                    <section class="section" aria-labelledby="pg-bw-t">
-                        <div class="section__head"><h2 id="pg-bw-t">Peso corporeo</h2>
-                            <button type="button" class="btn btn--secondary btn--sm" id="toggle-weight-form" aria-expanded="false" aria-controls="body-measurement-form">${this.ico('plus', 'ico--sm')}Peso</button></div>
+                    <section class="section" id="pg-bw-sec" aria-labelledby="pg-bw-t">
+                        <div class="section__head"><h2 id="pg-bw-t">Peso e misure</h2>
+                            <button type="button" class="btn btn--secondary btn--sm" id="toggle-weight-form" aria-expanded="false" aria-controls="body-measurement-form">${this.ico('plus', 'ico--sm')}Aggiungi</button></div>
                         <form id="body-measurement-form" class="pg-bwform" hidden novalidate>
-                            <label class="sr-only" for="measure-weight">Peso di oggi in kg</label>
-                            <span class="pg-bwfield"><input class="input num" type="text" id="measure-weight" inputmode="decimal" autocomplete="off" placeholder="kg"><span aria-hidden="true">kg</span></span>
-                            <button type="submit" class="btn btn--primary">${this.ico('check')}Salva peso</button>
+                            <div class="pg-mfields">
+                                <div class="field pg-mf pg-mf--w">
+                                    <label for="measure-weight">Peso</label>
+                                    <span class="pg-bwfield"><input class="input num" type="text" id="measure-weight" inputmode="decimal" autocomplete="off"><span aria-hidden="true">kg</span></span>
+                                </div>
+                                ${this.MEASURES.map(([k, l]) => `<div class="field pg-mf">
+                                    <label for="measure-${k}">${l}</label>
+                                    <span class="pg-bwfield"><input class="input num" type="text" id="measure-${k}" data-measure="${k}" inputmode="decimal" autocomplete="off"><span aria-hidden="true">cm</span></span>
+                                </div>`).join('')}
+                            </div>
+                            <button type="submit" class="btn btn--primary btn--block">${this.ico('check')}Salva</button>
                         </form>
-                        <div id="pg-bw-body"></div>
+                        <div class="pg-bwblocks" id="pg-bw-blocks">
+                            <div id="pg-ms-body" class="pg-msbox"></div>
+                            <div id="pg-bw-body"></div>
+                        </div>
                     </section>
 
                     <section class="section" aria-labelledby="pg-cyc-t">
@@ -216,8 +227,11 @@ Object.assign(App, {
         this.loadProgress();
     },
 
-    // Ogni sezione si ridisegna da sola: un errore in una non spegne le altre
+    // Ogni sezione si ridisegna da sola: un errore in una non spegne le altre.
+    // Solo con Progressi aperta: le altre aree la chiamano dopo un salvataggio, ma se la pagina non si
+    // vede la ridisegna enterProgressi alla prossima apertura (R1-10)
     loadProgress() {
+        if (this.currentPage !== 'progressi') return;
         this._pgWorkouts = this._safe(() => Storage.getWorkouts()) || [];
         [
             () => this._renderHeat(),
@@ -225,6 +239,7 @@ Object.assign(App, {
             () => this._renderStrength(),
             () => this.loadPersonalRecords(),
             () => this._renderWeight(),
+            () => this._renderMeasures(),
             () => this.loadCycleHistory(),
             () => this.loadWorkoutHistory()
         ].forEach(fn => this._safe(fn));
@@ -232,6 +247,7 @@ Object.assign(App, {
 
     // Nomi della v1.26 chiamati da altre aree (tema cambiato, cardio salvato, Oggi)
     initCharts() {
+        if (this.currentPage !== 'progressi') return;
         this._safe(() => this._renderStrength());
         this._safe(() => this._renderWeight());
     },
@@ -239,6 +255,7 @@ Object.assign(App, {
         this.loadProgress();
     },
     loadProgressCycleInfo() {
+        if (this.currentPage !== 'progressi') return;
         this._safe(() => this.loadCycleHistory());
     },
 
@@ -271,8 +288,20 @@ Object.assign(App, {
     },
 
     _wVolume(w) {
-        return (w.exercises || []).reduce((sum, ex) => sum + this._workSets(ex)
+        return (w.exercises || []).filter(ex => this._volumeCounts(ex?.exerciseId)).reduce((sum, ex) => sum + this._workSets(ex)
             .reduce((v, s) => v + this._setKg(s) * Math.round(GT.num(s.reps)), 0), 0);
+    },
+
+    // Esercizi che non fanno volume in kg: a tempo (kg × secondi) e assistiti (il peso è l'aiuto) (R1-14).
+    // Metadati dall'algoritmo (come la seduta), ripiego sul database
+    _volumeCounts(exerciseId) {
+        let meta = null;
+        if (typeof TrainingAlgorithm !== 'undefined' && typeof TrainingAlgorithm.getExerciseMeta === 'function') {
+            meta = this._safe(() => TrainingAlgorithm.getExerciseMeta(exerciseId));
+        }
+        const db = EXERCISES_DB[exerciseId];
+        const any = (k, v) => (meta && meta[k] === v) || (db && db[k] === v);
+        return !any('metric', 'time') && !any('loadType', 'assisted');
     },
 
     _isTimedEx(id) {
@@ -519,9 +548,25 @@ Object.assign(App, {
                 count.set(ex.exerciseId, (count.get(ex.exerciseId) || 0) + 1);
             });
         });
-        return [...count.entries()]
-            .map(([id, n]) => ({ id, n, name: EXERCISES_DB[id].name }))
-            .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'it'));
+        // Esercizi principali della scheda (role 'main', uno per giorno): fissati in testa ai chip
+        const program = this._safe(() => Storage.getActiveProgram());
+        const mains = [];
+        (program?.days || []).forEach(d => (d?.exercises || []).forEach(e => {
+            if (e && e.role === 'main' && e.exerciseId && !mains.includes(e.exerciseId)) mains.push(e.exerciseId);
+        }));
+        const best = (id) => { const ser = this._strengthSeries(id); return ser.length ? Math.max(...ser.map(p => p.v)) : 0; };
+        const list = [...count.entries()].map(([id, n]) => ({
+            id, n, name: EXERCISES_DB[id].name,
+            main: mains.indexOf(id), compound: EXERCISES_DB[id].type === 'compound', best: best(id)
+        }));
+        // Prima i principali (nell'ordine della scheda); poi i più frequenti e, a pari frequenza,
+        // multiarticolari e massimale più alto, non l'alfabeto (R2-09)
+        return list.sort((a, b) => {
+            const am = a.main >= 0, bm = b.main >= 0;
+            if (am !== bm) return am ? -1 : 1;
+            if (am && bm) return a.main - b.main;
+            return (b.n - a.n) || (Number(b.compound) - Number(a.compound)) || (b.best - a.best) || a.name.localeCompare(b.name, 'it');
+        }).map(c => ({ ...c, main: c.main >= 0 }));
     },
 
     _renderStrength() {
@@ -537,8 +582,8 @@ Object.assign(App, {
         }
         if (!this._strengthId || !cands.some(c => c.id === this._strengthId)) this._strengthId = cands[0].id;
         const id = this._strengthId;
-        const top = cands.slice(0, 5);
-        if (!top.some(c => c.id === id)) top.unshift(cands.find(c => c.id === id));
+        const top = cands.slice(0, Math.max(5, cands.filter(c => c.main).length));
+        if (!top.some(c => c.id === id)) top.splice(cands.filter(c => c.main).length, 0, cands.find(c => c.id === id));
         chipsEl.hidden = false;
         chipsEl.innerHTML = top.map(c => `<button type="button" class="chip" role="radio" aria-checked="${c.id === id}" data-id="${GT.esc(c.id)}">${GT.esc(c.name)}</button>`).join('')
             + (cands.length > top.length ? `<button type="button" class="chip" data-more="1">Altri${this.ico('next')}</button>` : '');
@@ -567,7 +612,7 @@ Object.assign(App, {
         }
 
         if (series.length < 2) {
-            body.innerHTML = `${kv}<p class="muted pg-empty">Fai un'altra seduta di ${GT.esc(name)} e qui vedi la linea</p>`;
+            body.innerHTML = `${kv}<p class="muted pg-empty">Con la prossima seduta compare la linea</p>`;
             return;
         }
         let best = -Infinity;
@@ -710,7 +755,7 @@ Object.assign(App, {
         const list = this._recordList().sort((a, b) => b.t - a.t);
         if (all) all.hidden = list.length <= 3;
         if (!list.length) {
-            container.innerHTML = '<p class="muted pg-empty">Il primo record arriva dalla seconda seduta</p>';
+            container.innerHTML = '<p class="muted pg-empty">Il primo record arriva con la prima seduta</p>';
             return;
         }
         container.innerHTML = `<div class="group">${list.slice(0, 3).map(r => this._recordRow(r)).join('')}</div>`;
@@ -728,8 +773,16 @@ Object.assign(App, {
     },
 
     // ========================================
-    // PESO CORPOREO: pesate + media di 7 giorni
+    // PESO E MISURE: pesate + media di 7 giorni; vita, fianchi, glutei, coscia (cm) con la variazione
+    // dall'inizio. Per chi tonifica le misure vengono prima del peso.
     // ========================================
+
+    MEASURES: [['waist', 'Vita'], ['hips', 'Fianchi'], ['glutes', 'Glutei'], ['thigh', 'Coscia']],
+
+    _measuresFirst() {
+        const goal = this._safe(() => Storage.getActiveProgram()?.metadata?.goal) || this._safe(() => Storage.getProfile().goal);
+        return goal === 'toning';
+    },
 
     _toggleWeightForm(force) {
         const form = document.getElementById('body-measurement-form');
@@ -738,38 +791,102 @@ Object.assign(App, {
         const open = typeof force === 'boolean' ? force : form.hidden;
         form.hidden = !open;
         btn?.setAttribute('aria-expanded', String(open));
-        if (open) {
-            const input = document.getElementById('measure-weight');
-            const last = this._safe(() => Storage.getLatestMeasurement());
-            const p = this._safe(() => Storage.getProfile()) || {};
-            if (input) {
-                input.value = last?.weight ? this.fmt(last.weight, 1) : (p.weight ? this.fmt(p.weight, 1) : '');
-                setTimeout(() => { input.focus(); input.select?.(); }, 30);
-            }
+        if (!open) return;
+        const all = this._safe(() => Storage.getMeasurements()) || [];
+        const lastOf = (k) => all.find(m => GT.num(m[k]) > 0)?.[k];
+        const p = this._safe(() => Storage.getProfile()) || {};
+        const first = this._measuresFirst();
+        form.classList.toggle('pg-bwform--ms', first);
+        const w = document.getElementById('measure-weight');
+        const lastW = lastOf('weight') || p.weight;
+        if (w) {
+            // Peso già scritto per correggerlo al volo; chi tonifica parte dalle misure (il peso resta vuoto)
+            w.value = !first && GT.num(lastW) > 0 ? this.fmt(lastW, 1) : '';
+            w.placeholder = GT.num(lastW) > 0 ? this.fmt(lastW, 1) : '';
         }
+        this.MEASURES.forEach(([k]) => {
+            const el = document.getElementById(`measure-${k}`);
+            if (!el) return;
+            el.value = '';
+            el.placeholder = GT.num(lastOf(k)) > 0 ? this.fmt(lastOf(k), 1) : '';
+        });
+        const focus = first ? document.getElementById('measure-waist') : w;
+        setTimeout(() => { focus?.focus(); focus?.select?.(); }, 30);
     },
 
     saveMeasurement() {
         const input = document.getElementById('measure-weight');
-        const weight = Math.round(GT.num(input?.value) * 10) / 10;
-        if (!(weight >= 20 && weight <= 400)) {
+        const raw = String(input?.value || '').trim();
+        const weight = raw ? Math.round(GT.num(raw) * 10) / 10 : null;
+        if (raw && !(weight >= 20 && weight <= 400)) {
             this.showNotification('Peso fuori misura: scrivi i kg, es. 84,2', 'warning');
             input?.focus();
             return;
         }
-        try {
-            Storage.saveMeasurement({ weight, bodyFat: null });
-        } catch (e) {
-            console.error('saveMeasurement', e);
-            this.showNotification('Peso NON salvato: memoria piena', 'error');
+        const entry = { bodyFat: null };
+        if (weight) entry.weight = weight;
+        for (const [k, label] of this.MEASURES) {
+            const el = document.getElementById(`measure-${k}`);
+            const v = String(el?.value || '').trim();
+            if (!v) continue;
+            const cm = Math.round(GT.num(v) * 10) / 10;
+            if (!(cm >= 20 && cm <= 250)) {
+                this.showNotification(`${label} fuori misura: scrivi i cm, es. 72,5`, 'warning');
+                el?.focus();
+                return;
+            }
+            entry[k] = cm;
+        }
+        const nMeasures = this.MEASURES.filter(([k]) => entry[k]).length;
+        if (!weight && !nMeasures) {
+            this.showNotification('Scrivi il peso o una misura', 'warning');
+            (this._measuresFirst() ? document.getElementById('measure-waist') : input)?.focus();
             return;
         }
+        if (this._save(() => Storage.saveMeasurement(entry), weight && !nMeasures ? 'Peso NON salvato' : 'Misure NON salvate') === false) return;
         if (input) input.value = '';
         this._toggleWeightForm(false);
-        this._safe(() => this.loadProfile());
         this._safe(() => this._renderWeight());
-        this._safe(() => this.loadDashboard());
-        this.showNotification(`Peso salvato: ${this.fmt(weight, 1)} kg`, 'success', { icon: 'scale' });
+        this._safe(() => this._renderMeasures());
+        const msg = weight && nMeasures ? 'Peso e misure salvati'
+            : weight ? `Peso salvato: ${this.fmt(weight, 1)} kg` : (nMeasures === 1 ? 'Misura salvata' : 'Misure salvate');
+        this.showNotification(msg, 'success', { icon: 'scale' });
+    },
+
+    // Una riga: valore di oggi e variazione dalla prima misura, per ogni misura presa almeno una volta
+    _renderMeasures() {
+        const box = document.getElementById('pg-ms-body');
+        const blocks = document.getElementById('pg-bw-blocks');
+        const first = this._measuresFirst();
+        blocks?.classList.toggle('pg-bwblocks--ms', first);
+        this._setText('pg-bw-t', first ? 'Misure e peso' : 'Peso e misure');
+        if (!box) return;
+        const all = (this._safe(() => Storage.getMeasurements()) || []).slice().reverse();   // dalla più vecchia
+        const cells = this.MEASURES.map(([k, label]) => {
+            const pts = all.map(m => ({ t: new Date(m.date).getTime(), v: GT.num(m[k]) })).filter(p => p.v > 0 && Number.isFinite(p.t));
+            if (!pts.length) return null;
+            const last = pts[pts.length - 1].v;
+            const d = Math.round((last - pts[0].v) * 10) / 10;
+            return { k, label, last, d, n: pts.length, since: pts[0].t };
+        }).filter(Boolean);
+        if (!cells.length) {
+            box.innerHTML = first ? '<p class="muted pg-empty">Nessuna misura: tocca Aggiungi</p>' : '';
+            return;
+        }
+        const since = Math.min(...cells.map(c => c.since));
+        const html = cells.map(c => {
+            const icon = c.d > 0 ? 'trend-up' : c.d < 0 ? 'trend-down' : 'equal';
+            const txt = c.n < 2 ? '' : c.d === 0 ? 'uguale' : `${c.d > 0 ? '+' : '−'}${this.fmt(Math.abs(c.d), 1)}`;
+            return `<div class="pg-ms__c">
+                <span class="pg-ms__k">${GT.esc(c.label)}</span>
+                <span class="pg-ms__v num">${this.fmt(c.last, 1)}<small>cm</small></span>
+                ${c.n < 2 ? '' : `<span class="delta delta--same">${this.ico(icon)}${txt}</span>`}
+                <span class="sr-only">${c.n < 2 ? 'prima misura' : c.d === 0 ? 'uguale' : `${c.d > 0 ? 'più' : 'meno'} ${this.fmt(Math.abs(c.d), 1)} centimetri`} dal ${GT.esc(this._shortDate(c.since))}</span>
+            </div>`;
+        }).join('');
+        const firstOnly = cells.every(c => c.n < 2);
+        box.innerHTML = `<div class="pg-ms" style="--n:${cells.length}">${html}</div>
+            <p class="pg-ms__since">${firstOnly ? 'Prima misura:' : 'Variazione dal'} <span class="num">${GT.esc(this._shortDate(since))}</span></p>`;
     },
 
     _renderWeight() {
@@ -780,7 +897,7 @@ Object.assign(App, {
             .filter(m => Number.isFinite(m.t) && m.v > 0)
             .sort((a, b) => a.t - b.t);
         if (!all.length) {
-            body.innerHTML = '<p class="muted pg-empty">Nessuna pesata: tocca Peso</p>';
+            body.innerHTML = '<p class="muted pg-empty">Nessuna pesata: tocca Aggiungi</p>';
             return;
         }
         const lastT = all[all.length - 1].t;
@@ -858,8 +975,8 @@ Object.assign(App, {
             const deload = this._safe(() => Storage.isDeloadActive());
             const phase = deload ? 'del' : this._progPhaseKey(info.currentPhase);
             rows.push(`<div class="row">
-                <span class="row__body"><span class="row__title">Ciclo ${GT.esc(info.cycleNumber || 1)} · in corso</span>
-                <span class="row__sub">dal ${GT.esc(this._shortDate(info.startDate))} · sett. <span class="num">${info.currentWeek}</span> di <span class="num">${info.duration}</span> · ${this._phaseLabel(phase)}</span></span>
+                <span class="row__body"><span class="row__title">Ciclo ${GT.esc(info.cycleNumber || 1)} · dal ${GT.esc(this._shortDate(info.startDate))}</span>
+                <span class="row__sub">sett. <span class="num">${info.currentWeek}</span> di <span class="num">${info.duration}</span> · ${this._phaseLabel(phase)}</span></span>
                 ${this._mesoHTML(keys, Math.min(info.currentWeek, keys.length))}
                 <span class="sr-only">Settimana ${info.currentWeek} di ${info.duration}, fase ${this._phaseLabel(phase)}</span>
             </div>`);
@@ -1052,7 +1169,7 @@ Object.assign(App, {
             return false;
         }
         this.showNotification(`${name} eliminata`, 'success', { icon: 'trash' });
-        this._safe(() => this.loadDashboard());
+        this._safe(() => this.loadDashboard());   // anche da Oggi ("Vedi …" di oggi): si ridisegna se aperta
         this.loadProgress();
         return true;
     },
@@ -1066,7 +1183,15 @@ Object.assign(App, {
         if (!workout) return;
         this._editingWorkout = JSON.parse(JSON.stringify(workout));
         this._editingWorkout.exercises = Array.isArray(this._editingWorkout.exercises) ? this._editingWorkout.exercises : [];
-        this._editingWorkout.exercises.forEach(ex => { if (!Array.isArray(ex.sets)) ex.sets = []; });
+        // Valori di partenza di ogni serie: una serie non toccata tiene il suo "fatta/non fatta" (R1-02)
+        this._editingWorkout.exercises.forEach(ex => {
+            if (!Array.isArray(ex.sets)) ex.sets = [];
+            ex.sets.forEach(st => {
+                if (st && typeof st === 'object') {
+                    Object.defineProperty(st, '_orig', { value: { weight: st.weight, reps: st.reps, completed: st.completed }, enumerable: false, writable: true, configurable: true });
+                }
+            });
+        });
         const root = this._sheet('workout-edit-modal', `
             ${this._sheetHead(`Modifica ${this._wName(workout)}`, 'Chiudi senza salvare')}
             <p class="muted">${GT.esc(GT.formatRelativeDay(new Date(workout.date)))}</p>
@@ -1107,14 +1232,19 @@ Object.assign(App, {
         box.innerHTML = workout.exercises.length ? workout.exercises.map((ex, i) => {
             const name = ex.name || EXERCISES_DB[ex.exerciseId]?.name || 'Esercizio';
             const timed = this._isTimedEx(ex.exerciseId);
-            const sets = ex.sets.map((s, j) => `
-                <li class="pg-eset${s.isWarmup ? ' is-warm' : ''}">
+            const sets = ex.sets.map((s, j) => {
+                // Serie non fatta (salvata con i valori proposti): si vede spenta finché non la si cambia
+                const skip = s.completed === false && s._orig && String(s.weight ?? '') === String(s._orig.weight ?? '') && String(s.reps ?? '') === String(s._orig.reps ?? '');
+                const tag = skip ? ', non fatta' : '';
+                return `
+                <li class="pg-eset${s.isWarmup ? ' is-warm' : ''}${skip ? ' is-skip' : ''}">
                     <span class="pg-eset__n num" aria-hidden="true">${s.isWarmup ? 'R' : j + 1}</span>
-                    ${timed ? '' : `<input class="input num pg-ein" type="text" inputmode="decimal" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="weight" value="${GT.esc(s.weight ?? '')}" placeholder="kg" aria-label="Peso, serie ${j + 1} di ${GT.esc(name)}">
+                    ${timed ? '' : `<input class="input num pg-ein" type="text" inputmode="decimal" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="weight" value="${GT.esc(s.weight ?? '')}" placeholder="kg" aria-label="Peso, serie ${j + 1} di ${GT.esc(name)}${tag}">
                     <span class="pg-eset__x" aria-hidden="true">×</span>`}
-                    <input class="input num pg-ein" type="text" inputmode="numeric" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="reps" value="${GT.esc(s.reps ?? '')}" placeholder="${timed ? 's' : 'rip.'}" aria-label="${timed ? 'Secondi' : 'Ripetizioni'}, serie ${j + 1} di ${GT.esc(name)}">
+                    <input class="input num pg-ein" type="text" inputmode="numeric" autocomplete="off" data-ex="${i}" data-set="${j}" data-f="reps" value="${GT.esc(s.reps ?? '')}" placeholder="${timed ? 's' : 'rip.'}" aria-label="${timed ? 'Secondi' : 'Ripetizioni'}, serie ${j + 1} di ${GT.esc(name)}${tag}">
                     <button type="button" class="btn btn--ghost btn--icon btn--sm" data-act="rm-set" data-ex="${i}" data-set="${j}" aria-label="Togli la serie ${j + 1} di ${GT.esc(name)}">${this.ico('close', 'ico--sm')}</button>
-                </li>`).join('');
+                </li>`;
+            }).join('');
             return `<section class="pg-eex" aria-label="${GT.esc(name)}">
                     <div class="pg-eex__head"><h3>${GT.esc(name)}</h3>
                         <button type="button" class="btn btn--ghost btn--sm btn--danger-text" data-act="rm-ex" data-ex="${i}" aria-label="Togli ${GT.esc(name)} dalla seduta">Togli</button></div>
@@ -1164,7 +1294,7 @@ Object.assign(App, {
     _addExerciseToEdit(exerciseId) {
         const ex = EXERCISES_DB[exerciseId];
         if (!ex || !this._editingWorkout) return;
-        this._editingWorkout.exercises.push({ exerciseId, name: ex.name, sets: [{ weight: '', reps: '', completed: true }] });
+        this._editingWorkout.exercises.push({ exerciseId, name: ex.name, sets: [{ weight: '', reps: '', completed: false }] });
         this._renderWorkoutEdit();
         const inputs = document.querySelectorAll('#workout-edit-modal .pg-ein');
         setTimeout(() => inputs[inputs.length - (this._isTimedEx(exerciseId) ? 1 : 2)]?.focus(), 60);
@@ -1177,12 +1307,22 @@ Object.assign(App, {
         let totalVolume = 0;
         let totalSets = 0;
         workout.exercises.forEach(ex => {
+            const counts = this._volumeCounts(ex.exerciseId);
             ex.sets.forEach(s => {
-                s.weight = Math.max(0, GT.num(s.weight));
-                s.reps = Math.max(0, Math.round(GT.num(s.reps)));
-                s.completed = s.reps > 0;
+                const o = s._orig;
+                const touched = !o || String(s.weight ?? '') !== String(o.weight ?? '') || String(s.reps ?? '') !== String(o.reps ?? '');
+                if (touched) {
+                    s.weight = Math.max(0, GT.num(s.weight));
+                    s.reps = Math.max(0, Math.round(GT.num(s.reps)));
+                    s.completed = s.reps > 0;
+                } else {
+                    // Non toccata: valori e "fatta/non fatta" come prima (2 serie su 4 restano 2, R1-02)
+                    s.weight = o.weight;
+                    s.reps = o.reps;
+                    s.completed = o.completed;
+                }
                 if (s.completed && !s.isWarmup && !s.isCalibration) {
-                    totalVolume += this._setKg(s) * s.reps;
+                    if (counts) totalVolume += this._setKg(s) * Math.round(GT.num(s.reps));
                     totalSets++;
                 }
             });
@@ -1198,7 +1338,6 @@ Object.assign(App, {
         }
         this.closeWorkoutEdit();
         this.showNotification(`${this._wName(workout)} aggiornata`, 'success');
-        this._safe(() => this.loadDashboard());
         this.loadProgress();
     },
 

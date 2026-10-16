@@ -16,8 +16,14 @@
 .ob__err { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 560; color: var(--danger-text); }
 .ob .input[aria-invalid="true"] { border-color: var(--danger-text); }
 .ob [role="radiogroup"][aria-invalid="true"] .choice { border-color: var(--danger-text); }
-/* fastidi: quattro scelte facoltative in una riga */
-.ob__pain { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+/* fastidi: quattro scelte facoltative, due per riga (le etichette sono quelle di Profilo) */
+.ob__pain { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
 .ob__pain .chip { justify-content: center; padding: 0 6px; min-height: var(--tap-min); }
+@media (min-width: 520px) { .ob__pain { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* livello: quattro durate in una riga */
+.ob .seg button { padding: 0 4px; }
+/* telefono nuovo: importa un backup invece di rispondere (R2-04) */
+.ob__import { align-self: flex-start; margin-left: calc(var(--s-3) * -1); color: var(--accent-text); font-size: var(--fs-sm); min-height: var(--tap-min); }
+.ob__hint { font-size: var(--fs-sm); color: var(--text-2); }
 .brand { font-weight: 820; font-stretch: 75%; font-size: 1.25rem; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
 .brand .ico { color: var(--accent-text); }

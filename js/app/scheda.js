@@ -32,7 +32,7 @@ Object.assign(App, {
                 <div class="col">
                     <section class="section" id="scheda-cycle" aria-labelledby="scheda-cycle-title">
                         <div class="section__head">
-                            <h2 id="scheda-cycle-title">Ciclo</h2>
+                            <span class="head-help"><h2 id="scheda-cycle-title">Ciclo</h2>${this._helpBtn('ciclo', 'Cosa sono ciclo, fasi e RIR')}</span>
                             <span class="muted scheda-meta" id="scheda-meta"></span>
                         </div>
                         <div class="meso" id="scheda-meso" role="img"></div>
@@ -266,7 +266,10 @@ Object.assign(App, {
     // SCHEDA ATTIVA
     // ========================================
 
+    // Si disegna solo con la Scheda aperta: le altre aree la chiamano dopo un salvataggio, ma se non si
+    // vede la ridisegna enterScheda alla prossima apertura (R1-10)
     loadPrograms() {
+        if (this.currentPage !== 'scheda') return;
         this.displayActiveProgram();
     },
 
@@ -426,6 +429,14 @@ Object.assign(App, {
             this._schedaOpenPid = pid;
         }
         const done = this._schedaDoneMap(program);
+        // Una volta per disegno, non per card (R1-10)
+        this._schedaRender = {
+            suggested: this.getSuggestedDayIndex(program),
+            // fatta oggi, o oggi è riposo per i giorni fissi: il giorno consigliato è la "prossima"
+            todayDone: Storage.getWorkoutsThisWeek().some(w => GT.dateKey(new Date(w.date)) === GT.dateKey(new Date()))
+                || (this._trainingDays().length > 0 && !this._trainingDays().includes(this._isoWeekday())),
+            phase: this._currentPhase(Storage.getCycleInfo(), Storage.isDeloadActive())
+        };
         const count = document.getElementById('scheda-days-count');
         if (count) {
             const cycleHidden = document.getElementById('scheda-cycle')?.hidden;
@@ -438,8 +449,9 @@ Object.assign(App, {
 
     _schedaDayCard(program, day, i, done) {
         const open = this._schedaOpen.has(i);
-        const suggested = this.getSuggestedDayIndex(program);
-        const todayDone = Storage.getWorkoutsThisWeek().some(w => GT.dateKey(new Date(w.date)) === GT.dateKey(new Date()));
+        const ctx = this._schedaRender || {};
+        const suggested = Number.isInteger(ctx.suggested) ? ctx.suggested : this.getSuggestedDayIndex(program);
+        const todayDone = !!ctx.todayDone;
         const name = day.type || day.name || `Giorno ${i + 1}`;
         const n = day.exercises?.length || 0;
         let tag = '';
@@ -449,7 +461,7 @@ Object.assign(App, {
         } else if (i === suggested && n) {
             tag = `<span class="tag tag--accent dayc__tag">${todayDone ? 'prossima' : 'oggi'}</span>`;
         }
-        const est = n ? this._estimateDuration(this._applyPhase(day), program) : 0;
+        const est = n ? this._estimateDuration(this._applyPhase(day, ctx.phase !== undefined ? ctx.phase : undefined), program) : 0;
         const focus = this._oggiFocus(day);
         const sub = [
             focus ? GT.esc(focus) : '',
@@ -606,8 +618,6 @@ Object.assign(App, {
         if (!ok) return;
         Storage.clearActiveProgram();
         this.loadPrograms();
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
         this.showNotification('Scheda eliminata', 'info', { icon: 'trash' });
     },
 
@@ -688,7 +698,7 @@ Object.assign(App, {
         };
         this.builderState = {
             days: editMode && program?.days?.length
-                ? program.days.map(day => ({ name: day.type || day.name, _src: day, exercises: (day.exercises || []).filter(Boolean).map(exOf) }))
+                ? program.days.map((day, i) => ({ name: day.type || day.name, _src: day, _srcIdx: i, exercises: (day.exercises || []).filter(Boolean).map(exOf) }))
                 : [{ name: 'Giorno 1', exercises: [] }],
             currentDayIndex: 0,
             isEditing: !!(editMode && program),
@@ -1235,23 +1245,49 @@ Object.assign(App, {
             if (!metadata.cycle) delete metadata.cycle;
         }
 
-        const program = {
+        let program = {
             ...(old || {}),
             name: old?.name || 'Scheda a mano',
             days: newDays,
             metadata
         };
-
-        if (Storage.setActiveProgram(program) === false) {
-            this.showNotification('Memoria piena: scheda non salvata', 'error');
-            return;
+        // Giorni tolti, aggiunti o spostati: gli indici dei giorni nello storico non valgono più (R1-17).
+        // Storage.saveEditedProgram (F-ALG) cambia il programId se cambia la struttura; ripiego qui.
+        if (this.builderState.isEditing && old && typeof Storage.saveEditedProgram === 'function') {
+            const saved = this._save(() => Storage.saveEditedProgram(program), 'Scheda NON salvata');
+            if (!saved) return;
+        } else {
+            if (old?.days?.length) program = this._schedaStructureChange(old, program, days.map(d => (Number.isInteger(d._srcIdx) ? d._srcIdx : -1)));
+            if (this._save(() => Storage.setActiveProgram(program), 'Scheda NON salvata') === false) return;
         }
         this.builderState.snapshot = this._edSnapshot();
         this._closeModal('manual-builder-modal');
         this.loadPrograms();
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
         this.showNotification(this.builderState.isEditing ? 'Scheda aggiornata' : 'Scheda creata', 'success', { icon: 'check' });
+    },
+
+    /**
+     * Cambio di struttura della scheda (R1-17). dayMap[nuovo indice] = indice vecchio (−1 = giorno nuovo).
+     * Se l'algoritmo ha la sua API la usa; altrimenti la scheda prende un programId nuovo: lo storico
+     * resta, ma la sequenza dei giorni riparte dal primo invece di proporre il giorno sbagliato.
+     */
+    _schedaStructureChange(old, program, dayMap) {
+        const same = dayMap.length === old.days.length && dayMap.every((o, i) => o === i);
+        if (same) return program;
+        for (const name of ['changeProgramStructure', 'remapProgramDays']) {
+            for (const owner of [Storage, TrainingAlgorithm]) {
+                if (typeof owner?.[name] !== 'function') continue;
+                try {
+                    const out = owner[name](old, program, dayMap);
+                    if (out && Array.isArray(out.days)) return out;
+                    if (out === true) return program;
+                } catch (e) {
+                    console.warn(name, e);
+                }
+            }
+        }
+        program.metadata = { ...program.metadata, previousProgramId: old.metadata?.programId ?? null, programId: Date.now(), structureChangedAt: new Date().toISOString() };
+        return program;
     },
 
     // Un superset con un solo esercizio rimasto torna un esercizio normale

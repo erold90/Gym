@@ -38,12 +38,32 @@
   #muscle-volume-bars .bar { grid-template-columns: 6.5rem 1fr 2.5rem; }
 }
 
-/* peso: inserimento rapido */
-.pg-bwform { display: flex; gap: var(--s-2); align-items: stretch; }
-.pg-bwfield { position: relative; flex: 1; min-width: 0; }
+/* peso e misure: inserimento rapido (peso a tutta riga, misure 2 × 2; chi tonifica: prima le misure) */
+.pg-bwform { display: flex; flex-direction: column; gap: var(--s-3); }
+.pg-bwform[hidden] { display: none; }
+.pg-mfields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3) var(--s-2); }
+.pg-mf { gap: 4px; min-width: 0; }
+.pg-mf--w { grid-column: 1 / -1; }
+.pg-bwform--ms .pg-mf--w { order: 1; }
+.pg-bwfield { position: relative; display: block; min-width: 0; }
 .pg-bwfield .input { font-size: var(--fs-lg); padding-right: 44px; }
 .pg-bwfield > span { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: var(--fs-sm); pointer-events: none; }
 .pg-bwform .btn { min-height: 52px; }
+.pg-bwblocks { display: flex; flex-direction: column; gap: var(--s-4); }
+.pg-bwblocks--ms #pg-ms-body { order: -1; }
+.pg-msbox { display: flex; flex-direction: column; gap: var(--s-2); }
+.pg-msbox:empty { display: none; }
+.pg-bwfield .input::placeholder { font-weight: 400; color: var(--text-3); }
+
+/* misure: una riga di 2-4 colonne (valore + variazione dall'inizio) */
+.pg-ms { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: var(--s-2); }
+.pg-ms__c { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--s-3) var(--s-2) var(--s-3) var(--s-3); border-radius: var(--r-md); background: var(--surface-1); box-shadow: var(--shadow-1); }
+.pg-ms__k { font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { .pg-ms__c { padding-left: var(--s-2); } }
+.pg-ms__v { font-size: var(--fn-sm); line-height: 1.05; white-space: nowrap; }
+.pg-ms__v small { font-size: var(--fs-cap); color: var(--text-3); font-weight: 560; font-stretch: 100%; margin-left: 2px; }
+.pg-ms .delta { font-size: var(--fs-sm); }
+.pg-ms__since { font-size: var(--fs-sm); color: var(--text-2); }
 
 /* record, storico, cicli: righe del gruppo */
 .pg-val { font-size: var(--fn-sm); flex: none; }
@@ -70,7 +90,7 @@
 .pg-set.is-warm .pg-set__val { color: var(--text-3); }
 .pg-dactions { flex-direction: row; }
 .pg-dactions .btn { flex: 1; }
-.pg-dactions, .pg-edit-actions { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--gutter) * -1) calc(var(--s-5) * -1 - var(--safe-b)); padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
+.pg-dactions, .pg-edit-actions { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--pad-r) * -1) calc(var(--s-5) * -1 - var(--safe-b)) calc(var(--pad-l) * -1); padding: var(--s-3) var(--pad-r) calc(var(--s-3) + var(--safe-b)) var(--pad-l); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
 
 /* foglio: modifica di una seduta */
 .pg-eex { display: flex; flex-direction: column; gap: var(--s-2); padding-bottom: var(--s-4); border-bottom: 1px solid var(--line); }
@@ -85,4 +105,7 @@
 .pg-eset__x { color: var(--text-3); text-align: center; }
 .pg-ein { min-height: 48px; text-align: center; font-size: var(--fs-lg); padding: 0 var(--s-2); }
 .pg-eset.is-warm .pg-ein { color: var(--text-2); }
+/* serie non fatta (salvata con i valori proposti): spenta finché non la si cambia */
+.pg-eset.is-skip .pg-ein { color: var(--text-3); border-style: dashed; }
+.pg-eset.is-skip .pg-eset__n { text-decoration: line-through; }
 #workout-edit-exercises { display: flex; flex-direction: column; }

@@ -21,6 +21,27 @@
 .notice .btn--sm { flex: none; }
 .divider { height: 1px; background: var(--line); border: 0; margin: 0; }
 
+/* fatto oggi: spunta verde davanti al titolo (R2-05) */
+.today__name--done { display: flex; align-items: center; gap: var(--s-3); }
+.today__ok { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--ok); color: var(--on-color); }
+.today__ok .ico { width: 26px; height: 26px; stroke-width: 3; }
+
+/* "Poco tempo" sotto Inizia, dentro il dock: etichetta + 30 · 40 · 45 min in una riga */
+.oggi-short { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); align-items: center; gap: 6px; }
+.oggi-short[hidden] { display: none; }
+.oggi-short__label { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); font-weight: var(--w-label); color: var(--text-2); white-space: nowrap; padding-right: 2px; }
+.oggi-short__label .ico { color: var(--text-3); }
+.oggi-short__chip { justify-content: center; padding: 0 4px; min-width: 0; }
+.oggi-short__chip .num { font-size: 1.0625rem; }
+
+/* titolo di sezione con il "?" accanto */
+.head-help { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+
+/* cardio: la regola della settimana in una riga, sotto il titolo e a tutta larghezza */
+#conditioning-card { flex-wrap: wrap; row-gap: 2px; }
+.oggi-cd-note { flex-basis: 100%; padding-left: calc(36px + var(--s-3)); font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: -4px; }
+.oggi-cd-note[hidden] { display: none; }
+
 /* Miniature senza GIF (offline, mancante): icona dell'attrezzo. Usata anche da Scheda. */
 .thumb__ico { position: absolute; inset: 0; display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
 .thumb--sm .thumb__ico .ico { width: 20px; height: 20px; }

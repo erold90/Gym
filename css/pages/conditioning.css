@@ -12,7 +12,16 @@
 .cd-step[hidden] { display: none !important; }
 .cd-meta { font-size: var(--fs-body); color: var(--text-2); }
 .cd-meta .num { color: var(--text); font-size: var(--fs-lg); }
-.cd-tip { font-size: var(--fs-sm); }
+.cd-tip { display: flex; align-items: center; gap: 6px; font-size: var(--fs-body); }
+.cd-tip[hidden] { display: none; }
+.cd-tip .ico { color: var(--accent-text); }
+.cd-notes { display: flex; flex-direction: column; gap: 4px; margin-top: calc(var(--s-3) * -1); }
+.cd-notes:empty { display: none; }
+.cd-notes li { position: relative; padding-left: var(--s-4); font-size: var(--fs-sm); color: var(--text-2); line-height: 1.35; }
+.cd-notes li::before { content: ""; position: absolute; left: 3px; top: 0.55em; width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); }
+.cd-help { align-self: flex-start; margin-left: calc(var(--s-3) * -1); color: var(--text-2); }
+.cd-choice--sug { border-color: var(--accent-mark); }
+.cd .section__head { min-height: var(--tap-min); align-items: center; }
 .cd-proto .choice__body span { white-space: normal; }
 
 /* esercizi HIIT: scelta multipla, la spunta dice "dentro" */
@@ -25,7 +34,7 @@
 .cd-exs li + li .row::before { content: ""; position: absolute; top: 0; left: var(--s-4); right: 0; height: 1px; background: var(--line); }
 
 /* bottone principale in fondo al foglio, sempre raggiungibile */
-.cd-foot { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--gutter) * -1) calc(var(--s-5) * -1 - var(--safe-b)); padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b)); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
+.cd-foot { position: sticky; bottom: calc(var(--s-5) * -1 - var(--safe-b)); margin: 0 calc(var(--pad-r) * -1) calc(var(--s-5) * -1 - var(--safe-b)) calc(var(--pad-l) * -1); padding: var(--s-3) var(--pad-r) calc(var(--s-3) + var(--safe-b)) var(--pad-l); background: var(--surface-1); box-shadow: 0 -1px 0 var(--line); z-index: 1; }
 
 /* timer a intervalli: lavoro = giallo pieno (va visto da lontano), recupero = grafite, fine = verde */
 .cd-int { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--s-1); padding: var(--s-5) var(--s-4) var(--s-6); border-radius: var(--r-lg); background: var(--surface-2); color: var(--text); overflow: hidden; text-align: center; transition: background-color var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out); }

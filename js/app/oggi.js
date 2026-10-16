@@ -36,6 +36,10 @@ Object.assign(App, {
                             <button type="button" class="btn btn--primary btn--xl" id="quick-start-btn">${this.ico('play')}<span id="quick-start-label">Inizia</span></button>
                             <button type="button" class="btn btn--secondary btn--icon btn--xl" id="quick-daypicker-btn" aria-label="Scegli un altro giorno">${this.ico('calendar')}</button>
                         </div>
+                        <div class="oggi-short" id="oggi-short" hidden>
+                            <span class="oggi-short__label" id="oggi-short-l">${this.ico('clock', 'ico--sm')}Poco tempo</span>
+                            ${[30, 40, 45].map(m => `<button type="button" class="chip oggi-short__chip" aria-pressed="false" data-oggi-min="${m}" aria-describedby="oggi-short-l"><span class="num">${m}</span>min</button>`).join('')}
+                        </div>
                     </div>
 
                     <section class="section" id="oggi-week" aria-labelledby="oggi-week-title">
@@ -57,7 +61,7 @@ Object.assign(App, {
 
                     <section class="section" id="oggi-cycle" aria-labelledby="oggi-cycle-title" hidden>
                         <div class="section__head">
-                            <h2 id="oggi-cycle-title">Ciclo</h2>
+                            <span class="head-help"><h2 id="oggi-cycle-title">Ciclo</h2>${this._helpBtn('ciclo', 'Cosa sono ciclo, fasi e RIR')}</span>
                             <span class="phase" id="oggi-cycle-phase"></span>
                         </div>
                         <div class="meso" id="oggi-meso" role="img"></div>
@@ -86,6 +90,7 @@ Object.assign(App, {
                                 <span class="row__sub" id="conditioning-subtitle"></span>
                             </span>
                             <button type="button" class="btn btn--secondary btn--sm" id="conditioning-btn" data-action="cardio">Inizia</button>
+                            <span class="oggi-cd-note" id="conditioning-note" hidden></span>
                         </div>
                     </div>
 
@@ -128,6 +133,14 @@ Object.assign(App, {
         const on = (id, ev, fn) => this._on(id, ev, fn);
         on('quick-start-btn', 'click', () => this._oggiQuickStart());
         on('quick-daypicker-btn', 'click', () => this.startScheduledWorkout());
+        // "Poco tempo" sotto Inizia: 30 · 40 · 45 min (secondo tocco = toglie)
+        on('oggi-short', 'click', (e) => {
+            const chip = e.target.closest('[data-oggi-min]');
+            if (!chip) return;
+            const min = parseInt(chip.dataset.oggiMin, 10);
+            this._oggiMin = this._oggiMin === min ? null : min;
+            this._safe(() => this.updateQuickAction());
+        });
 
         // Foglio del giorno
         this._closeOnBackdrop('day-picker-modal', () => this.closeDayPicker());
@@ -173,8 +186,9 @@ Object.assign(App, {
         setTimeout(() => this._safe(() => this._oggiBootCheck()), 0);
     },
 
-    // Ogni volta che si apre Oggi: dati aggiornati
+    // Ogni volta che si apre Oggi: dati aggiornati ("Poco tempo" riparte da zero)
     enterOggi() {
+        this._oggiMin = null;
         this.loadDashboard();
     },
 
@@ -182,10 +196,12 @@ Object.assign(App, {
     // OGGI
     // ========================================
 
+    // Si disegna solo se Oggi è aperta: le altre aree la chiamano dopo un salvataggio, ma se Oggi
+    // non si vede il lavoro lo fa enterOggi alla prossima apertura (R1-10)
     loadDashboard() {
+        if (this.currentPage !== 'oggi') return;
         [
-            () => this.checkReturnFromLayoff(),
-            () => this.syncCycleWeekWithCalendar(),
+            () => this.syncAppState(),
             () => this.updateQuickAction(),
             () => this.updateWeekDays(),
             () => this.updateCycleCard(),
@@ -196,6 +212,12 @@ Object.assign(App, {
             () => this.updateEarlyDeload(),
             () => this._maybePromptCycleEnd()
         ].forEach(fn => this._safe(fn));
+    },
+
+    // Rientro dopo una pausa e settimana del ciclo dal calendario (idempotente: anche all'avvio)
+    syncAppState() {
+        this._safe(() => this.checkReturnFromLayoff());
+        this._safe(() => this.syncCycleWeekWithCalendar());
     },
 
     // "Venerdì 16 ottobre"
@@ -216,7 +238,8 @@ Object.assign(App, {
         return new Set((day?.exercises || []).filter(e => e && e.supersetGroup).map(e => e.supersetGroup)).size;
     },
 
-    // Riquadro della seduta di oggi + dock (lo richiamano anche la seduta e la scheda)
+    // Riquadro della seduta di oggi + dock (lo richiamano anche la seduta e la scheda).
+    // Stati: seduta in corso · nessuna scheda · seduta libera · fatto oggi (R2-05) · riposo (giorni fissi) · da fare
     updateQuickAction() {
         const titleEl = document.getElementById('quick-action-title');
         const btn = document.getElementById('quick-start-btn');
@@ -227,14 +250,20 @@ Object.assign(App, {
         const focusEl = document.getElementById('quick-action-subtitle');
         const metaEl = document.getElementById('today-meta');
         const thumbsEl = document.getElementById('today-thumbs');
-        const setBtn = (icon, label) => {
-            btn.innerHTML = `${this.ico(icon)}<span id="quick-start-label">${GT.esc(label)}</span>`;
+        const short = document.getElementById('oggi-short');
+        const setBtn = (icon, label, primary = true) => {
+            btn.innerHTML = `${icon ? this.ico(icon) : ''}<span id="quick-start-label">${GT.esc(label)}</span>`;
+            btn.classList.toggle('btn--primary', primary);
+            btn.classList.toggle('btn--secondary', !primary);
         };
         this._setText('today-date', this._oggiTodayLabel());
+        titleEl.classList.remove('today__name--done');
         focusEl.hidden = false;
         today.hidden = false;
         empty.hidden = true;
         picker.hidden = false;
+        if (short) short.hidden = true;
+        this._quickWorkoutId = null;
 
         // Sessione in corso: il dock la riprende
         if (this.activeWorkout) {
@@ -272,23 +301,81 @@ Object.assign(App, {
             this._quickAction = 'free';
             return;
         }
+        const dayName = day.type || day.name || `Giorno ${idx + 1}`;
+        this._quickDayIndex = idx;
 
+        // Fatta la seduta di oggi: niente "Inizia" in evidenza, si vede quando tocca la prossima (R2-05)
+        const doneToday = this._oggiDoneToday();
+        const td = this._trainingDays();
+        const restDay = td.length > 0 && !td.includes(this._isoWeekday());
+        if (doneToday || restDay) {
+            const next = this._oggiNextWhen(program, td);
+            titleEl.innerHTML = doneToday
+                ? `<span class="today__ok">${this.ico('check')}</span>Fatto oggi`
+                : 'Riposo';
+            titleEl.classList.toggle('today__name--done', !!doneToday);
+            focusEl.textContent = `Prossima: ${dayName}, ${next.label}`;
+            thumbsEl.innerHTML = '';
+            if (doneToday) {
+                const w = doneToday;
+                const min = Math.round((Number(w.duration) || 0) / 60);
+                const prs = this._oggiRealPRs(w);
+                metaEl.innerHTML = [
+                    GT.esc(w.name || w.type || 'Seduta'),
+                    min > 0 ? `<span class="num">${min}</span>&nbsp;min` : '',
+                    prs ? `<span class="oggi-accent"><span class="num">${prs}</span>&nbsp;record</span>` : ''
+                ].filter(Boolean).join(' · ');
+                this._quickWorkoutId = w.id != null ? String(w.id) : null;
+                setBtn('', `Vedi ${w.name || w.type || 'la seduta'}`, false);
+                btn.setAttribute('aria-label', `Dettaglio di ${w.name || w.type || 'la seduta'} di oggi`);
+                this._quickAction = 'detail';
+            } else {
+                metaEl.textContent = '';
+                // Il riposo è il piano, ma si può sempre allenarsi lo stesso
+                setBtn('play', `Inizia ${dayName}`, false);
+                btn.removeAttribute('aria-label');
+                this._quickAction = 'start';
+            }
+            return;
+        }
+        btn.removeAttribute('aria-label');
+
+        // Seduta di oggi; con "Poco tempo" la stima è quella della seduta compressa
         const phased = this._applyPhase(day);
-        const duration = this._estimateDuration(phased, program);
-        const n = day.exercises.length;
+        let duration = this._estimateDuration(phased, program);
+        let n = day.exercises.length;
+        let shown = day.exercises;
+        let warn = '';
+        const minutes = this._oggiMin || null;
+        if (minutes && typeof TrainingAlgorithm.compressDay === 'function') {
+            try {
+                const md = program.metadata || {};
+                const c = TrainingAlgorithm.compressDay(phased, minutes, { goal: md.goal || day.goal, emphasis: Storage.getProfile().emphasis || '', warmupMin: day.warmupMin });
+                if (c && Number.isFinite(c.estimatedMinutes)) duration = c.estimatedMinutes;
+                const exs = c?.day?.exercises || c?.exercises;
+                if (Array.isArray(exs) && exs.length) { n = exs.length; shown = exs; }
+                if (c && c.fits === false) warn = `non sta in <span class="num">${minutes}</span>`;
+            } catch (e) {
+                console.warn('compressDay', e);
+            }
+        }
         const ss = this._oggiSupersetCount(day);
-        titleEl.textContent = day.type || day.name || `Giorno ${idx + 1}`;
+        titleEl.textContent = dayName;
         focusEl.textContent = this._oggiFocus(day);
         focusEl.hidden = !focusEl.textContent;
         metaEl.innerHTML = [
             `<span class="num">${n}</span>&nbsp;${n === 1 ? 'esercizio' : 'esercizi'}`,
             duration ? `<span class="num">~${duration}</span>&nbsp;min` : '',
-            ss ? `${ss} superset` : ''
+            warn ? `<span class="dp-warn">${warn}</span>` : '',
+            ss && !minutes ? `${ss} superset` : ''
         ].filter(Boolean).join(' · ');
-        thumbsEl.innerHTML = this._oggiThumbs(day.exercises);
-        setBtn('play', `Inizia ${day.type || day.name || 'la seduta'}`);
+        thumbsEl.innerHTML = this._oggiThumbs(shown);
+        setBtn('play', `Inizia ${dayName}`);
+        if (short) {
+            short.hidden = false;
+            short.querySelectorAll('[data-oggi-min]').forEach(c => c.setAttribute('aria-pressed', String(parseInt(c.dataset.oggiMin, 10) === minutes)));
+        }
         this._quickAction = 'start';
-        this._quickDayIndex = idx;
     },
 
     _oggiQuickStart() {
@@ -305,10 +392,61 @@ Object.assign(App, {
             this.startFreeWorkout();
             return;
         }
+        if (action === 'detail') {
+            if (this._quickWorkoutId && typeof this.showWorkoutDetail === 'function') this.showWorkoutDetail(this._quickWorkoutId);
+            else this.navigateTo('progressi');
+            return;
+        }
         const program = Storage.getActiveProgram();
         const idx = this.getSuggestedDayIndex(program);
-        if (program?.days?.[idx]?.exercises?.length) this.startWorkout(program.days[idx], { dayIndex: idx });
-        else this.startScheduledWorkout();
+        if (program?.days?.[idx]?.exercises?.length) {
+            const minutes = this._oggiMin || null;
+            this.startWorkout(program.days[idx], minutes ? { dayIndex: idx, minutes } : { dayIndex: idx });
+        } else this.startScheduledWorkout();
+    },
+
+    // Seduta salvata oggi (la più recente), o null
+    _oggiDoneToday() {
+        const key = GT.dateKey(new Date());
+        return Storage.getRecentWorkouts(5).find(w => w && GT.dateKey(new Date(w.date)) === key) || null;
+    },
+
+    // Record veri di una seduta (i flag isNewPR della v1.25 erano gonfiati: R1-13)
+    _oggiRealPRs(w) {
+        if (typeof Storage.countRealPRs === 'function') {
+            const n = this._safe(() => Storage.countRealPRs([w]));
+            if (Number.isFinite(n)) return n;
+        }
+        let prs = 0;
+        (w.exercises || []).forEach(ex => (ex?.sets || []).forEach(st => { if (st?.isNewPR && st.completed !== false) prs++; }));
+        return prs;
+    },
+
+    /**
+     * Quando tocca la prossima seduta (da domani): con i giorni fissi il primo giorno fisso, senza il
+     * primo giorno previsto della settimana (o lunedì). → {days, label: 'domani' | 'giovedì' | 'lunedì prossimo'}
+     */
+    _oggiNextWhen(program, td = this._trainingDays()) {
+        const now = new Date();
+        const wd = this._isoWeekday(now);
+        let k = 0;
+        if (td.length) {
+            for (let i = 1; i <= 7; i++) {
+                const d = ((wd - 1 + i) % 7) + 1;
+                if (td.includes(d)) { k = i; break; }
+            }
+        } else {
+            const plan = this._oggiWeekPlan(program);
+            const after = [...plan.planned].filter(o => o > plan.todayOffset).sort((a, b) => a - b);
+            k = after.length ? after[0] - plan.todayOffset : 7 - plan.todayOffset;
+        }
+        k = Math.max(1, k || 1);
+        const date = GT.addDays(GT.startOfDay(now), k);
+        const n = this._isoWeekday(date);
+        let label = this._weekdayName(n);
+        if (k === 1) label = 'domani';
+        else if (k >= 7) label += n === 7 ? ' prossima' : ' prossimo';
+        return { days: k, date, label };
     },
 
     // Miniature dei primi 4 esercizi + "+N"
@@ -350,18 +488,12 @@ Object.assign(App, {
         img.replaceWith(span);
     },
 
-    // Settimana da lunedì a domenica: fatto ✓, oggi (anello), previsto (tratteggio), riposo (punto)
-    updateWeekDays() {
-        const list = document.getElementById('week-days');
-        const section = document.getElementById('oggi-week');
-        if (!list) return;
-        const program = Storage.getActiveProgram();
-        if (!program?.days?.length) {
-            section.hidden = true;
-            return;
-        }
-        section.hidden = false;
-
+    /**
+     * Piano della settimana (lunedì = 0): giorni fatti, giorni previsti dopo oggi.
+     * Con i giorni fissi (profile.trainingDays) i previsti sono quelli; senza, le sedute che mancano
+     * distribuite sui giorni rimasti con un riposo in mezzo.
+     */
+    _oggiWeekPlan(program, td = this._trainingDays()) {
         const monday = GT.startOfWeek(new Date());
         const todayKey = GT.dateKey(new Date());
         const weekWorkouts = Storage.getWorkoutsThisWeek();
@@ -375,14 +507,34 @@ Object.assign(App, {
         const done = weekWorkouts.length;
         const todayOffset = (new Date().getDay() + 6) % 7;
         const todayDone = doneBy.has(todayKey);
-
-        // Sedute ancora da fare: oggi (se non fatta) + giorni dopo, distribuiti con riposi in mezzo
-        let remaining = Math.max(0, target - done);
-        if (remaining > 0 && !todayDone) remaining--;
-        const avail = 6 - todayOffset;
         const planned = new Set();
-        if (remaining >= avail) for (let i = 1; i <= avail; i++) planned.add(todayOffset + i);
-        else for (let i = 0; i < remaining; i++) planned.add(todayOffset + 1 + Math.floor((i + 1) * avail / (remaining + 1)));
+        if (td.length) {
+            td.forEach(d => { if (d - 1 > todayOffset) planned.add(d - 1); });
+        } else {
+            let remaining = Math.max(0, target - done);
+            if (remaining > 0 && !todayDone) remaining--;
+            const avail = 6 - todayOffset;
+            if (remaining >= avail) for (let i = 1; i <= avail; i++) planned.add(todayOffset + i);
+            else for (let i = 0; i < remaining; i++) planned.add(todayOffset + 1 + Math.floor((i + 1) * avail / (remaining + 1)));
+        }
+        return { monday, todayKey, doneBy, target, done, todayOffset, todayDone, planned };
+    },
+
+    // Settimana da lunedì a domenica: fatto ✓, oggi (anello), previsto (tratteggio), riposo (punto)
+    updateWeekDays() {
+        const list = document.getElementById('week-days');
+        const section = document.getElementById('oggi-week');
+        if (!list) return;
+        const program = Storage.getActiveProgram();
+        if (!program?.days?.length) {
+            section.hidden = true;
+            return;
+        }
+        section.hidden = false;
+
+        const td = this._trainingDays();
+        const plan = this._oggiWeekPlan(program, td);
+        const todayRest = td.length > 0 && !td.includes(plan.todayOffset + 1);
 
         // Nomi dei prossimi giorni della scheda (per chi legge con lo screen reader)
         const order = [];
@@ -393,11 +545,13 @@ Object.assign(App, {
             k++;
         }
         let nextName = 0;
-        const NAMES = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
-        list.innerHTML = NAMES.map((name, i) => {
-            const key = GT.dateKey(GT.addDays(monday, i));
-            const isToday = key === todayKey;
-            const names = doneBy.get(key);
+        // Giorni fissi passati senza seduta: "non fatto" solo se la scheda c'era già
+        const md = program.metadata || {};
+        const born = new Date(md.createdAt || md.generatedAt || (Number(md.programId) > 1e12 ? Number(md.programId) : 0)).getTime() || 0;
+        list.innerHTML = this.LABELS.weekdays.map(([n, name, ini], i) => {
+            const key = GT.dateKey(GT.addDays(plan.monday, i));
+            const isToday = key === plan.todayKey;
+            const names = plan.doneBy.get(key);
             let cls = 'day--rest';
             let label = 'riposo';
             let dot = '';
@@ -406,18 +560,23 @@ Object.assign(App, {
                 label = `${names.join(', ')} fatto`;
                 dot = this.ico('check');
             } else if (isToday) {
-                label = `oggi${order[nextName] ? ', ' + order[nextName] : ''}`;
-                nextName++;
-            } else if (planned.has(i)) {
+                if (todayRest) label = 'oggi, riposo';
+                else {
+                    label = `oggi${order[nextName] ? ', ' + order[nextName] : ''}`;
+                    nextName++;
+                }
+            } else if (plan.planned.has(i)) {
                 cls = 'day--plan';
                 label = `previsto${order[nextName] ? ' ' + order[nextName] : ''}`;
                 nextName++;
+            } else if (td.includes(n) && i < plan.todayOffset && GT.addDays(plan.monday, i + 1).getTime() > born) {
+                label = 'non fatto';
             }
-            return `<li class="day ${cls}${isToday ? ' day--today' : ''}"${isToday ? ' aria-current="date"' : ''}><span class="day__dot">${dot}</span><span aria-hidden="true">${name.charAt(0)}</span><span class="sr-only">${name}: ${GT.esc(label)}</span></li>`;
+            return `<li class="day ${cls}${isToday ? ' day--today' : ''}"${isToday ? ' aria-current="date"' : ''}><span class="day__dot">${dot}</span><span aria-hidden="true">${ini}</span><span class="sr-only">${name}: ${GT.esc(label)}</span></li>`;
         }).join('');
 
         const count = document.getElementById('weekly-workout-count');
-        if (count) count.innerHTML = `<b class="num oggi-strong">${done}</b> di <span class="num">${target}</span>`;
+        if (count) count.innerHTML = `<b class="num oggi-strong">${plan.done}</b> di <span class="num">${plan.target}</span>`;
     },
 
     _oggiWeekTarget(program) {
@@ -436,7 +595,7 @@ Object.assign(App, {
         if (!body) return;
         const workouts = Storage.getWorkouts();
         if (!workouts.length) {
-            body.innerHTML = '<p class="muted oggi-note">Dalla prima seduta qui vedi le settimane di allenamento.</p>';
+            body.innerHTML = '<p class="muted oggi-note">Qui le tue settimane, dalla prima seduta</p>';
             return;
         }
         const s = Storage.getStreak() || {};
@@ -459,9 +618,14 @@ Object.assign(App, {
             return `<i class="streak__bar${now ? ' is-now' : (c >= target ? ' is-hit' : '')}" style="--v:${(c / scale).toFixed(3)}"></i>`;
         }).join('');
         const cur = s.current || 0;
+        // Prima settimana: la serie non è ancora "di fila", ma è in corso (R2-12)
+        const thisWeek = counts[counts.length - 1];
+        const big = cur === 0 && thisWeek > 0
+            ? `${this.ico('fire', 'ico--lg oggi-fire')}1<small>settimana, in corso</small>`
+            : `${this.ico('fire', 'ico--lg oggi-fire')}${cur}<small>${cur === 1 ? 'settimana di fila' : 'settimane di fila'}</small>`;
         body.innerHTML = `
             <div class="kv">
-                <p class="kv__big num">${this.ico('fire', 'ico--lg oggi-fire')}${cur}<small>${cur === 1 ? 'settimana di fila' : 'settimane di fila'}</small></p>
+                <p class="kv__big num">${big}</p>
                 ${(s.best || cur) > 0 ? `<span class="faint oggi-record">record <span class="num">${s.best || cur}</span></span>` : ''}
             </div>
             <div class="streak" style="--n:12" role="img" aria-label="Sedute nelle ultime 12 settimane, obiettivo almeno ${target}: ${counts.join(', ')} finora">
@@ -474,7 +638,8 @@ Object.assign(App, {
         const row = document.getElementById('oggi-last');
         if (!row) return;
         const w = Storage.getRecentWorkouts(1)[0];
-        if (!w) {
+        // Fatta oggi: la apre già il dock ("Vedi …"), la riga sarebbe un doppione
+        if (!w || (!this.activeWorkout && GT.dateKey(new Date(w.date)) === GT.dateKey(new Date()) && Storage.getActiveProgram()?.days?.length)) {
             row.hidden = true;
             this._syncOggiRows();
             return;
@@ -488,15 +653,14 @@ Object.assign(App, {
             when = when.charAt(0).toUpperCase() + when.slice(1);
         }
         const min = Math.round((Number(w.duration) || 0) / 60);
-        let prs = 0;
-        (w.exercises || []).forEach(ex => (ex?.sets || []).forEach(st => { if (st?.isNewPR && st.completed !== false) prs++; }));
+        const prs = this._oggiRealPRs(w);
         this._setText('oggi-last-title', w.name || w.type || 'Seduta');
         const sub = document.getElementById('oggi-last-sub');
         if (sub) {
             sub.innerHTML = [
                 GT.esc(when),
                 min > 0 ? `<span class="num">${min}</span>&nbsp;min` : '',
-                prs ? `<span class="oggi-accent">${prs} ${prs === 1 ? 'record' : 'record'}</span>` : ''
+                prs ? `<span class="oggi-accent"><span class="num">${prs}</span>&nbsp;record</span>` : ''
             ].filter(Boolean).join(' · ');
         }
         row.dataset.workoutId = w.id != null ? String(w.id) : '';
@@ -505,44 +669,42 @@ Object.assign(App, {
         this._syncOggiRows();
     },
 
-    // Riga del cardio: "Cardio 0 di 2" + attività consigliata
+    // Riga del cardio: "Cardio 0 di 3", il tipo che tocca con la sua durata, una regola in una riga (R3-14)
     updateOggiConditioning() {
         const row = document.getElementById('conditioning-card');
         if (!row) return;
         const program = Storage.getActiveProgram();
-        let sug = null;
-        try { sug = typeof this._conditioningSuggestion === 'function' ? this._conditioningSuggestion() : null; } catch (e) { sug = null; }
-        const target = parseInt(sug?.frequency, 10) || 0;
-        if (!program || !sug?.enabled || target <= 0) {
+        let plan = null;
+        try { plan = typeof this._cardioPlan === 'function' ? this._cardioPlan() : null; } catch (e) { plan = null; }
+        if (!program || !plan || plan.target <= 0) {
             row.hidden = true;
             this._syncOggiRows();
             return;
         }
-        const done = Storage.getConditioningThisWeek().length;
-        const type = String(sug.preferredType || 'LISS').toLowerCase();
-        const pick = type === 'mixed' ? (done % 2 === 0 ? 'hiit' : 'liss') : (type === 'hiit' ? 'hiit' : 'liss');
-        const minutes = parseInt(sug.duration, 10) || (pick === 'hiit' ? 20 : 30);
-        let activity = 'HIIT';
-        if (pick === 'liss') {
-            const a = (typeof LISS_ACTIVITIES !== 'undefined' && LISS_ACTIVITIES['walking-incline']?.name) || 'Camminata in salita';
-            activity = a.charAt(0).toUpperCase() + a.slice(1).toLowerCase();
-        }
+        const { done, target, next } = plan;
+        const finished = done >= target || !next;
         const title = document.getElementById('conditioning-title');
         if (title) {
-            title.innerHTML = done >= target
+            title.innerHTML = finished
                 ? `Cardio fatto <span class="oggi-ok">${this.ico('check', 'ico--sm')}</span>`
                 : `Cardio <span class="num">${done}</span> di <span class="num">${target}</span>`;
         }
+        const label = next ? next.type.toUpperCase() : '';
         const sub = document.getElementById('conditioning-subtitle');
         if (sub) {
-            sub.innerHTML = done >= target
+            sub.innerHTML = finished
                 ? `<span class="num">${done}</span> di <span class="num">${target}</span> questa settimana`
-                : `${GT.esc(activity)} · <span class="num">${minutes}</span>&nbsp;min`;
+                : `${label} · <span class="num">${next.minutes}</span>&nbsp;min`;
+        }
+        const note = document.getElementById('conditioning-note');
+        if (note) {
+            note.textContent = finished ? '' : (plan.note || '');
+            note.hidden = !note.textContent;
         }
         const icon = document.getElementById('conditioning-icon');
-        if (icon) icon.innerHTML = this.ico(pick === 'hiit' ? 'bolt' : 'steps');
+        if (icon) icon.innerHTML = this.ico(next && next.type === 'hiit' ? 'bolt' : 'steps');
         const btn = document.getElementById('conditioning-btn');
-        if (btn) btn.setAttribute('aria-label', `Inizia il cardio: ${activity}`);
+        if (btn) btn.setAttribute('aria-label', finished ? 'Inizia un altro cardio' : `Inizia il cardio: ${label} ${next.minutes} minuti`);
         row.style.removeProperty('display');
         row.hidden = false;
         this._syncOggiRows();
@@ -596,7 +758,7 @@ Object.assign(App, {
         this.navigateTo('profilo');
         setTimeout(() => {
             const target = document.querySelector('#pf-backup, #profilo-backup, #page-profilo .backup');
-            try { target?.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { /* no-op */ }
+            try { target?.scrollIntoView({ block: 'start', behavior: this._scrollBehavior() }); } catch (e) { /* no-op */ }
         }, 60);
     },
 
@@ -650,12 +812,10 @@ Object.assign(App, {
 
     _oggiAcceptEarly() {
         if (!Storage.getCycleInfo()) return;
-        Storage.startManualDeload();
+        if (this._save(() => Storage.startManualDeload(), 'Scarico NON salvato') === false) return;
         this._oggiSetEarlyState('accepted');
         this.showNotification('Scarico per 7 giorni', 'info', { icon: 'deload' });
         this.loadDashboard();
-        this._safe(() => this.loadPrograms());
-        this._safe(() => this.loadProgressCycleInfo());
     },
 
     _oggiDismissEarly() {
@@ -742,13 +902,26 @@ Object.assign(App, {
         };
     },
 
-    // Minuti stimati del giorno (per le schede vecchie conta la durata scelta)
+    // Minuti stimati del giorno (per le schede vecchie conta la durata scelta), con la rampa e il tempo
+    // in più di "Trova il peso" quando l'algoritmo li sa dire (ripiego: la stima di prima)
     _estimateDuration(day, program = undefined) {
         try {
             const md = (program === undefined ? Storage.getActiveProgram() : program)?.metadata || {};
             const ctx = {};
             if (md.goal) ctx.goal = md.goal;
             if (parseInt(md.sessionDuration, 10) > 0) ctx.minutes = parseInt(md.sessionDuration, 10);
+            const exs = (day?.exercises || []).filter(Boolean);
+            // Scheda vecchia senza rampa scritta sugli esercizi: le serie d'avvicinamento dal piano
+            const hasRamp = exs.some(e => Array.isArray(e.warmupSets) || parseInt(e.rampSets, 10) > 0);
+            if (!hasRamp && typeof TrainingAlgorithm.getRampPlan === 'function') {
+                const plan = this._safe(() => TrainingAlgorithm.getRampPlan(exs));
+                if (Array.isArray(plan)) ctx.rampSets = plan.reduce((n, r) => n + (Number(r?.count) || 0), 0);
+            }
+            if (typeof Storage.planCalibration === 'function') {
+                // dryRun: solo la stima, senza mettere in coda le calibrazioni rimandate
+                const cal = this._safe(() => Storage.planCalibration(day, { dryRun: true }));
+                if (cal && Number(cal.extraMin) > 0) ctx.calibExtraMin = Number(cal.extraMin);
+            }
             return TrainingAlgorithm.estimateWorkoutDuration(day, ctx) || 0;
         } catch (e) {
             return 0;
@@ -891,8 +1064,8 @@ Object.assign(App, {
             cancel: `Resta in settimana ${info.currentWeek}`
         });
         if (!ok) return;
-        const res = Storage.advanceCycleWeek();
-        if (res) this.showNotification(`Settimana ${res.currentWeek} · ${this._oggiPhaseLabel(res.currentPhase)}`, 'success', { icon: 'cycle' });
+        const res = this._save(() => Storage.advanceCycleWeek(), 'Settimana NON salvata');
+        if (res && res !== true) this.showNotification(`Settimana ${res.currentWeek} · ${this._oggiPhaseLabel(res.currentPhase)}`, 'success', { icon: 'cycle' });
         this._oggiAfterCycle();
     },
 
@@ -907,7 +1080,7 @@ Object.assign(App, {
             icon: 'deload'
         });
         if (!ok) return;
-        Storage.startManualDeload();
+        if (this._save(() => Storage.startManualDeload(), 'Scarico NON salvato') === false) return;
         this.showNotification('Scarico per 7 giorni', 'info', { icon: 'deload' });
         this._oggiAfterCycle();
     },
@@ -920,25 +1093,46 @@ Object.assign(App, {
             cancel: 'Continua lo scarico'
         });
         if (!ok) return;
-        if (typeof Storage.stopManualDeload === 'function') Storage.stopManualDeload();
+        if (typeof Storage.stopManualDeload === 'function' && this._save(() => Storage.stopManualDeload(), 'Scarico NON terminato') === false) return;
         this.showNotification('Scarico terminato', 'info', { icon: 'deload' });
         this._oggiAfterCycle();
     },
 
+    // Dopo un cambio del ciclo: si ridisegna solo la pagina aperta (Oggi o Scheda); le altre all'apertura
     _oggiAfterCycle() {
-        this._safe(() => this.updateCycleCard());
-        this._safe(() => this.updateQuickAction());
-        this._safe(() => this.updateEarlyDeload());
+        if (this.currentPage === 'oggi') {
+            this._safe(() => this.updateCycleCard());
+            this._safe(() => this.updateQuickAction());
+            this._safe(() => this.updateEarlyDeload());
+        }
         this._safe(() => this.loadPrograms());
         this._safe(() => this.loadProgressCycleInfo());
     },
 
-    // Riepilogo di fine ciclo quando serve (una volta per apertura dell'app se si rimanda)
+    // Riepilogo di fine ciclo quando serve: al massimo una volta al giorno (R1-04), mai sopra una
+    // seduta in corso o salvata da riprendere (R1-07), mai sopra un altro foglio
     _maybePromptCycleEnd() {
         if (this.activeWorkout || this._cycleSummaryDismissed || this.currentPage !== 'oggi') return;
-        if (document.querySelector('#cycle-summary-modal, #rotation-detail-modal, #confirm-sheet')) return;
-        if (!this._shouldCompleteCycle()) return;
+        if (this._safe(() => Storage.getActiveSession())) return;
+        if (this._openSheets().length) return;
+        if (!this._cycleEndPromptAllowed()) return;
         this.completeCycleWithSummary();
+    },
+
+    /**
+     * Proporre adesso la fine del ciclo? Storage.shouldPromptCycleEnd decide e registra il giorno
+     * (una volta al giorno, mai con una seduta aperta); ripiego: shouldCompleteCycle + il giorno nei settings.
+     */
+    _cycleEndPromptAllowed() {
+        if (typeof Storage.shouldPromptCycleEnd === 'function') {
+            const r = this._safe(() => Storage.shouldPromptCycleEnd());
+            if (typeof r === 'boolean') return r;
+        }
+        if (!this._shouldCompleteCycle()) return false;
+        const today = GT.dateKey(new Date());
+        if (Storage.getSettings().cycleEndPromptDay === today) return false;
+        this._safe(() => Storage.saveSettings({ cycleEndPromptDay: today }));
+        return true;
     },
 
     completeCycleWithSummary() {
@@ -1011,9 +1205,8 @@ Object.assign(App, {
             this.showNotification(`Ciclo ${cycleNumber} iniziato`, 'success', { icon: 'cycle' });
         }
 
-        this.loadPrograms();
-        this.loadDashboard();
-        this._safe(() => this.loadProgress());
+        this._safe(() => this.loadPrograms());
+        this._safe(() => this.loadDashboard());
     },
 
     // Nome leggibile di una voce della rotazione (id oppure {id, name})
@@ -1190,8 +1383,11 @@ Object.assign(App, {
     _afterWorkoutPrompts() {
         if (this.activeWorkout) return;
         if (this._shouldCompleteCycle()) {
-            this._cycleSummaryDismissed = false;
-            this.completeCycleWithSummary();
+            // Ciclo finito: la proposta una volta al giorno, non dopo ogni seduta (R1-04)
+            if (!this._openSheets().length && this._cycleEndPromptAllowed()) {
+                this._cycleSummaryDismissed = false;
+                this.completeCycleWithSummary();
+            }
             return;
         }
         if (this.checkWeekAdvancement()) return;
@@ -1228,8 +1424,8 @@ Object.assign(App, {
     },
 
     confirmWeekAdvancement() {
-        const cycleInfo = Storage.advanceCycleWeek();
-        if (cycleInfo) this.showNotification(`Settimana ${cycleInfo.currentWeek} · ${this._oggiPhaseLabel(cycleInfo.currentPhase)}`, 'success', { icon: 'cycle' });
+        const cycleInfo = this._save(() => Storage.advanceCycleWeek(), 'Settimana NON salvata');
+        if (cycleInfo && cycleInfo !== true) this.showNotification(`Settimana ${cycleInfo.currentWeek} · ${this._oggiPhaseLabel(cycleInfo.currentPhase)}`, 'success', { icon: 'cycle' });
         this._oggiAfterCycle();
     },
 
@@ -1292,10 +1488,11 @@ Object.assign(App, {
     // 'prossima': si passa subito alla settimana di scarico del ciclo. 'anticipato': 7 giorni, scade da solo.
     acceptDeloadSuggestion(type = 'anticipato') {
         if (type === 'prossima') {
-            const info = Storage.advanceCycleWeek();
+            const info = this._save(() => Storage.advanceCycleWeek(), 'Settimana NON salvata');
+            if (info === false) return;
             this.showNotification(`Settimana ${info?.currentWeek || ''} · Scarico`, 'info', { icon: 'deload' });
         } else {
-            Storage.startManualDeload();
+            if (this._save(() => Storage.startManualDeload(), 'Scarico NON salvato') === false) return;
             this._oggiSetEarlyState('accepted');
             this.showNotification('Scarico per 7 giorni', 'info', { icon: 'deload' });
         }
@@ -1313,29 +1510,21 @@ Object.assign(App, {
     // attrezzatura, e prima di sostituire la scheda chiede conferma.
     // ========================================
 
-    OB_GOALS: [
-        ['toning', 'Tonificazione', 'Glutei e gambe in primo piano', 'm-glutes'],
-        ['hypertrophy', 'Ipertrofia', 'Più muscolo', 'm-arms'],
-        ['recomp', 'Ricomposizione', 'Meno grasso, più muscolo', 'scale'],
-        ['strength', 'Forza', 'Carichi più alti, poche ripetizioni', 'barbell'],
-        ['endurance', 'Resistenza', 'Tante ripetizioni, recuperi brevi', 'heart']
-    ],
+    // Etichette: la tabella unica del core (App.LABELS), le stesse di Profilo (R2-13)
+    OB_GOALS: App.LABELS.goals,
 
     OB_PLACES: {
         gym: { label: 'Palestra completa', sub: 'Macchine, cavi, bilancieri', icon: 'machine', eq: ['bilanciere', 'manubri', 'macchine', 'cavi', 'panca', 'sbarra'] },
-        home: { label: 'A casa con manubri', sub: 'Manubri, panca, elastici', icon: 'dumbbell', eq: ['manubri', 'panca', 'accessori'] },
+        home: { label: 'A casa con manubri', sub: 'Manubri, panca, accessori', icon: 'dumbbell', eq: ['manubri', 'panca', 'accessori'] },
         body: { label: 'Corpo libero', sub: 'Niente attrezzi', icon: 'bodyweight', eq: [] }
     },
 
-    OB_EQUIP: [
-        ['bilanciere', 'Bilanciere', 'barbell'], ['manubri', 'Manubri', 'dumbbell'], ['macchine', 'Macchine', 'machine'],
-        ['cavi', 'Cavi', 'cable'], ['panca', 'Panca', 'bench'], ['sbarra', 'Sbarra', 'pullup'],
-        ['parallele', 'Parallele', 'bodyweight'], ['accessori', 'Elastici', 'band']
-    ],
+    OB_EQUIP: App.LABELS.equipment,
 
-    OB_PAIN: [['shoulder', 'Spalle'], ['elbow', 'Gomiti'], ['knee', 'Ginocchia'], ['lowBack', 'Schiena', 'Schiena bassa']],
+    OB_PAIN: App.LABELS.pain,
 
-    OB_LEVELS: [['beginner', 'Inizio ora'], ['intermediate', '1-3 anni'], ['advanced', '3+ anni']],
+    // [valore, "da quanti anni"]: la stessa scala di Profilo
+    OB_LEVELS: App.LABELS.levels.map(l => [l[0], l[3]]),
 
     htmlOnboarding() {
         return `
@@ -1348,8 +1537,9 @@ Object.assign(App, {
         `;
     },
 
+    // Ricaricando su #onboarding (es. dopo un import) senza niente da chiedere si va a Oggi
     canOnboarding() {
-        return true;
+        return !!this._ob || this._oggiNeedsOnboarding();
     },
 
     enterOnboarding() {
@@ -1400,6 +1590,7 @@ Object.assign(App, {
         const goals = this.OB_GOALS.map(g => g[0]);
         const goal0 = regen ? (goals.includes(md.goal) ? md.goal : profile.goal) : (hasName && goals.includes(profile.goal) ? profile.goal : null);
         const days0 = regen ? parseInt(md.daysPerWeek || program?.days?.length, 10) : null;
+        const td0 = this._trainingDays(profile);
         const min0 = regen ? parseInt(md.sessionDuration, 10) : null;
         const eq = Array.isArray(profile.equipment) ? profile.equipment.filter(e => this.OB_EQUIP.some(x => x[0] === e)) : this.OB_PLACES.gym.eq.slice();
         this._ob = {
@@ -1409,8 +1600,9 @@ Object.assign(App, {
             hasName,
             name: String(profile.name || ''),
             gender: ['male', 'female'].includes(profile.gender) ? profile.gender : '',
-            level: profile.level || 'beginner',
-            level0: profile.level || 'beginner',
+            level: this.OB_LEVELS.some(l => l[0] === profile.level) ? profile.level : 'beginner',
+            // giorni fissi: quelli del profilo se ci sono (Rigenera), altrimenti la proposta per N giorni
+            wdays: hasName && Array.isArray(profile.trainingDays) ? td0 : null,
             goal: goal0,
             goal0,
             days: [2, 3, 4, 5, 6].includes(days0) ? days0 : null,
@@ -1447,6 +1639,8 @@ Object.assign(App, {
         if (!s.touched.minutes) s.minutes = (s.goal === s.goal0 && s.minutes0) ? s.minutes0 : (recs?.duration?.recommended || 60);
         if (![2, 3, 4, 5, 6].includes(s.days)) s.days = 3;
         if (![45, 60, 75, 90].includes(s.minutes)) s.minutes = 60;
+        // Giorni fissi: la proposta ben distribuita finché non li si tocca (e se non tornano col numero)
+        if (!s.touched.wdays && (!Array.isArray(s.wdays) || (s.wdays.length && s.wdays.length !== s.days))) s.wdays = this._defaultTrainingDays(s.days);
     },
 
     // Divisione proposta: quella consigliata per obiettivo e giorni (2 giorni: full body)
@@ -1518,7 +1712,6 @@ Object.assign(App, {
         </button>`;
 
         if (s.step === 1) {
-            const lvIdx = s.level === 'expert' ? 'advanced' : s.level;
             return `
                 <div class="ob__q"><h1 tabindex="-1" id="ob-title">Chi si allena?</h1><p>Serve per i carichi di partenza.</p></div>
                 <div class="field">
@@ -1536,9 +1729,10 @@ Object.assign(App, {
                 <div class="field">
                     <span class="label" id="ob-lv-l">Da quanto ti alleni</span>
                     <div class="seg" role="radiogroup" aria-labelledby="ob-lv-l">
-                        ${this._obRadio('level', lvIdx, this.OB_LEVELS, (it, a) => `<button type="button" ${a}>${it[1]}</button>`)}
+                        ${this._obRadio('level', s.level, this.OB_LEVELS, (it, a) => `<button type="button" ${a}>${it[1]}</button>`)}
                     </div>
-                </div>`;
+                </div>
+                ${s.hasName ? '' : `<button type="button" class="btn btn--ghost ob__import" data-ob-act="import">${this.ico('upload')}Hai un backup? Importa</button>`}`;
         }
 
         if (s.step === 2) {
@@ -1559,6 +1753,12 @@ Object.assign(App, {
                     <div class="pick" style="--n:5" role="radiogroup" aria-labelledby="ob-days-l">
                         ${this._obRadio('days', String(s.days), [['2'], ['3'], ['4'], ['5'], ['6']], (it, a) => `<button type="button" ${a}>${it[0]}</button>`)}
                     </div>
+                </div>
+                <div class="field">
+                    <span class="label" id="ob-wd-l">Quali giorni</span>
+                    <div class="wd" role="group" aria-labelledby="ob-wd-l" aria-describedby="ob-err-wdays" id="ob-wdays">${this._weekdayChips(s.wdays, 'data-ob-wd')}</div>
+                    <p class="ob__hint" id="ob-wd-hint"${s.wdays && !s.wdays.length ? '' : ' hidden'}>Nessun giorno fisso: decidi tu</p>
+                    ${this._obErr('wdays', 'Da 2 a 6 giorni, o nessuno')}
                 </div>
                 <div class="field">
                     <span class="label" id="ob-min-l">Minuti per seduta</span>
@@ -1588,7 +1788,7 @@ Object.assign(App, {
             <div class="field">
                 <span class="label" id="ob-pain-l">Fastidi? Facoltativo</span>
                 <div class="ob__pain" role="group" aria-labelledby="ob-pain-l">
-                    ${this.OB_PAIN.map(([v, l, full]) => `<button class="chip" type="button" aria-pressed="${s.pain.has(v)}" data-ob-pain="${v}"${full ? ` aria-label="${full}"` : ''}>${l}</button>`).join('')}
+                    ${this.OB_PAIN.map(([v, l]) => `<button class="chip" type="button" aria-pressed="${s.pain.has(v)}" data-ob-pain="${v}">${l}</button>`).join('')}
                 </div>
             </div>`;
     },
@@ -1624,7 +1824,13 @@ Object.assign(App, {
             const act = e.target.closest('[data-ob-act]');
             if (act) {
                 if (act.dataset.obAct === 'back') this._obBack();
+                else if (act.dataset.obAct === 'import') this._obImport();
                 else this._obExit();
+                return;
+            }
+            const wd = e.target.closest('[data-ob-wd]');
+            if (wd) {
+                this._obToggleWeekday(parseInt(wd.dataset.obWd, 10));
                 return;
             }
             if (e.target.closest('#ob-next')) {
@@ -1681,7 +1887,9 @@ Object.assign(App, {
         this._ob.errors[key] = on;
         const el = document.getElementById(`ob-err-${key}`);
         if (el) el.hidden = !on;
-        const field = key === 'name' ? document.getElementById('ob-name') : document.querySelector('#ob-body [aria-labelledby="ob-sex-l"]');
+        const field = key === 'name' ? document.getElementById('ob-name')
+            : key === 'wdays' ? document.getElementById('ob-wdays')
+                : document.querySelector('#ob-body [aria-labelledby="ob-sex-l"]');
         if (field) {
             if (on) field.setAttribute('aria-invalid', 'true');
             else field.removeAttribute('aria-invalid');
@@ -1702,13 +1910,17 @@ Object.assign(App, {
             s.gender = v;
             this._obSetError('gender', false);
         } else if (group === 'level') {
-            // "3+ anni" tiene "expert" se il profilo era già così
-            s.level = v === 'advanced' && s.level0 === 'expert' ? 'expert' : v;
+            s.level = v;
         } else if (group === 'goal') {
             s.goal = v;
         } else if (group === 'days' || group === 'minutes') {
             s[group] = parseInt(v, 10);
             s.touched[group] = true;
+            // Numero di giorni cambiato: i giorni fissi tornano alla proposta per quel numero
+            if (group === 'days' && s.wdays && s.wdays.length && s.wdays.length !== s.days) {
+                s.wdays = this._defaultTrainingDays(s.days);
+                this._obRenderWeekdays();
+            }
             const info = this._obSplitInfo(s.goal, s.days);
             this._setText('ob-split-title', info.title);
             this._setText('ob-split-sub', info.sub);
@@ -1736,12 +1948,61 @@ Object.assign(App, {
                 return;
             }
         }
+        if (s.step === 3) {
+            const n = (s.wdays || []).length;
+            const bad = n === 1 || n === 7;
+            this._obSetError('wdays', bad);
+            if (bad) {
+                document.querySelector('#ob-wdays [data-ob-wd]')?.focus();
+                return;
+            }
+        }
         if (s.step < 4) {
             s.step++;
             this._obRender(true);
             return;
         }
         this._obFinish();
+    },
+
+    // Giorni fissi: un tocco aggiunge o toglie; con 2-6 giorni il numero dei giorni segue
+    _obToggleWeekday(n) {
+        const s = this._ob;
+        if (!s || !(n >= 1 && n <= 7)) return;
+        const set = new Set(s.wdays || []);
+        if (set.has(n)) set.delete(n); else set.add(n);
+        s.wdays = [...set].sort((a, b) => a - b);
+        s.touched.wdays = true;
+        const c = s.wdays.length;
+        if (c >= 2 && c <= 6 && c !== s.days) {
+            s.days = c;
+            s.touched.days = true;
+            document.querySelectorAll('#ob-body [data-ob-group="days"]').forEach(b => {
+                const on = b.dataset.v === String(c);
+                b.setAttribute('aria-checked', String(on));
+                b.tabIndex = on ? 0 : -1;
+            });
+            const info = this._obSplitInfo(s.goal, s.days);
+            this._setText('ob-split-title', info.title);
+            this._setText('ob-split-sub', info.sub);
+        }
+        if (s.errors.wdays && c !== 1 && c !== 7) this._obSetError('wdays', false);
+        this._obRenderWeekdays();
+    },
+
+    _obRenderWeekdays() {
+        const s = this._ob;
+        const set = new Set(s?.wdays || []);
+        document.querySelectorAll('#ob-wdays [data-ob-wd]').forEach(b => b.setAttribute('aria-pressed', String(set.has(parseInt(b.dataset.obWd, 10)))));
+        const hint = document.getElementById('ob-wd-hint');
+        if (hint) hint.hidden = !(s && Array.isArray(s.wdays) && !s.wdays.length);
+    },
+
+    // "Hai un backup? Importa" (telefono nuovo): lo stesso import di Profilo, poi si ricarica (R2-04)
+    _obImport() {
+        const input = document.getElementById('import-file-input');
+        if (input) input.click();
+        else this.showNotification('Importa da Profilo, sezione Backup', 'info');
     },
 
     _obBack() {
@@ -1797,14 +2058,13 @@ Object.assign(App, {
                 goal: s.goal,
                 daysPerWeek: s.days,
                 sessionTime: s.minutes,
+                trainingDays: Array.isArray(s.wdays) ? s.wdays.slice() : [],
                 equipment: this.OB_EQUIP.map(e => e[0]).filter(e => s.equipment.has(e)),
                 painAreas: this.OB_PAIN.map(p => p[0]).filter(p => s.pain.has(p))
             };
-            if (Storage.saveProfile(patch) === false) {
-                this.showNotification('Memoria piena: profilo non salvato', 'error');
-                return;
-            }
-            const profile = Storage.getProfile();
+            // La scheda si genera dal profilo NUOVO ma il profilo si salva solo dopo la scheda: con la
+            // memoria piena non resta un profilo cambiato con la scheda vecchia (R1-09)
+            const profile = { ...Storage.getProfile(), ...patch };
             const options = { goal: s.goal, daysPerWeek: s.days, split: this._obSplit(s.goal, s.days), sessionDuration: s.minutes };
             let program = null;
             try {
@@ -1817,18 +2077,14 @@ Object.assign(App, {
                 return;
             }
             this._alignCycleStart(program);
-            if (Storage.setActiveProgram(program) === false) {
-                this.showNotification('Memoria piena: scheda non salvata', 'error');
-                return;
-            }
+            if (this._save(() => Storage.setActiveProgram(program), 'Scheda NON salvata') === false) return;
+            this._save(() => Storage.saveProfile(patch), 'Profilo NON salvato');
             const regen = !!existing?.days?.length;
             this._ob = null;
             this._onboardingDismissed = false;
             this._cycleSummaryDismissed = false;
             this._schedaOpen = null;
-            this._safe(() => this.loadProfile());
-            this._safe(() => this.loadPrograms());
-            this._safe(() => this.loadProgress());
+            // Oggi si disegna aprendola; le altre pagine alla loro prossima apertura (R1-10)
             this.navigateTo('oggi', { replace: true });
             if (regen) this.showNotification('Scheda rigenerata', 'success', { icon: 'cycle' });
         } finally {

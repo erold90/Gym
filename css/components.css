@@ -45,7 +45,7 @@
 
 /* 5.2 Chip (filtri, attrezzatura) */
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.chips--scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--gutter) * -1); padding: 2px var(--gutter); scroll-padding: 0 var(--gutter); }
+.chips--scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--pad-r) * -1) 0 calc(var(--pad-l) * -1); padding: 2px var(--pad-r) 2px var(--pad-l); scroll-padding: 0 var(--pad-r) 0 var(--pad-l); }
 .chips--scroll::-webkit-scrollbar { display: none; }
 .chip {
   position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none;
@@ -257,7 +257,7 @@ button.row:active, a.row:active { background: var(--surface-2); }
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sheet);
   max-height: 88dvh; overflow: auto; overscroll-behavior: contain;
-  padding: var(--s-2) var(--gutter) calc(var(--s-5) + var(--safe-b));
+  padding: var(--s-2) var(--pad-r) calc(var(--s-5) + var(--safe-b)) var(--pad-l);
   background: var(--surface-1); border-radius: var(--r-lg) var(--r-lg) 0 0;
   display: flex; flex-direction: column; gap: var(--s-5);
   animation: sheet-in var(--dur-3) var(--ease-expo);
@@ -265,7 +265,10 @@ button.row:active, a.row:active { background: var(--surface-2); }
 .sheet__grip { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line-strong); }
 .sheet__head { display: flex; align-items: center; gap: var(--s-3); }
 .sheet__head h2 { flex: 1; font-size: var(--fs-lg); }
-.sheet__close { margin-right: calc(var(--s-2) * -1); flex: none; }
+/* chiusura dei fogli: UN solo stile in tutta l'app, seduta compresa (R2-18), qualunque variante di .btn abbia */
+.sheet__close, .sheet__close.btn--ghost, .sheet__close.btn--secondary { flex: none; width: var(--tap); min-height: var(--tap); padding: 0; margin-right: calc(var(--s-1) * -1); border-radius: var(--r-sm); background: var(--surface-2); border: 1px solid var(--line); color: var(--text); }
+.sheet__close:active { background: var(--surface-3); }
+@media (hover: hover) { .sheet__close:hover, .sheet__close.btn--ghost:hover { background: var(--surface-3); color: var(--text); } }
 .sheet__actions { display: flex; flex-direction: column; gap: var(--s-2); }
 .sheet--tall { min-height: min(72dvh, 640px); }
 /* Strato del foglio: <div class="modal" id="…-modal"> (il velo) > <section class="sheet" role="dialog">.
@@ -279,11 +282,14 @@ button.row:active, a.row:active { background: var(--surface-2); }
 
 /* 5.20 Avviso (toast): una riga, nomina l'oggetto, con Annulla quando serve.
    Vivono in .toast-stack (in alto, al massimo 3); si chiudono da soli o al tocco (App.showNotification). */
-.toast-stack { position: fixed; left: var(--gutter); right: var(--gutter); top: calc(var(--safe-t) + var(--s-3)); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--s-2); pointer-events: none; }
+.toast-stack { position: fixed; left: var(--pad-l); right: var(--pad-r); top: calc(var(--safe-t) + var(--s-3)); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--s-2); pointer-events: none; }
 .toast { display: flex; align-items: center; gap: var(--s-3); min-height: 52px; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); border-radius: var(--r-md); background: var(--text); color: var(--bg); font-weight: 600; line-height: 1.3; box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); pointer-events: auto; cursor: default; animation: toast-in var(--dur-3) var(--ease-expo); }
 .toast:not(:has(.btn)) { padding-right: var(--s-4); }
 .toast .ico { flex: none; }
-.toast span { flex: 1; min-width: 0; }
+.toast span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* una riga (R2-17): testo lungo un po' più piccolo; a capo solo se non basta */
+.toast--fit span { font-size: var(--fs-sm); letter-spacing: -0.005em; }
+.toast--wrap span { white-space: normal; }
 .toast .btn { min-height: 44px; color: var(--bg); padding: 0 var(--s-3); font-weight: 720; }
 .toast .btn--icon { width: 44px; padding: 0; }
 .toast--warning, .toast--error { box-shadow: inset 4px 0 0 var(--warn), 0 8px 24px rgb(0 0 0 / 0.25); }
@@ -291,7 +297,7 @@ button.row:active, a.row:active { background: var(--surface-2); }
 .toast.is-leaving { opacity: 0; transform: translateY(-8px); transition: opacity var(--dur-2) var(--ease-in), transform var(--dur-2) var(--ease-in); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 /* avviso di versione nuova: stesso aspetto, in basso sopra la tab bar */
-.update-banner { position: fixed; left: var(--gutter); right: var(--gutter); bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-3)); z-index: var(--z-toast); }
+.update-banner { position: fixed; left: var(--pad-l); right: var(--pad-r); bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-3)); z-index: var(--z-toast); }
 
 /* 5.21 Stato vuoto */
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--s-3); padding: var(--s-8) var(--s-4); }
@@ -407,6 +413,17 @@ button.row:active, a.row:active { background: var(--surface-2); }
 .pick button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent-edge); }
 .pick button[aria-checked="true"] small { color: var(--on-accent); }
 
+
+/* "?" accanto a un titolo (R2-22): bersaglio 44, icona discreta */
+.help-btn { color: var(--text-3); margin: -6px 0; }
+.section__head .help-btn { margin-left: calc(var(--s-2) * -1); }
+.help-row .row__sub { color: var(--text-2); }
+.help-intro { margin-top: calc(var(--s-3) * -1); }
+
+/* giorni fissi della settimana: 7 chip tonde in una riga (L M M G V S D) */
+.wd { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.wd-chip { justify-content: center; padding: 0; min-height: var(--tap-min); font-size: var(--fs-body); font-weight: 700; font-stretch: var(--narrow); }
+.wd-chip::after { inset: -2px; }
 
 /* ---------- desktop (>= 960 px): fogli centrati, avvisi a destra, chip a capo ---------- */
 @media (min-width: 960px) {

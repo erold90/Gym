@@ -346,19 +346,8 @@ Object.assign(App, {
 
     bindEsercizi() {
         this._exLib = this._newLibState();
+        // Esc, velo e Indietro del telefono: li gestisce il core (_closeTopModal legge _g4Close)
         this._bindLib(document.getElementById('ex-lib'), () => this._exLib);
-
-        // Esc chiude il foglio G4 in cima, prima del gestore generale del core
-        window.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape' && e.key !== 'Esc') return;
-            const open = this._openSheets();
-            const top = open[open.length - 1];
-            const fn = top && this._g4Close && this._g4Close[top.id];
-            if (!fn) return;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            fn();
-        }, true);
     },
 
     // Nome storico chiamato dal core all'avvio: disegna la libreria della pagina

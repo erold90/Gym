@@ -34,7 +34,7 @@
 
 /* foglio di scelta: la libreria dentro un foglio alto */
 .pick-sheet { gap: var(--s-4); }
-.pick-sheet .chips--scroll { margin: 0 calc(var(--gutter) * -1); padding: 2px var(--gutter); }
+.pick-sheet .chips--scroll { margin: 0 calc(var(--pad-r) * -1) 0 calc(var(--pad-l) * -1); padding: 2px var(--pad-r) 2px var(--pad-l); }
 
 /* scheda dell'esercizio */
 .ex-sheet { gap: var(--s-5); }
