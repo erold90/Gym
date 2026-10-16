@@ -6,3 +6,4 @@ exclude:
   - tests
   - .analisi-2026-10
   - .memsearch
+  - scripts
