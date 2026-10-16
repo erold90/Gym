@@ -3,54 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="GymTracker Pro: PWA offline-first per l'allenamento in palestra. Schede personalizzate evidence-based, doppia progressione, periodizzazione a mesociclo, timer di recupero e tracking dei PR. Nessun account: i dati restano sul tuo dispositivo.">
+    <meta name="description" content="GymTracker Pro: schede, serie, recuperi e progressi. Funziona offline, i dati restano sul telefono.">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' blob: data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
-    <title>GymTracker Pro - Il Tuo Personal Trainer Digitale</title>
+    <!-- Niente CDN: Chart.js sta in js/vendor. 'unsafe-inline' serve agli onclick generati da app.js -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' blob: data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <title>GymTracker Pro</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a2e">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="GymTracker">
     <meta property="og:type" content="website">
     <meta property="og:title" content="GymTracker Pro">
-    <meta property="og:description" content="PWA offline-first per l'allenamento: schede evidence-based, progressione, periodizzazione e tracking dei PR. I dati restano sul tuo dispositivo.">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💪</text></svg>">
+    <meta property="og:description" content="Schede, serie, recuperi e progressi. Funziona offline, i dati restano sul telefono.">
 </head>
 <body>
     <div id="app">
         <!-- Sidebar Navigation -->
-        <nav class="sidebar" id="sidebar">
+        <nav class="sidebar" id="sidebar" aria-label="Menu principale">
             <div class="sidebar-header">
                 <h1 class="logo">GymTracker<span>Pro</span></h1>
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">📊</span>
+                <li><button type="button" class="nav-item active" data-page="dashboard" aria-current="page">
+                    <span class="nav-icon" aria-hidden="true">📊</span>
                     <span class="nav-text">Dashboard</span>
-                </li>
-                <li class="nav-item" data-page="workout">
-                    <span class="nav-icon">🏋️</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="workout">
+                    <span class="nav-icon" aria-hidden="true">🏋️</span>
                     <span class="nav-text">Allenamento</span>
-                </li>
-                <li class="nav-item" data-page="exercises">
-                    <span class="nav-icon">💪</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="exercises">
+                    <span class="nav-icon" aria-hidden="true">💪</span>
                     <span class="nav-text">Esercizi</span>
-                </li>
-                <li class="nav-item" data-page="programs">
-                    <span class="nav-icon">📋</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="programs">
+                    <span class="nav-icon" aria-hidden="true">📋</span>
                     <span class="nav-text">Schede</span>
-                </li>
-                <li class="nav-item" data-page="progress">
-                    <span class="nav-icon">📈</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="progress">
+                    <span class="nav-icon" aria-hidden="true">📈</span>
                     <span class="nav-text">Progressi</span>
-                </li>
-                <li class="nav-item" data-page="profile">
-                    <span class="nav-icon">👤</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="profile">
+                    <span class="nav-icon" aria-hidden="true">👤</span>
                     <span class="nav-text">Profilo</span>
-                </li>
-                <li class="nav-item" data-page="settings">
-                    <span class="nav-icon">⚙️</span>
+                </button></li>
+                <li><button type="button" class="nav-item" data-page="settings">
+                    <span class="nav-icon" aria-hidden="true">⚙️</span>
                     <span class="nav-text">Impostazioni</span>
-                </li>
+                </button></li>
             </ul>
         </nav>
 
@@ -58,8 +65,11 @@
         <main class="main-content">
             <!-- Mobile Header -->
             <header class="mobile-header">
-                <button class="menu-toggle" id="menuToggle">☰</button>
-                <div class="mobile-logo">GymTracker<span>Pro</span></div>
+                <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menu" aria-controls="sidebar" aria-expanded="false">
+                    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+                </button>
+                <!-- un solo h1 visibile: questo su mobile, quello del menu su desktop -->
+                <h1 class="mobile-logo">GymTracker<span>Pro</span></h1>
             </header>
 
             <!-- Dashboard Page -->
@@ -76,8 +86,8 @@
                             <h3 id="quick-action-title">Pronto per allenarti?</h3>
                             <p id="quick-action-subtitle">Nessuna scheda attiva</p>
                         </div>
-                        <button class="btn btn-primary btn-large" id="quick-start-btn">
-                            ▶️ Inizia
+                        <button type="button" class="btn btn-primary btn-large" id="quick-start-btn">
+                            <span aria-hidden="true">▶</span> Inizia
                         </button>
                     </div>
                 </div>
@@ -86,13 +96,13 @@
                 <div class="conditioning-card" id="conditioning-card" style="display: none;">
                     <div class="conditioning-card-content">
                         <div class="conditioning-card-info">
-                            <span class="conditioning-icon">🏃</span>
+                            <span class="conditioning-icon" aria-hidden="true">🏃</span>
                             <div>
-                                <h4 id="conditioning-title">Conditioning</h4>
+                                <h3 id="conditioning-title">Conditioning</h3>
                                 <p id="conditioning-subtitle">0/0 questa settimana</p>
                             </div>
                         </div>
-                        <button class="btn btn-secondary btn-small" id="conditioning-btn">
+                        <button type="button" class="btn btn-secondary btn-small" id="conditioning-btn">
                             Inizia
                         </button>
                     </div>
@@ -101,31 +111,31 @@
                 <!-- Stats Grid Compact -->
                 <div class="stats-grid-compact">
                     <div class="stat-mini">
-                        <span class="stat-mini-icon">🔥</span>
+                        <span class="stat-mini-icon" aria-hidden="true">🔥</span>
                         <span class="stat-mini-value" id="stat-streak">0</span>
-                        <span class="stat-mini-label">Streak</span>
+                        <span class="stat-mini-label">Settimane</span>
                     </div>
                     <div class="stat-mini">
-                        <span class="stat-mini-icon">🏋️</span>
+                        <span class="stat-mini-icon" aria-hidden="true">🏋️</span>
                         <span class="stat-mini-value" id="stat-workouts">0</span>
                         <span class="stat-mini-label">Workout</span>
                     </div>
                     <div class="stat-mini">
-                        <span class="stat-mini-icon">⚡</span>
+                        <span class="stat-mini-icon" aria-hidden="true">⚡</span>
                         <span class="stat-mini-value" id="stat-volume">0</span>
                         <span class="stat-mini-label">Volume</span>
                     </div>
                     <div class="stat-mini">
-                        <span class="stat-mini-icon">🎯</span>
+                        <span class="stat-mini-icon" aria-hidden="true">🎯</span>
                         <span class="stat-mini-value" id="stat-prs">0</span>
-                        <span class="stat-mini-label">PRs</span>
+                        <span class="stat-mini-label">PR</span>
                     </div>
                 </div>
 
                 <!-- Weekly Overview Inline -->
                 <div class="card weekly-compact">
                     <div class="weekly-header">
-                        <h4>Questa Settimana</h4>
+                        <h3>Questa settimana</h3>
                         <span class="weekly-count" id="weekly-workout-count">0/4 sessioni</span>
                     </div>
                     <div class="week-days" id="week-days">
@@ -142,7 +152,7 @@
                 <!-- Two Column Grid -->
                 <div class="dashboard-grid-compact">
                     <div class="card body-stats-compact">
-                        <h4>📊 Corpo</h4>
+                        <h3>Corpo</h3>
                         <div class="body-stats-mini" id="body-stats-content">
                             <div class="body-stat-row">
                                 <span>Peso</span>
@@ -153,14 +163,14 @@
                                 <strong id="body-fat">--</strong>
                             </div>
                             <div class="body-stat-row">
-                                <span>Massa Magra</span>
+                                <span>Massa magra</span>
                                 <strong id="body-lean">--</strong>
                             </div>
                         </div>
                     </div>
 
                     <div class="card cycle-compact" id="cycle-card">
-                        <h4>🔄 Ciclo</h4>
+                        <h3>Ciclo</h3>
                         <div id="cycle-info-content">
                             <p class="empty-state-mini">Genera una scheda</p>
                         </div>
@@ -170,8 +180,8 @@
                 <!-- Recent Activity -->
                 <div class="card activity-compact">
                     <div class="activity-header">
-                        <h4>📋 Attività Recente</h4>
-                        <a href="#" class="see-all-link" data-page="progress">Vedi tutto →</a>
+                        <h3>Attività recente</h3>
+                        <a href="#progress" class="see-all-link" data-page="progress">Vedi tutto <span aria-hidden="true">→</span></a>
                     </div>
                     <ul class="activity-list-compact" id="activity-list">
                         <li class="empty-state-mini">Completa il tuo primo allenamento!</li>
@@ -189,26 +199,25 @@
                 <div id="workout-not-started">
                     <div class="card">
                         <h3>Pronto per allenarti?</h3>
-                        <p>Seleziona una scheda o inizia un allenamento libero</p>
                         <div class="workout-options">
-                            <button class="btn btn-primary" id="start-scheduled-workout">
-                                Inizia Scheda del Giorno
+                            <button type="button" class="btn btn-primary" id="start-scheduled-workout">
+                                Inizia scheda
                             </button>
-                            <button class="btn btn-outline" id="preview-workout-btn">
-                                Anteprima Scheda
+                            <button type="button" class="btn btn-secondary" id="preview-workout-btn">
+                                Anteprima
                             </button>
-                            <button class="btn btn-secondary" id="start-free-workout">
-                                Allenamento Libero
+                            <button type="button" class="btn btn-secondary" id="start-free-workout">
+                                Allenamento libero
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Workout Preview (read-only, no tracking) -->
+                <!-- Workout Preview (sola lettura). Non è una .workout-header-bar: su mobile quella è fissa in alto -->
                 <div id="workout-preview" style="display: none;">
-                    <div class="workout-header-bar preview-bar">
-                        <span class="preview-badge">ANTEPRIMA</span>
-                        <button class="btn btn-secondary btn-sm" id="close-preview-btn">Chiudi</button>
+                    <div class="preview-bar">
+                        <span class="preview-badge">Anteprima</span>
+                        <button type="button" class="btn btn-secondary btn-sm" id="close-preview-btn">Chiudi</button>
                     </div>
                     <div id="preview-day-nav" class="preview-day-nav"></div>
                     <div id="preview-content"></div>
@@ -216,23 +225,26 @@
 
                 <!-- Active Workout -->
                 <div id="workout-active" style="display: none;">
-                    <div class="workout-header-bar">
-                        <div class="workout-timer" id="workout-timer">00:00:00</div>
+                    <div class="workout-header-bar" id="workout-header-bar">
+                        <div class="workout-timer" id="workout-timer" role="timer" aria-label="Durata allenamento">00:00:00</div>
                         <div class="workout-header-actions">
-                            <button class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
-                            <button class="btn btn-outline btn-sm" id="cancel-workout-btn" title="Annulla senza salvare">Annulla</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="end-workout-btn">Termina</button>
+                            <button type="button" class="btn btn-outline btn-sm" id="cancel-workout-btn" title="Annulla senza salvare">Annulla</button>
                         </div>
                     </div>
 
                     <!-- Warm-up Section (Collapsible) -->
                     <div class="card warmup-section" id="warmup-section">
-                        <div class="warmup-header" id="warmup-header">
-                            <h3><span class="warmup-icon">🔥</span> <span id="warmup-title">Riscaldamento Dinamico</span></h3>
-                            <span class="warmup-toggle" id="warmup-toggle">▼</span>
-                        </div>
+                        <h3 class="warmup-heading">
+                            <button type="button" class="warmup-header" id="warmup-header" aria-expanded="true" aria-controls="warmup-content">
+                                <span class="warmup-icon" aria-hidden="true">🔥</span>
+                                <span id="warmup-title">Riscaldamento</span>
+                                <span class="warmup-toggle" id="warmup-toggle" aria-hidden="true">▼</span>
+                            </button>
+                        </h3>
                         <div class="warmup-content" id="warmup-content">
                             <div class="warmup-exercises" id="warmup-exercises"></div>
-                            <button class="btn btn-primary" id="skip-warmup">Riscaldamento Finito ✓</button>
+                            <button type="button" class="btn btn-primary" id="skip-warmup">Riscaldamento fatto <span aria-hidden="true">✓</span></button>
                         </div>
                     </div>
 
@@ -243,28 +255,26 @@
                         </div>
                     </div>
 
-                    <!-- Rest Timer Modal -->
-                    <div class="rest-timer-modal" id="rest-timer-modal" style="display: none;">
-                        <div class="rest-timer-content">
-                            <h3>Pausa</h3>
-                            <div class="rest-timer-display" id="rest-timer-display">90</div>
-                            <div class="rest-timer-progress">
-                                <div class="rest-timer-bar" id="rest-timer-bar"></div>
+                    <!-- Barra di recupero: fissa in fondo, visibile solo con .is-active (la pilota app.js).
+                         Stati: .is-warning (≤10 s), .is-done (overtime), .is-transition (cambio nel superset) -->
+                    <div class="rest-bar" id="rest-bar" role="region" aria-label="Recupero">
+                        <div class="rest-bar-track" aria-hidden="true"><div class="rest-bar-fill" id="rest-bar-fill"></div></div>
+                        <div class="rest-bar-row">
+                            <button type="button" class="rest-bar-btn" id="rest-bar-minus" aria-label="Meno 15 secondi">−15</button>
+                            <div class="rest-bar-center">
+                                <span class="rest-bar-label" id="rest-bar-label">Recupero</span>
+                                <span class="rest-bar-time" id="rest-bar-time" role="timer">0:00</span>
                             </div>
-                            <div class="rest-timer-controls">
-                                <button class="btn btn-sm" id="rest-minus-15">-15s</button>
-                                <button class="btn btn-sm" id="rest-plus-15">+15s</button>
-                            </div>
-                            <button class="btn btn-primary" id="skip-rest">Salta Pausa</button>
+                            <button type="button" class="rest-bar-btn" id="rest-bar-plus" aria-label="Più 15 secondi">+15</button>
+                            <button type="button" class="rest-bar-btn rest-bar-skip" id="rest-bar-skip">Salta</button>
                         </div>
                     </div>
 
                     <!-- Cooldown Section -->
                     <div class="cooldown-modal" id="cooldown-modal" style="display: none;">
-                        <div class="cooldown-content">
+                        <div class="cooldown-content" role="dialog" aria-modal="true" aria-labelledby="cooldown-title">
                             <div class="cooldown-header">
-                                <h3>🧘 Stretching Finale</h3>
-                                <p class="cooldown-subtitle">Prenditi tempo per rilassare i muscoli</p>
+                                <h3 id="cooldown-title"><span aria-hidden="true">🧘</span> Stretching</h3>
                             </div>
                             <div class="cooldown-info" id="cooldown-info">
                                 <!-- Duration info will be rendered here -->
@@ -273,8 +283,8 @@
                                 <!-- Exercises will be rendered here -->
                             </div>
                             <div class="cooldown-actions">
-                                <button class="btn btn-secondary" id="skip-cooldown">Salta Stretching</button>
-                                <button class="btn btn-primary" id="complete-cooldown">Ho Finito!</button>
+                                <button type="button" class="btn btn-secondary" id="skip-cooldown">Salta stretching</button>
+                                <button type="button" class="btn btn-primary" id="complete-cooldown">Fatto</button>
                             </div>
                         </div>
                     </div>
@@ -282,35 +292,33 @@
 
                 <!-- Day Picker Modal -->
                 <div class="modal" id="day-picker-modal">
-                    <div class="modal-content">
+                    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="day-picker-title">
                         <div class="modal-header">
-                            <h3>Scegli Allenamento</h3>
-                            <button class="modal-close" onclick="App.closeDayPicker()">✕</button>
+                            <h3 id="day-picker-title">Quale allenamento?</h3>
+                            <button type="button" class="modal-close" onclick="App.closeDayPicker()" aria-label="Chiudi">✕</button>
                         </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 16px;">Quale giorno vuoi allenarti oggi?</p>
-                        <div id="day-picker-list"></div>
+                        <div id="day-picker-list" class="day-picker-list"></div>
                     </div>
                 </div>
 
                 <!-- Free Workout Modal -->
                 <div class="modal" id="free-workout-modal">
-                    <div class="modal-content modal-large">
+                    <div class="modal-content modal-large" role="dialog" aria-modal="true" aria-labelledby="free-workout-modal-title">
                         <div class="modal-header">
-                            <h3 id="free-workout-modal-title">🏋️ Allenamento Libero</h3>
-                            <button class="modal-close" onclick="App.closeFreeWorkoutModal()">✕</button>
+                            <h3 id="free-workout-modal-title">Allenamento libero</h3>
+                            <button type="button" class="modal-close" onclick="App.closeFreeWorkoutModal()" aria-label="Chiudi">✕</button>
                         </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 12px;">Scegli gli esercizi per il tuo allenamento</p>
-                        <input type="text" id="free-workout-search" class="form-control" placeholder="Cerca esercizio..." oninput="App.freeWorkoutSearch(this.value)">
-                        <div id="free-workout-results" class="builder-exercise-results" style="max-height: 200px; overflow-y: auto; margin: 12px 0;">
-                            <p class="empty-state-mini">Cerca un esercizio...</p>
+                        <input type="search" id="free-workout-search" class="form-control" placeholder="Cerca esercizio…" aria-label="Cerca esercizio" autocomplete="off" oninput="App.freeWorkoutSearch(this.value)">
+                        <div id="free-workout-results" class="builder-exercise-results free-workout-results">
+                            <p class="empty-state-mini">Cerca un esercizio</p>
                         </div>
-                        <h4 style="margin-top: 12px;">Esercizi selezionati</h4>
-                        <div id="free-workout-selected" style="margin: 8px 0;">
-                            <p class="empty-state-mini">Nessun esercizio selezionato</p>
+                        <h4 class="free-workout-subtitle">Scelti</h4>
+                        <div id="free-workout-selected" class="free-workout-selected">
+                            <p class="empty-state-mini">Nessun esercizio</p>
                         </div>
-                        <div style="display: flex; gap: 8px; margin-top: 16px;">
-                            <button class="btn btn-secondary" onclick="App.closeFreeWorkoutModal()" style="flex:1;">Annulla</button>
-                            <button class="btn btn-primary" onclick="App.freeWorkoutStart()" style="flex:1;">Inizia Allenamento</button>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="App.closeFreeWorkoutModal()">Annulla</button>
+                            <button type="button" class="btn btn-primary" onclick="App.freeWorkoutStart()">Inizia</button>
                         </div>
                     </div>
                 </div>
@@ -319,30 +327,30 @@
             <!-- Exercises Database Page -->
             <section class="page" id="page-exercises">
                 <div class="page-header">
-                    <h2>Database Esercizi</h2>
+                    <h2>Esercizi</h2>
                     <div class="search-bar">
-                        <input type="text" id="exercise-search" placeholder="Cerca esercizio...">
+                        <input type="search" id="exercise-search" placeholder="Cerca esercizio…" aria-label="Cerca esercizio" autocomplete="off">
                     </div>
                 </div>
 
-                <div class="exercise-type-tabs">
-                    <button class="type-tab active" data-type="workout">Workout</button>
-                    <button class="type-tab" data-type="warmup">Warmup</button>
-                    <button class="type-tab" data-type="cooldown">Cooldown</button>
+                <div class="exercise-type-tabs" role="group" aria-label="Tipo">
+                    <button type="button" class="type-tab active" data-type="workout">Workout</button>
+                    <button type="button" class="type-tab" data-type="warmup">Warmup</button>
+                    <button type="button" class="type-tab" data-type="cooldown">Cooldown</button>
                 </div>
 
-                <div class="filter-tabs" id="workout-filters">
-                    <button class="filter-tab active" data-category="all">Tutti</button>
-                    <button class="filter-tab" data-category="macchine">Macchine</button>
-                    <button class="filter-tab" data-category="bilanciere">Bilanciere</button>
-                    <button class="filter-tab" data-category="manubri">Manubri</button>
-                    <button class="filter-tab" data-category="cavi">Cavi</button>
-                    <button class="filter-tab" data-category="corpo-libero">Corpo Libero</button>
-                    <button class="filter-tab" data-category="accessori">Accessori</button>
+                <div class="filter-tabs" id="workout-filters" role="group" aria-label="Attrezzatura">
+                    <button type="button" class="filter-tab active" data-category="all">Tutti</button>
+                    <button type="button" class="filter-tab" data-category="macchine">Macchine</button>
+                    <button type="button" class="filter-tab" data-category="bilanciere">Bilanciere</button>
+                    <button type="button" class="filter-tab" data-category="manubri">Manubri</button>
+                    <button type="button" class="filter-tab" data-category="cavi">Cavi</button>
+                    <button type="button" class="filter-tab" data-category="corpo-libero">Corpo libero</button>
+                    <button type="button" class="filter-tab" data-category="accessori">Accessori</button>
                 </div>
 
                 <div class="muscle-filter">
-                    <select id="muscle-filter">
+                    <select id="muscle-filter" aria-label="Muscolo">
                         <option value="all">Tutti i muscoli</option>
                         <option value="petto">Petto</option>
                         <option value="schiena">Schiena</option>
@@ -367,16 +375,16 @@
             <!-- Programs Page -->
             <section class="page" id="page-programs">
                 <div class="page-header">
-                    <h2>Schede di Allenamento</h2>
+                    <h2>Schede</h2>
                 </div>
 
                 <!-- Active Program (shown when a program exists) -->
                 <div class="card active-program" id="active-program-card" style="display: none;">
                     <div class="program-header">
-                        <h3>📋 Scheda Attiva</h3>
+                        <h3>Scheda attiva</h3>
                         <div class="program-header-actions">
-                            <button class="btn btn-sm btn-secondary" id="edit-program-btn">Modifica</button>
-                            <button class="btn btn-sm btn-danger" id="delete-program-btn">Elimina</button>
+                            <button type="button" class="btn btn-sm btn-secondary" id="edit-program-btn">Modifica</button>
+                            <button type="button" class="btn btn-sm btn-danger" id="delete-program-btn">Elimina</button>
                         </div>
                     </div>
                     <div id="active-program-content"></div>
@@ -385,36 +393,34 @@
                 <!-- No Program State (shown when no program exists) -->
                 <div id="no-program-state">
                     <div class="program-choice-grid">
-                        <!-- Manual Builder Option -->
-                        <div class="card program-choice-card" id="choice-manual">
-                            <div class="choice-icon">✏️</div>
-                            <h3>Crea la Tua Scheda</h3>
-                            <p>Scegli gli esercizi, serie, ripetizioni e recupero</p>
-                            <button class="btn btn-primary btn-large" id="open-manual-builder-btn">Crea Scheda</button>
-                        </div>
-                        <!-- AI Generator Option -->
                         <div class="card program-choice-card" id="choice-ai">
-                            <div class="choice-icon">🤖</div>
-                            <h3>Genera con AI</h3>
-                            <p>L'algoritmo crea una scheda ottimizzata per te</p>
-                            <button class="btn btn-secondary btn-large" id="open-ai-generator-btn">Genera</button>
+                            <div class="choice-icon" aria-hidden="true">🤖</div>
+                            <h3>Genera</h3>
+                            <p>Scheda costruita sul tuo profilo</p>
+                            <button type="button" class="btn btn-primary btn-large" id="open-ai-generator-btn">Genera scheda</button>
+                        </div>
+                        <div class="card program-choice-card" id="choice-manual">
+                            <div class="choice-icon" aria-hidden="true">✏️</div>
+                            <h3>A mano</h3>
+                            <p>Esercizi, serie e recuperi scelti da te</p>
+                            <button type="button" class="btn btn-secondary btn-large" id="open-manual-builder-btn">Crea scheda</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- AI Generator Modal -->
                 <div class="modal" id="ai-generator-modal">
-                    <div class="modal-content modal-wizard">
+                    <div class="modal-content modal-wizard" role="dialog" aria-modal="true" aria-labelledby="wizard-title">
                         <div class="modal-header">
                             <h3 id="wizard-title">🤖 Genera Scheda</h3>
-                            <button class="modal-close" id="close-ai-generator">&times;</button>
+                            <button type="button" class="modal-close" id="close-ai-generator" aria-label="Chiudi">&times;</button>
                         </div>
 
                         <!-- Progress bar -->
-                        <div class="wizard-progress">
+                        <div class="wizard-progress" aria-hidden="true">
                             <div class="wizard-progress-bar" id="wizard-progress-fill" style="width: 25%"></div>
                         </div>
-                        <div class="wizard-steps-indicator">
+                        <div class="wizard-steps-indicator" aria-hidden="true">
                             <span class="wizard-step-dot active" data-step="1">1</span>
                             <span class="wizard-step-dot" data-step="2">2</span>
                             <span class="wizard-step-dot" data-step="3">3</span>
@@ -423,104 +429,104 @@
 
                         <!-- Step 1: Obiettivo -->
                         <div class="wizard-step" id="wizard-step-1">
-                            <h4 class="wizard-step-title">Qual è il tuo obiettivo?</h4>
+                            <h4 class="wizard-step-title">Obiettivo</h4>
                             <div class="wizard-cards" id="wizard-goal-cards">
-                                <div class="wizard-card" data-value="hypertrophy">
-                                    <div class="wizard-card-icon">💪</div>
-                                    <div class="wizard-card-title">Ipertrofia</div>
-                                    <div class="wizard-card-desc">Massima crescita muscolare</div>
-                                </div>
-                                <div class="wizard-card" data-value="strength">
-                                    <div class="wizard-card-icon">🏋️</div>
-                                    <div class="wizard-card-title">Forza</div>
-                                    <div class="wizard-card-desc">Massimale e potenza</div>
-                                </div>
-                                <div class="wizard-card" data-value="recomp">
-                                    <div class="wizard-card-icon">🔄</div>
-                                    <div class="wizard-card-title">Ricomposizione</div>
-                                    <div class="wizard-card-desc">Meno grasso, più muscolo</div>
-                                </div>
-                                <div class="wizard-card" data-value="endurance">
-                                    <div class="wizard-card-icon">🫀</div>
-                                    <div class="wizard-card-title">Resistenza</div>
-                                    <div class="wizard-card-desc">Endurance muscolare</div>
-                                </div>
-                                <div class="wizard-card" data-value="toning">
-                                    <div class="wizard-card-icon">🍑</div>
-                                    <div class="wizard-card-title">Tonificazione</div>
-                                    <div class="wizard-card-desc">Glutei, gambe & definizione</div>
-                                </div>
+                                <button type="button" class="wizard-card" data-value="hypertrophy">
+                                    <span class="wizard-card-icon" aria-hidden="true">💪</span>
+                                    <span class="wizard-card-title">Ipertrofia</span>
+                                    <span class="wizard-card-desc">Più massa muscolare</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="strength">
+                                    <span class="wizard-card-icon" aria-hidden="true">🏋️</span>
+                                    <span class="wizard-card-title">Forza</span>
+                                    <span class="wizard-card-desc">Carichi massimi</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="recomp">
+                                    <span class="wizard-card-icon" aria-hidden="true">🔄</span>
+                                    <span class="wizard-card-title">Ricomposizione</span>
+                                    <span class="wizard-card-desc">Meno grasso, più muscolo</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="endurance">
+                                    <span class="wizard-card-icon" aria-hidden="true">🫀</span>
+                                    <span class="wizard-card-title">Resistenza</span>
+                                    <span class="wizard-card-desc">Tante ripetizioni</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="toning">
+                                    <span class="wizard-card-icon" aria-hidden="true">🍑</span>
+                                    <span class="wizard-card-title">Tonificazione</span>
+                                    <span class="wizard-card-desc">Glutei, gambe, definizione</span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- Step 2: Giorni -->
                         <div class="wizard-step hidden" id="wizard-step-2">
-                            <h4 class="wizard-step-title">Quanti giorni a settimana?</h4>
+                            <h4 class="wizard-step-title">Giorni a settimana</h4>
                             <div class="wizard-suggestion" id="wizard-days-suggestion"></div>
                             <div class="wizard-cards wizard-cards-row" id="wizard-days-cards">
-                                <div class="wizard-card wizard-card-small" data-value="3">
-                                    <div class="wizard-card-title">3</div>
-                                    <div class="wizard-card-desc">giorni</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="4">
-                                    <div class="wizard-card-title">4</div>
-                                    <div class="wizard-card-desc">giorni</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="5">
-                                    <div class="wizard-card-title">5</div>
-                                    <div class="wizard-card-desc">giorni</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="6">
-                                    <div class="wizard-card-title">6</div>
-                                    <div class="wizard-card-desc">giorni</div>
-                                </div>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="3">
+                                    <span class="wizard-card-title">3</span>
+                                    <span class="wizard-card-desc">giorni</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="4">
+                                    <span class="wizard-card-title">4</span>
+                                    <span class="wizard-card-desc">giorni</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="5">
+                                    <span class="wizard-card-title">5</span>
+                                    <span class="wizard-card-desc">giorni</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="6">
+                                    <span class="wizard-card-title">6</span>
+                                    <span class="wizard-card-desc">giorni</span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- Step 3: Split -->
                         <div class="wizard-step hidden" id="wizard-step-3">
-                            <h4 class="wizard-step-title">Tipo di split</h4>
+                            <h4 class="wizard-step-title">Divisione</h4>
                             <div class="wizard-suggestion" id="wizard-split-suggestion"></div>
                             <div class="wizard-cards" id="wizard-split-cards">
-                                <div class="wizard-card" data-value="upper-lower">
-                                    <div class="wizard-card-icon">⬆️⬇️</div>
-                                    <div class="wizard-card-title">Upper / Lower</div>
-                                    <div class="wizard-card-desc">Alto e basso corpo alternati</div>
-                                </div>
-                                <div class="wizard-card" data-value="push-pull-legs">
-                                    <div class="wizard-card-icon">🔀</div>
-                                    <div class="wizard-card-title">Push / Pull / Legs</div>
-                                    <div class="wizard-card-desc">Spingi, tira, gambe</div>
-                                </div>
-                                <div class="wizard-card" data-value="full-body">
-                                    <div class="wizard-card-icon">🧍</div>
-                                    <div class="wizard-card-title">Full Body</div>
-                                    <div class="wizard-card-desc">Tutto il corpo ogni sessione</div>
-                                </div>
+                                <button type="button" class="wizard-card" data-value="upper-lower">
+                                    <span class="wizard-card-icon" aria-hidden="true">⬆️⬇️</span>
+                                    <span class="wizard-card-title">Upper / Lower</span>
+                                    <span class="wizard-card-desc">Alto e basso alternati</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="push-pull-legs">
+                                    <span class="wizard-card-icon" aria-hidden="true">🔀</span>
+                                    <span class="wizard-card-title">Push / Pull / Legs</span>
+                                    <span class="wizard-card-desc">Spingi, tira, gambe</span>
+                                </button>
+                                <button type="button" class="wizard-card" data-value="full-body">
+                                    <span class="wizard-card-icon" aria-hidden="true">🧍</span>
+                                    <span class="wizard-card-title">Full Body</span>
+                                    <span class="wizard-card-desc">Tutto il corpo ogni volta</span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- Step 4: Durata -->
                         <div class="wizard-step hidden" id="wizard-step-4">
-                            <h4 class="wizard-step-title">Durata sessione</h4>
+                            <h4 class="wizard-step-title">Durata</h4>
                             <div class="wizard-suggestion" id="wizard-duration-suggestion"></div>
                             <div class="wizard-cards wizard-cards-row" id="wizard-duration-cards">
-                                <div class="wizard-card wizard-card-small" data-value="45">
-                                    <div class="wizard-card-title">45</div>
-                                    <div class="wizard-card-desc">min</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="60">
-                                    <div class="wizard-card-title">60</div>
-                                    <div class="wizard-card-desc">min</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="75">
-                                    <div class="wizard-card-title">75</div>
-                                    <div class="wizard-card-desc">min</div>
-                                </div>
-                                <div class="wizard-card wizard-card-small" data-value="90">
-                                    <div class="wizard-card-title">90</div>
-                                    <div class="wizard-card-desc">min</div>
-                                </div>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="45">
+                                    <span class="wizard-card-title">45</span>
+                                    <span class="wizard-card-desc">min</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="60">
+                                    <span class="wizard-card-title">60</span>
+                                    <span class="wizard-card-desc">min</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="75">
+                                    <span class="wizard-card-title">75</span>
+                                    <span class="wizard-card-desc">min</span>
+                                </button>
+                                <button type="button" class="wizard-card wizard-card-small" data-value="90">
+                                    <span class="wizard-card-title">90</span>
+                                    <span class="wizard-card-desc">min</span>
+                                </button>
                             </div>
                         </div>
 
@@ -532,27 +538,27 @@
 
                         <!-- Navigation -->
                         <div class="wizard-nav">
-                            <button class="btn btn-secondary" id="wizard-back" style="visibility: hidden">Indietro</button>
-                            <button class="btn btn-primary btn-large" id="generate-program-btn" style="display: none">Genera Scheda</button>
+                            <button type="button" class="btn btn-secondary" id="wizard-back" style="visibility: hidden">Indietro</button>
+                            <button type="button" class="btn btn-primary btn-large" id="generate-program-btn" style="display: none">Genera scheda</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Manual Builder Modal -->
                 <div class="modal" id="manual-builder-modal">
-                    <div class="modal-content modal-large">
+                    <div class="modal-content modal-large" role="dialog" aria-modal="true" aria-labelledby="builder-modal-title">
                         <div class="modal-header">
                             <h3 id="builder-modal-title">✏️ Crea la Tua Scheda</h3>
-                            <button class="modal-close" id="close-manual-builder">&times;</button>
+                            <button type="button" class="modal-close" id="close-manual-builder" aria-label="Chiudi">&times;</button>
                         </div>
 
                         <!-- Step 1: Define Days -->
                         <div class="builder-step" id="builder-step-days">
-                            <h4>Definisci i giorni di allenamento</h4>
+                            <h4>Giorni</h4>
                             <div id="builder-days-list"></div>
-                            <button class="btn btn-secondary" id="builder-add-day-btn">+ Aggiungi Giorno</button>
+                            <button type="button" class="btn btn-secondary" id="builder-add-day-btn">+ Giorno</button>
                             <div class="builder-nav">
-                                <button class="btn btn-primary" id="builder-to-exercises-btn">Avanti: Esercizi</button>
+                                <button type="button" class="btn btn-primary" id="builder-to-exercises-btn">Avanti</button>
                             </div>
                         </div>
 
@@ -562,13 +568,13 @@
                             <div id="builder-current-day-exercises"></div>
                             <div class="builder-add-exercise-section">
                                 <div class="exercise-search-bar">
-                                    <input type="text" id="builder-exercise-search" placeholder="Cerca esercizio..." autocomplete="off">
+                                    <input type="search" id="builder-exercise-search" placeholder="Cerca esercizio…" aria-label="Cerca esercizio" autocomplete="off">
                                 </div>
                                 <div id="builder-exercise-results" class="builder-exercise-results"></div>
                             </div>
                             <div class="builder-nav">
-                                <button class="btn btn-secondary" id="builder-back-to-days-btn">Indietro</button>
-                                <button class="btn btn-primary" id="builder-save-btn">Salva Scheda</button>
+                                <button type="button" class="btn btn-secondary" id="builder-back-to-days-btn">Indietro</button>
+                                <button type="button" class="btn btn-primary" id="builder-save-btn">Salva scheda</button>
                             </div>
                         </div>
                     </div>
@@ -578,7 +584,7 @@
             <!-- Progress Page -->
             <section class="page" id="page-progress">
                 <div class="page-header">
-                    <h2>I Tuoi Progressi</h2>
+                    <h2>Progressi</h2>
                 </div>
 
                 <!-- Quick Stats Summary -->
@@ -589,22 +595,22 @@
                     </div>
                     <div class="progress-stat">
                         <span class="progress-stat-value" id="progress-total-volume">0</span>
-                        <span class="progress-stat-label">Volume (t)</span>
+                        <span class="progress-stat-label">Volume</span>
                     </div>
                     <div class="progress-stat">
                         <span class="progress-stat-value" id="progress-total-prs">0</span>
-                        <span class="progress-stat-label">PRs</span>
+                        <span class="progress-stat-label">PR</span>
                     </div>
                     <div class="progress-stat">
                         <span class="progress-stat-value" id="progress-best-streak">0</span>
-                        <span class="progress-stat-label">Best Streak</span>
+                        <span class="progress-stat-label">Record settimane</span>
                     </div>
                 </div>
 
                 <!-- Mesocycle Status -->
                 <div class="card" id="progress-cycle-card">
                     <div class="progress-section-header">
-                        <h4>Mesociclo</h4>
+                        <h3>Mesociclo</h3>
                     </div>
                     <div id="progress-cycle-info">
                         <p class="empty-state-mini">Nessuna scheda attiva</p>
@@ -614,101 +620,100 @@
                 <!-- Charts Section -->
                 <div class="progress-charts-grid">
                     <div class="card chart-card-compact" id="volume-chart-card">
-                        <h4>Volume Settimanale</h4>
+                        <h3>Volume settimanale</h3>
                         <div class="chart-container">
-                            <canvas id="volume-chart"></canvas>
+                            <canvas id="volume-chart" role="img" aria-label="Volume settimanale"></canvas>
                         </div>
-                        <p class="chart-empty-state" id="volume-empty">Nessun dato disponibile</p>
+                        <p class="chart-empty-state" id="volume-empty">Nessun dato</p>
                     </div>
                     <div class="card chart-card-compact" id="frequency-chart-card">
-                        <h4>Frequenza</h4>
+                        <h3>Frequenza</h3>
                         <div class="chart-container">
-                            <canvas id="frequency-chart"></canvas>
+                            <canvas id="frequency-chart" role="img" aria-label="Allenamenti per settimana"></canvas>
                         </div>
-                        <p class="chart-empty-state" id="frequency-empty">Nessun dato disponibile</p>
+                        <p class="chart-empty-state" id="frequency-empty">Nessun dato</p>
                     </div>
                 </div>
 
                 <!-- Conditioning History -->
                 <div class="card chart-card-compact" id="conditioning-chart-card">
-                    <h4>Conditioning (HIIT/LISS)</h4>
+                    <h3>Conditioning</h3>
                     <div class="chart-container">
-                        <canvas id="conditioning-chart"></canvas>
+                        <canvas id="conditioning-chart" role="img" aria-label="Sessioni HIIT e LISS"></canvas>
                     </div>
-                    <p class="chart-empty-state" id="conditioning-empty">Nessuna sessione registrata</p>
+                    <p class="chart-empty-state" id="conditioning-empty">Nessuna sessione</p>
                 </div>
 
                 <!-- Volume per Muscle Group -->
                 <div class="card" id="muscle-volume-card">
                     <div class="progress-section-header">
-                        <h4>Volume per Gruppo Muscolare</h4>
+                        <h3>Serie per muscolo</h3>
                         <span class="progress-subtitle" id="muscle-volume-period">Questa settimana</span>
                     </div>
                     <div id="muscle-volume-bars">
-                        <p class="empty-state-mini">Completa allenamenti per vedere il volume per muscolo</p>
+                        <p class="empty-state-mini">Nessun dato</p>
                     </div>
                 </div>
 
                 <!-- Strength Progress per Exercise -->
                 <div class="card">
                     <div class="progress-section-header">
-                        <h4>Forza per Esercizio</h4>
+                        <h3>Forza per esercizio</h3>
                     </div>
                     <div class="strength-select-container">
-                        <select id="strength-exercise-select" class="form-select">
-                            <option value="">Seleziona un esercizio...</option>
+                        <select id="strength-exercise-select" class="form-select" aria-label="Esercizio">
+                            <option value="">Scegli un esercizio</option>
                         </select>
                     </div>
                     <div class="chart-container" id="strength-chart-container" style="display:none;">
-                        <canvas id="strength-chart"></canvas>
+                        <canvas id="strength-chart" role="img" aria-label="Andamento della forza"></canvas>
                     </div>
-                    <p class="empty-state-mini" id="strength-empty">Seleziona un esercizio per vedere il trend di forza</p>
+                    <p class="empty-state-mini" id="strength-empty">Scegli un esercizio</p>
                 </div>
 
                 <!-- RIR Average Trend -->
                 <div class="card" id="rir-trend-card">
                     <div class="progress-section-header">
-                        <h4>RIR Medio</h4>
-                        <span class="progress-subtitle">Intensita nel tempo</span>
+                        <h3>RIR medio</h3>
                     </div>
                     <div class="chart-container" id="rir-chart-container">
-                        <canvas id="rir-chart"></canvas>
+                        <canvas id="rir-chart" role="img" aria-label="RIR medio per allenamento"></canvas>
                     </div>
-                    <p class="chart-empty-state" id="rir-empty">Registra il RIR durante gli allenamenti</p>
+                    <p class="chart-empty-state" id="rir-empty">Segna il RIR nelle serie</p>
                 </div>
 
                 <!-- Body Stats -->
                 <div class="card progress-body-section">
                     <div class="progress-section-header">
-                        <h4>Peso Corporeo</h4>
-                        <button class="btn btn-sm btn-secondary" id="toggle-weight-form">+ Aggiungi</button>
+                        <h3>Peso corporeo</h3>
+                        <button type="button" class="btn btn-sm btn-secondary" id="toggle-weight-form">+ Peso</button>
                     </div>
                     <div class="weight-form-container" id="weight-form-container" style="display: none;">
                         <form id="body-measurement-form" class="inline-form">
-                            <input type="number" step="0.1" id="measure-weight" placeholder="Peso (kg)" inputmode="decimal">
+                            <input type="number" step="0.1" id="measure-weight" placeholder="kg" inputmode="decimal" aria-label="Peso in kg">
                             <button type="submit" class="btn btn-primary btn-sm">Salva</button>
                         </form>
                     </div>
                     <div class="weight-chart-container" id="weight-chart-container">
-                        <canvas id="weight-chart"></canvas>
-                        <p class="chart-empty-state" id="weight-empty">Aggiungi la prima misurazione</p>
+                        <canvas id="weight-chart" role="img" aria-label="Peso corporeo"></canvas>
+                        <p class="chart-empty-state" id="weight-empty">Nessuna misura</p>
                     </div>
                 </div>
 
                 <!-- Personal Records -->
                 <div class="card">
                     <div class="progress-section-header">
-                        <h4>Record Personali</h4>
+                        <h3>Record personali</h3>
                     </div>
                     <div id="prs-list" class="prs-grid-compact">
-                        <p class="empty-state-mini">Completa allenamenti per vedere i tuoi PR!</p>
+                        <p class="empty-state-mini">Ancora nessun PR</p>
                     </div>
                 </div>
 
                 <!-- Cycle History -->
                 <div class="card" id="cycle-history-card">
                     <div class="progress-section-header">
-                        <h4>Storico Mesocicli</h4>
+                        <h3>Mesocicli completati</h3>
                     </div>
                     <div id="cycle-history-list">
                         <p class="empty-state-mini">Nessun ciclo completato</p>
@@ -718,10 +723,10 @@
                 <!-- Recent Workouts -->
                 <div class="card">
                     <div class="progress-section-header">
-                        <h4>Storico Allenamenti</h4>
+                        <h3>Storico allenamenti</h3>
                     </div>
                     <div id="workout-history-list" class="workout-history-compact">
-                        <p class="empty-state-mini">Nessun allenamento registrato</p>
+                        <p class="empty-state-mini">Nessun allenamento</p>
                     </div>
                 </div>
             </section>
@@ -729,26 +734,26 @@
             <!-- Profile Page -->
             <section class="page" id="page-profile">
                 <div class="page-header">
-                    <h2>Il Tuo Profilo</h2>
-                    <p class="greeting">Solo il nome è necessario. Tutto il resto è già pre-impostato e lo modifichi quando vuoi.</p>
+                    <h2>Profilo</h2>
                 </div>
 
                 <div class="profile-container">
                     <div class="card profile-card">
-                        <div class="profile-avatar">
+                        <div class="profile-avatar" aria-hidden="true">
                             <span>👤</span>
                         </div>
                         <form id="profile-form">
                             <div class="form-section">
-                                <h3>Dati Personali</h3>
+                                <h3>Dati personali</h3>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="profile-name">Nome</label>
-                                        <input type="text" id="profile-name" placeholder="Il tuo nome">
+                                        <input type="text" id="profile-name" autocomplete="given-name">
                                     </div>
                                     <div class="form-group">
                                         <label for="profile-gender">Sesso</label>
                                         <select id="profile-gender">
+                                            <option value="">—</option>
                                             <option value="male">Uomo</option>
                                             <option value="female">Donna</option>
                                         </select>
@@ -761,17 +766,17 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="profile-height">Altezza (cm)</label>
-                                        <input type="number" id="profile-height" placeholder="180">
+                                        <input type="number" id="profile-height" inputmode="numeric">
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="profile-weight">Peso attuale (kg)</label>
-                                        <input type="number" step="0.1" id="profile-weight" placeholder="90">
+                                        <label for="profile-weight">Peso (kg)</label>
+                                        <input type="number" step="0.1" id="profile-weight" inputmode="decimal">
                                     </div>
                                     <div class="form-group">
-                                        <label for="profile-bodyfat">% Grasso corporeo</label>
-                                        <input type="number" step="0.1" id="profile-bodyfat" placeholder="20">
+                                        <label for="profile-bodyfat">% Grasso</label>
+                                        <input type="number" step="0.1" id="profile-bodyfat" inputmode="decimal">
                                     </div>
                                 </div>
                             </div>
@@ -789,14 +794,14 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="profile-background">Background</label>
+                                        <label for="profile-background">Provenienza</label>
                                         <select id="profile-background">
-                                            <option value="none">Nessuno</option>
+                                            <option value="none">Nessuna</option>
                                             <option value="bodybuilding">Bodybuilding</option>
                                             <option value="powerlifting">Powerlifting</option>
                                             <option value="crossfit">CrossFit</option>
                                             <option value="calisthenics">Calisthenics</option>
-                                            <option value="sport">Sport specifico</option>
+                                            <option value="sport">Altro sport</option>
                                         </select>
                                     </div>
                                 </div>
@@ -805,22 +810,24 @@
                             <div class="form-section">
                                 <h3>Obiettivi</h3>
                                 <div class="form-group">
-                                    <label for="profile-goal">Obiettivo principale</label>
+                                    <label for="profile-goal">Obiettivo</label>
                                     <select id="profile-goal">
-                                        <option value="recomp">Ricomposizione corporea</option>
-                                        <option value="bulk">Aumento massa</option>
-                                        <option value="cut">Definizione</option>
+                                        <option value="hypertrophy">Ipertrofia</option>
                                         <option value="strength">Forza</option>
-                                        <option value="maintenance">Mantenimento</option>
+                                        <option value="recomp">Ricomposizione</option>
+                                        <option value="endurance">Resistenza</option>
+                                        <option value="toning">Tonificazione</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="profile-target-weight">Peso obiettivo (kg)</label>
-                                    <input type="number" step="0.1" id="profile-target-weight" placeholder="85">
-                                </div>
-                                <div class="form-group">
-                                    <label for="profile-target-bf">% Grasso obiettivo</label>
-                                    <input type="number" step="0.1" id="profile-target-bf" placeholder="12">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="profile-target-weight">Peso obiettivo (kg)</label>
+                                        <input type="number" step="0.1" id="profile-target-weight" inputmode="decimal">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="profile-target-bf">% Grasso obiettivo</label>
+                                        <input type="number" step="0.1" id="profile-target-bf" inputmode="decimal">
+                                    </div>
                                 </div>
                             </div>
 
@@ -831,17 +838,17 @@
                                         <label for="profile-days">Giorni a settimana</label>
                                         <select id="profile-days">
                                             <option value="2">2 giorni</option>
-                                            <option value="3">3 giorni</option>
+                                            <option value="3" selected>3 giorni</option>
                                             <option value="4">4 giorni</option>
                                             <option value="5">5 giorni</option>
                                             <option value="6">6 giorni</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="profile-session-time">Tempo per sessione</label>
+                                        <label for="profile-session-time">Durata</label>
                                         <select id="profile-session-time">
                                             <option value="45">45 minuti</option>
-                                            <option value="60">60 minuti</option>
+                                            <option value="60" selected>60 minuti</option>
                                             <option value="75">75 minuti</option>
                                             <option value="90">90 minuti</option>
                                         </select>
@@ -850,7 +857,7 @@
                             </div>
 
                             <div class="form-section">
-                                <h3>Attrezzatura Disponibile</h3>
+                                <h3>Attrezzatura</h3>
                                 <div class="equipment-checkboxes" id="equipment-checkboxes">
                                     <label class="checkbox-label">
                                         <input type="checkbox" name="equipment" value="bilanciere" checked>
@@ -869,19 +876,11 @@
                                         <span>Cavi</span>
                                     </label>
                                     <label class="checkbox-label">
-                                        <input type="checkbox" name="equipment" value="kettlebell">
-                                        <span>Kettlebell</span>
+                                        <input type="checkbox" name="equipment" value="panca" checked>
+                                        <span>Panca</span>
                                     </label>
                                     <label class="checkbox-label">
-                                        <input type="checkbox" name="equipment" value="trx">
-                                        <span>TRX</span>
-                                    </label>
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" name="equipment" value="elastici">
-                                        <span>Elastici</span>
-                                    </label>
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" name="equipment" value="sbarra">
+                                        <input type="checkbox" name="equipment" value="sbarra" checked>
                                         <span>Sbarra trazioni</span>
                                     </label>
                                     <label class="checkbox-label">
@@ -889,13 +888,13 @@
                                         <span>Parallele</span>
                                     </label>
                                     <label class="checkbox-label">
-                                        <input type="checkbox" name="equipment" value="panca">
-                                        <span>Panca regolabile</span>
+                                        <input type="checkbox" name="equipment" value="accessori">
+                                        <span>Accessori</span>
                                     </label>
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-large">Salva Profilo</button>
+                            <button type="submit" class="btn btn-primary btn-large">Salva profilo</button>
                         </form>
                     </div>
                 </div>
@@ -909,31 +908,45 @@
 
                 <div class="settings-container">
                     <div class="card">
-                        <h3>⏱️ Preferenze Allenamento</h3>
+                        <h3><span aria-hidden="true">⏱️</span> Allenamento</h3>
                         <div class="setting-item">
-                            <label for="setting-rest-compound">Pausa default esercizi compound (sec)</label>
-                            <input type="number" id="setting-rest-compound" value="90" min="30" max="300">
+                            <label for="setting-rest-compound">Recupero composti (s)</label>
+                            <input type="number" id="setting-rest-compound" value="120" min="30" max="300" step="15" inputmode="numeric">
                         </div>
                         <div class="setting-item">
-                            <label for="setting-rest-isolation">Pausa default esercizi isolamento (sec)</label>
-                            <input type="number" id="setting-rest-isolation" value="60" min="30" max="180">
+                            <label for="setting-rest-isolation">Recupero isolamento (s)</label>
+                            <input type="number" id="setting-rest-isolation" value="75" min="30" max="180" step="15" inputmode="numeric">
                         </div>
                         <div class="setting-item">
-                            <label for="setting-rest-sound">Suono fine pausa</label>
+                            <label for="setting-rest-sound">Suono fine recupero</label>
                             <select id="setting-rest-sound">
                                 <option value="beep">Beep</option>
                                 <option value="bell">Campana</option>
                                 <option value="none">Nessuno</option>
                             </select>
                         </div>
-                        <div class="setting-item">
-                            <label for="setting-vibration">Vibrazione</label>
-                            <input type="checkbox" id="setting-vibration" checked>
-                        </div>
+                        <label class="setting-item setting-toggle" for="setting-vibration">
+                            <span class="setting-label">Vibrazione</span>
+                            <input type="checkbox" class="switch" id="setting-vibration" role="switch" checked>
+                        </label>
+                        <label class="setting-item setting-toggle" for="setting-keep-awake">
+                            <span class="setting-label">Schermo sempre acceso</span>
+                            <input type="checkbox" class="switch" id="setting-keep-awake" role="switch" checked>
+                        </label>
+                        <label class="setting-item setting-toggle" for="setting-notifications">
+                            <span class="setting-label">Notifica a fine recupero</span>
+                            <input type="checkbox" class="switch" id="setting-notifications" role="switch">
+                        </label>
+                        <label class="setting-item setting-toggle" for="setting-background-alerts">
+                            <span class="setting-label">Suono con app in background
+                                <span class="setting-hint">Può interrompere la musica</span>
+                            </span>
+                            <input type="checkbox" class="switch" id="setting-background-alerts" role="switch">
+                        </label>
                     </div>
 
                     <div class="card">
-                        <h3>🎨 Aspetto</h3>
+                        <h3><span aria-hidden="true">🎨</span> Aspetto</h3>
                         <div class="setting-item">
                             <label for="setting-theme">Tema</label>
                             <select id="setting-theme">
@@ -942,63 +955,54 @@
                                 <option value="auto">Automatico</option>
                             </select>
                         </div>
-                        <div class="setting-item">
-                            <label for="setting-weight-unit">Unità di misura peso</label>
-                            <select id="setting-weight-unit">
-                                <option value="kg">Chilogrammi (kg)</option>
-                                <option value="lb">Libbre (lb)</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="card">
-                        <h3>💾 Dati</h3>
+                        <h3><span aria-hidden="true">💾</span> Dati</h3>
                         <div class="storage-info" id="storage-info">
-                            <div class="storage-bar">
+                            <div class="storage-bar" aria-hidden="true">
                                 <div class="storage-used" id="storage-used-bar"></div>
                             </div>
-                            <p class="storage-text" id="storage-text">Calcolo spazio...</p>
+                            <p class="storage-text" id="storage-text">Calcolo spazio…</p>
                         </div>
                         <div class="data-buttons">
-                            <button class="btn btn-secondary" id="export-data-btn">
-                                📤 Esporta Dati (JSON)
+                            <button type="button" class="btn btn-secondary" id="export-data-btn">
+                                <span aria-hidden="true">📤</span> Esporta (JSON)
                             </button>
-                            <button class="btn btn-secondary" id="import-data-btn">
-                                📥 Importa Dati
+                            <button type="button" class="btn btn-secondary" id="import-data-btn">
+                                <span aria-hidden="true">📥</span> Importa
                             </button>
-                            <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                            <button class="btn btn-warning" id="clear-cache-btn">
-                                🔄 Svuota Cache e Aggiorna
+                            <input type="file" id="import-file-input" accept=".json,application/json" hidden>
+                            <button type="button" class="btn btn-warning" id="clear-cache-btn">
+                                <span aria-hidden="true">🔄</span> Svuota cache e aggiorna
                             </button>
                         </div>
                     </div>
 
                     <div class="card">
-                        <h3>🧪 Debug & Test</h3>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Simula un allenamento per testare il layout senza salvare dati.</p>
-                        <button class="btn btn-secondary" id="simulate-workout-btn">
-                            🏋️ Simula Allenamento
+                        <h3><span aria-hidden="true">🧪</span> Prova</h3>
+                        <button type="button" class="btn btn-secondary" id="simulate-workout-btn">
+                            Simula allenamento (non salva)
                         </button>
                     </div>
 
                     <div class="card danger-zone">
-                        <h3>⚠️ Zona Pericolosa</h3>
-                        <p class="danger-warning">Queste azioni non possono essere annullate!</p>
+                        <h3><span aria-hidden="true">⚠️</span> Zona pericolosa</h3>
+                        <p class="danger-warning">Non si torna indietro.</p>
                         <div class="data-buttons">
-                            <button class="btn btn-secondary" id="clear-progress-btn">
-                                📊 Cancella Solo Progressi
+                            <button type="button" class="btn btn-secondary" id="clear-progress-btn">
+                                Cancella progressi
                             </button>
-                            <button class="btn btn-danger" id="reset-data-btn">
-                                🗑️ Cancella Tutti i Dati
+                            <button type="button" class="btn btn-danger" id="reset-data-btn">
+                                Cancella tutti i dati
                             </button>
                         </div>
                     </div>
 
                     <div class="card">
-                        <h3>ℹ️ Informazioni</h3>
-                        <p><strong>GymTracker Pro</strong> v1.8.0</p>
-                        <p>Il tuo personal trainer digitale basato sulla scienza.</p>
-                        <p class="text-muted">I dati sono salvati localmente nel browser.</p>
+                        <h3><span aria-hidden="true">ℹ️</span> Info</h3>
+                        <p><strong>GymTracker Pro</strong> <span id="app-version">v1.26.0</span></p>
+                        <p class="text-muted">I dati restano su questo dispositivo.</p>
                     </div>
                 </div>
             </section>
@@ -1007,19 +1011,19 @@
 
     <!-- Exercise Detail Modal -->
     <div class="modal" id="exercise-modal">
-        <div class="modal-content">
-            <button class="modal-close" id="close-exercise-modal">&times;</button>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-label="Esercizio">
+            <button type="button" class="modal-close" id="close-exercise-modal" aria-label="Chiudi">&times;</button>
             <div id="exercise-modal-content"></div>
         </div>
     </div>
 
     <!-- Exercise Info Modal (GIF + Detailed Instructions) -->
     <div class="modal" id="exercise-info-modal">
-        <div class="modal-content exercise-info-modal-content">
-            <button class="modal-close" id="close-exercise-info-modal">&times;</button>
+        <div class="modal-content exercise-info-modal-content" role="dialog" aria-modal="true" aria-labelledby="exercise-info-title">
+            <button type="button" class="modal-close modal-close-on-color" id="close-exercise-info-modal" aria-label="Chiudi">&times;</button>
             <div class="exercise-info-container">
                 <div class="exercise-info-header">
-                    <h3 id="exercise-info-title">Nome Esercizio</h3>
+                    <h3 id="exercise-info-title">Esercizio</h3>
                 </div>
 
                 <div class="exercise-info-media">
@@ -1030,35 +1034,35 @@
 
                 <div class="exercise-info-details">
                     <div class="exercise-info-section">
-                        <h4><span class="section-icon">📋</span> Esecuzione</h4>
+                        <h4><span class="section-icon" aria-hidden="true">📋</span> Esecuzione</h4>
                         <ol class="execution-steps" id="execution-steps">
                             <!-- Steps will be inserted here -->
                         </ol>
                     </div>
 
                     <div class="exercise-info-section">
-                        <h4><span class="section-icon">💡</span> Consigli</h4>
+                        <h4><span class="section-icon" aria-hidden="true">💡</span> Consigli</h4>
                         <ul class="execution-tips" id="execution-tips">
                             <!-- Tips will be inserted here -->
                         </ul>
                     </div>
 
                     <div class="exercise-info-section" id="common-mistakes-section">
-                        <h4><span class="section-icon">⚠️</span> Errori Comuni</h4>
+                        <h4><span class="section-icon" aria-hidden="true">⚠️</span> Errori comuni</h4>
                         <ul class="common-mistakes" id="common-mistakes">
                             <!-- Common mistakes will be inserted here -->
                         </ul>
                     </div>
 
                     <div class="exercise-info-section" id="breathing-section">
-                        <h4><span class="section-icon">🌬️</span> Respirazione</h4>
+                        <h4><span class="section-icon" aria-hidden="true">🌬️</span> Respirazione</h4>
                         <p class="breathing-info" id="breathing-info">
                             <!-- Breathing info will be inserted here -->
                         </p>
                     </div>
 
                     <div class="exercise-info-section" id="muscles-section">
-                        <h4><span class="section-icon">💪</span> Muscoli Coinvolti</h4>
+                        <h4><span class="section-icon" aria-hidden="true">💪</span> Muscoli</h4>
                         <div class="muscles-info" id="muscles-info">
                             <!-- Muscles info will be inserted here -->
                         </div>
@@ -1070,8 +1074,8 @@
 
     <!-- Conditioning Modal -->
     <div class="modal" id="conditioning-modal">
-        <div class="modal-content conditioning-modal-content">
-            <button class="modal-close" id="close-conditioning-modal">&times;</button>
+        <div class="modal-content conditioning-modal-content" role="dialog" aria-modal="true" aria-label="Conditioning">
+            <button type="button" class="modal-close" id="close-conditioning-modal" aria-label="Chiudi">&times;</button>
 
             <!-- Step 1: Choose Type -->
             <div class="conditioning-step" id="conditioning-step-1">
@@ -1079,28 +1083,32 @@
                 <p class="conditioning-week-status" id="conditioning-week-status"></p>
 
                 <div class="conditioning-type-grid">
-                    <div class="conditioning-type-card" id="choose-hiit">
-                        <span class="type-icon">⚡</span>
-                        <h4>HIIT</h4>
-                        <p>15-20 min</p>
-                        <p class="type-desc">Alta intensità</p>
-                    </div>
-                    <div class="conditioning-type-card" id="choose-liss">
-                        <span class="type-icon">🚶</span>
-                        <h4>LISS</h4>
-                        <p>20-30 min</p>
-                        <p class="type-desc">Bassa intensità</p>
-                    </div>
+                    <button type="button" class="conditioning-type-card" id="choose-hiit">
+                        <span class="type-icon" aria-hidden="true">⚡</span>
+                        <span class="type-name">HIIT</span>
+                        <span class="type-time">15-20 min</span>
+                        <span class="type-desc">Alta intensità</span>
+                    </button>
+                    <button type="button" class="conditioning-type-card" id="choose-liss">
+                        <span class="type-icon" aria-hidden="true">🚶</span>
+                        <span class="type-name">LISS</span>
+                        <span class="type-time">20-30 min</span>
+                        <span class="type-desc">Bassa intensità</span>
+                    </button>
                 </div>
             </div>
 
             <!-- Step 2: HIIT Details -->
             <div class="conditioning-step" id="conditioning-step-hiit" style="display: none;">
                 <div class="conditioning-header">
-                    <button class="btn-back" id="conditioning-back-hiit">&larr;</button>
-                    <h3 id="hiit-protocol-name">HIIT - Circuito</h3>
+                    <button type="button" class="btn-back" id="conditioning-back-hiit" aria-label="Indietro">&larr;</button>
+                    <h3 id="hiit-protocol-name">HIIT</h3>
                 </div>
-                <p class="conditioning-meta" id="hiit-meta">~15 min | 🔥 ~150 cal stimate</p>
+                <p class="conditioning-meta" id="hiit-meta"></p>
+
+                <!-- Protocolli: app.js lo riempie da HIIT_PROTOCOLS con
+                     <button type="button" class="protocol-option" role="radio" aria-checked="true|false" data-protocol="…"> -->
+                <div class="protocol-list" id="hiit-protocol-list" role="radiogroup" aria-label="Protocollo"></div>
 
                 <div class="conditioning-exercises-list" id="hiit-exercises-list">
                     <!-- Exercises will be inserted here -->
@@ -1110,25 +1118,25 @@
                     <p id="hiit-protocol-desc"></p>
                 </div>
 
-                <button class="btn btn-primary btn-large" id="start-hiit-btn">
-                    ▶️ Inizia Sessione
+                <button type="button" class="btn btn-primary btn-large" id="start-hiit-btn">
+                    <span aria-hidden="true">▶</span> Inizia
                 </button>
             </div>
 
             <!-- Step 2b: LISS Details -->
             <div class="conditioning-step" id="conditioning-step-liss" style="display: none;">
                 <div class="conditioning-header">
-                    <button class="btn-back" id="conditioning-back-liss">&larr;</button>
-                    <h3>LISS - Cardio Leggero</h3>
+                    <button type="button" class="btn-back" id="conditioning-back-liss" aria-label="Indietro">&larr;</button>
+                    <h3>LISS</h3>
                 </div>
-                <p class="conditioning-meta" id="liss-meta">~25 min | 🔥 ~120 cal stimate</p>
+                <p class="conditioning-meta" id="liss-meta"></p>
 
                 <div class="liss-activities-list" id="liss-activities-list">
                     <!-- Activities will be inserted here -->
                 </div>
 
-                <button class="btn btn-primary btn-large" id="start-liss-btn">
-                    ▶️ Inizia Sessione
+                <button type="button" class="btn btn-primary btn-large" id="start-liss-btn">
+                    <span aria-hidden="true">▶</span> Inizia
                 </button>
             </div>
 
@@ -1138,65 +1146,76 @@
                     <h3 id="active-session-title">Sessione in corso</h3>
                 </div>
 
+                <!-- Intervallo HIIT: visibile solo con .is-work o .is-rest (lo pilota app.js) -->
+                <div class="conditioning-interval" id="conditioning-interval">
+                    <span class="interval-phase" id="conditioning-interval-phase" aria-live="assertive">Lavoro</span>
+                    <span class="interval-time" id="conditioning-interval-time" role="timer">0:20</span>
+                    <span class="interval-round" id="conditioning-interval-round"></span>
+                </div>
+
                 <div class="conditioning-timer-display">
-                    <span class="timer-value" id="conditioning-timer">00:00</span>
+                    <span class="timer-value" id="conditioning-timer" role="timer" aria-label="Tempo totale">00:00</span>
                 </div>
 
                 <div class="conditioning-active-info" id="conditioning-active-info">
                     <!-- Current exercise info will be shown here -->
                 </div>
 
-                <button class="btn btn-danger btn-large" id="end-conditioning-btn">
-                    ⏹️ Termina Sessione
+                <button type="button" class="btn btn-danger btn-large" id="end-conditioning-btn">
+                    Termina
                 </button>
             </div>
 
             <!-- Step 4: Session Complete -->
             <div class="conditioning-step" id="conditioning-step-complete" style="display: none;">
-                <h3>Sessione Completata! 🎉</h3>
+                <h3>Sessione completata</h3>
 
                 <div class="conditioning-summary">
                     <div class="summary-item">
-                        <span class="summary-icon">⏱️</span>
+                        <span class="summary-icon" aria-hidden="true">⏱️</span>
                         <span class="summary-label">Durata</span>
                         <span class="summary-value" id="summary-duration">00:00</span>
                     </div>
                     <div class="summary-item">
-                        <span class="summary-icon">🔥</span>
-                        <span class="summary-label">Calorie stimate</span>
+                        <span class="summary-icon" aria-hidden="true">🔥</span>
+                        <span class="summary-label">kcal stimate</span>
                         <span class="summary-value" id="summary-calories">0</span>
                     </div>
                 </div>
 
                 <div class="conditioning-manual-input">
-                    <label for="manual-calories">Calorie da Apple Watch (opzionale):</label>
+                    <label for="manual-calories">kcal misurate (es. Apple Watch)</label>
                     <div class="input-with-unit">
-                        <input type="number" id="manual-calories" placeholder="Es: 150">
+                        <input type="number" id="manual-calories" inputmode="numeric" min="0">
                         <span>kcal</span>
                     </div>
                 </div>
 
                 <div class="conditioning-notes">
-                    <label for="conditioning-notes">Note (opzionale):</label>
-                    <textarea id="conditioning-notes" rows="2" placeholder="Come ti sei sentito?"></textarea>
+                    <label for="conditioning-notes">Note</label>
+                    <textarea id="conditioning-notes" rows="2"></textarea>
                 </div>
 
-                <button class="btn btn-primary btn-large" id="save-conditioning-btn">
-                    💾 Salva Sessione
+                <button type="button" class="btn btn-primary btn-large" id="save-conditioning-btn">
+                    Salva
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Update Banner -->
-    <div id="update-banner" class="update-banner" style="display: none;">
-        <span>Nuova versione disponibile!</span>
-        <button onclick="location.reload()">Aggiorna</button>
-        <button onclick="this.parentElement.style.display='none'" class="close-btn">&times;</button>
+    <!-- Avvisi brevi (showNotification): una colonna, uno sotto l'altro -->
+    <div class="toast-stack" id="toast-stack" role="region" aria-label="Avvisi" aria-live="polite"></div>
+
+    <!-- Banner di aggiornamento: solo se c'era già una versione installata -->
+    <div id="update-banner" class="update-banner" role="status" hidden>
+        <span>Nuova versione</span>
+        <button type="button" id="update-reload">Aggiorna</button>
+        <button type="button" class="close-btn" id="update-dismiss" aria-label="Chiudi">&times;</button>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Scripts (utils.js per primo: definisce GT) -->
+    <script src="js/modules/utils.js"></script>
+    <script src="js/vendor/chart.umd.min.js"></script>
     <script src="js/data/exercises.js"></script>
     <script src="js/data/warmups.js"></script>
     <script src="js/modules/storage.js"></script>
@@ -1206,41 +1225,43 @@
     <script src="js/modules/conditioningExercises.js"></script>
     <script src="js/app.js"></script>
 
-    <!-- Service Worker Registration -->
+    <!-- Service Worker -->
     <script>
-        if ('serviceWorker' in navigator) {
+        (function () {
+            const banner = document.getElementById('update-banner');
+            document.getElementById('update-reload').addEventListener('click', () => location.reload());
+            document.getElementById('update-dismiss').addEventListener('click', () => { banner.hidden = true; });
+            if (!('serviceWorker' in navigator)) return;
+
+            // Il banner ha senso solo se questa pagina era già servita da un SW: alla prima
+            // visita il SW si installa e prende il controllo, ma non è un aggiornamento (G2).
+            const hadController = !!navigator.serviceWorker.controller;
+            const showUpdate = () => { if (hadController) banner.hidden = false; };
+
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
                     .then((registration) => {
-                        console.log('SW registrato:', registration.scope);
-
-                        // Controlla aggiornamenti ogni 60 secondi
-                        setInterval(() => {
-                            registration.update();
-                        }, 60000);
-
-                        // Controlla subito se c'è un aggiornamento
+                        if (!registration) return;
+                        const check = () => registration.update().catch(() => {});
+                        setInterval(check, 30 * 60 * 1000);
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible') check();
+                        });
                         registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // Nuova versione pronta
-                                    document.getElementById('update-banner').style.display = 'flex';
-                                }
+                            const worker = registration.installing;
+                            if (!worker) return;
+                            worker.addEventListener('statechange', () => {
+                                if (worker.state === 'activated') showUpdate();
                             });
                         });
                     })
-                    .catch((err) => console.error('SW errore:', err));
+                    .catch((err) => console.error('SW non registrato:', err));
 
-                // Ascolta messaggi dal SW
                 navigator.serviceWorker.addEventListener('message', (event) => {
-                    if (event.data.type === 'SW_UPDATED') {
-                        console.log('App aggiornata alla versione:', event.data.version);
-                        document.getElementById('update-banner').style.display = 'flex';
-                    }
+                    if (event.data && event.data.type === 'SW_UPDATED') showUpdate();
                 });
             });
-        }
+        })();
     </script>
 </body>
 </html>

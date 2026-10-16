@@ -1,160 +1,291 @@
 /**
  * GymTracker Pro - Timer Module
- * Handles rest timers and workout duration tracking
+ * Riposo e transizione dei superset con UNA sola macchina a timestamp, durata dell'allenamento,
+ * suoni, vibrazione, notifiche (solo in background), wake lock.
+ *
+ * Fonte di verità del riposo: restEndTime (orologio di parete), non un contatore. Se iOS
+ * congela i timer JS in background, al ritorno il tempo è comunque esatto.
  */
 
 const Timer = {
-    // State
-    restTimer: null,
+    // ---- Stato del riposo (riposo e transizione superset) ----
+    restTimer: null,          // handle dell'intervallo: valorizzato finché il timer è vivo (compatibilità)
     restTimeRemaining: 0,
     restTimeTotal: 0,
-    restEndTime: 0,          // timestamp (ms) di fine riposo: la fonte di verità, non un contatore
-    restTotal: 0,            // secondi totali del riposo corrente
-    restWarnFired: false,    // avviso -10s già dato?
-    restZeroFired: false,    // riposo arrivato a 0 già segnalato?
-    _scheduledSources: [],   // oscillatori beep schedulati sul clock audio (cancellabili)
-    _keepAlive: null,        // <audio> silenzioso che tiene viva l'app in background
+    restEndTime: 0,           // timestamp (ms) di fine riposo
+    restTotal: 0,             // secondi totali del riposo corrente
+    restKind: 'rest',         // 'rest' | 'transition'
+    restWarnFired: false,     // avviso -10 s già dato?
+    restZeroFired: false,     // passaggio a 0 già segnalato?
+    OVERTIME_MAX: 300,        // dopo lo 0 conta fino a +5:00, poi si ferma
+    _gen: 0,                  // generazione del timer: protegge dai callback che ne avviano un altro
+    _silentZero: false,       // ripreso dopo lo 0 (es. ricarica della pagina): niente segnali doppi
+    _scheduledSources: [],    // toni programmati sul clock audio (cancellabili)
+    _keepAlive: null,         // <audio> muto che tiene viva l'app in background (solo se scelto)
     _keepAliveUrl: null,
-    _visBound: false,        // listener visibilitychange agganciato?
+    _visBound: false,
+    _wakeLock: null,
+    _wantWakeLock: false,
+
+    // ---- Durata dell'allenamento ----
     workoutTimer: null,
     workoutStartTime: null,
     workoutElapsed: 0,
+
     callbacks: {
-        onRestTick: null,
-        onRestComplete: null,  // chiamato SOLO su skip/teardown
-        onRestZero: null,      // chiamato una volta quando il riposo tocca lo 0
+        onRestTick: null,      // (remaining, total) — remaining negativo in overtime
+        onRestZero: null,      // una volta, quando il riposo tocca lo 0
+        onRestStop: null,      // (reason) 'stopped' | 'overtime' | 'replaced'
+        onRestComplete: null,  // compatibilità v1.25: chiamato da skipRest()
         onWorkoutTick: null
     },
 
-    // Audio context for sounds
     audioContext: null,
 
+    _settings() {
+        try {
+            return Storage.getSettings();
+        } catch (e) {
+            return { restSound: 'beep', vibration: true, notifications: false, keepAwake: true, backgroundAlerts: false };
+        }
+    },
+
+    _call(name, ...args) {
+        const fn = this.callbacks[name];
+        if (typeof fn !== 'function') return;
+        try { fn(...args); } catch (e) { try { console.error('[Timer]', name, e); } catch (x) { /* no-op */ } }
+    },
+
+    // Secondi interi: per eccesso prima dello 0 (si vede "1" fino all'ultimo), per difetto dopo
+    _remainingFrom(end, now = Date.now()) {
+        const ms = end - now;
+        if (ms > 0) return Math.ceil(ms / 1000);
+        return -Math.floor(-ms / 1000) || 0;
+    },
+
     // ========================================
-    // REST TIMER
+    // RIPOSO / TRANSIZIONE (API v1.26)
     // ========================================
 
-    // Riposo a "orologio di parete": la fonte di verità è restEndTime, non un
-    // contatore. Se metti l'app in background (WhatsApp/Spotify) e il sistema
-    // congela i timer JS, al ritorno il tempo è comunque esatto. I beep a -10s
-    // e a 0 sono schedulati sul clock audio, così suonano anche se il JS è
-    // rallentato, finché l'AudioContext resta vivo (lo tiene su un audio muto).
-    startRestTimer(seconds, onTick, onZero) {
-        this.stopRestTimer();
+    /**
+     * Avvia il riposo (o la transizione di un superset).
+     * @param {{seconds:number, kind?:'rest'|'transition', onTick?:Function, onZero?:Function,
+     *          onStop?:Function, endTime?:number, total?:number}} opts
+     *   endTime/total servono a riprendere un riposo dopo una ricarica della pagina.
+     * @returns {{remaining, total, kind, endTime, overtime}|null}
+     */
+    startRest(opts = {}) {
+        const { seconds = 0, kind = 'rest', onTick = null, onZero = null, onStop = null, endTime, total } = opts || {};
+        if (this.restTimer) this._stopRestInternal('replaced');
         this._bindVisibility();
 
-        this.restTotal = seconds;
-        this.restTimeTotal = seconds;
-        this.restEndTime = Date.now() + seconds * 1000;
-        this.restTimeRemaining = seconds;
-        this.restWarnFired = seconds <= 10;   // niente avviso separato se il riposo è già corto
+        const now = Date.now();
+        let end = Number(endTime);
+        if (!(end > 0)) end = now + Math.max(0, Number(seconds) || 0) * 1000;
+        const remaining = this._remainingFrom(end, now);
+
+        this._gen++;
+        this.restEndTime = end;
+        this.restTotal = Math.max(1, Math.round(Number(total) || Number(seconds) || remaining || 1));
+        this.restTimeTotal = this.restTotal;
+        this.restTimeRemaining = remaining;
+        this.restKind = kind === 'transition' ? 'transition' : 'rest';
+        this.restWarnFired = remaining <= 10;   // niente avviso separato se il riposo è già corto
         this.restZeroFired = false;
+        this._silentZero = remaining <= 0;
         this.callbacks.onRestTick = onTick;
         this.callbacks.onRestZero = onZero;
+        this.callbacks.onRestStop = onStop;
 
-        this.startKeepAlive();        // tiene viva l'app in background
-        this.scheduleRestCues();      // beep -10s e 0 sul clock audio
-        this.ensureNotifyPermission(); // parte da un click (completeSet) -> permesso concesso
+        this.initAudio();
+        this.startKeepAlive();      // solo se l'utente ha scelto gli avvisi in background
+        this.scheduleRestCues();    // toni -10 s e 0 sul clock audio
 
-        if (onTick) onTick(seconds, seconds);
-
-        // 250ms: barra fluida e rilevazione pronta del passaggio a 0
+        // 250 ms: barra fluida e rilevazione pronta del passaggio a 0
         this.restTimer = setInterval(() => this._restTick(), 250);
+        this._restTick();
+        return this.getRestState();
     },
 
     _restTick() {
-        const remaining = Math.round((this.restEndTime - Date.now()) / 1000);
+        if (!this.restTimer) return;
+        const gen = this._gen;
+        const now = Date.now();
+        const remaining = this._remainingFrom(this.restEndTime, now);
         this.restTimeRemaining = remaining;
 
-        // Avviso a -10s: vibrazione + notifica (il beep è già schedulato sul clock audio)
+        // Avviso a -10 s: vibrazione + notifica (il tono è già programmato sul clock audio)
         if (!this.restWarnFired && remaining <= 10 && remaining > 0) {
             this.restWarnFired = true;
             this.vibrate([120, 60, 120]);
-            this.notify('Quasi pronto ⏱', 'Mancano 10 secondi al prossimo set');
+            this.notify('Quasi pronto', '10 secondi');
         }
 
-        if (this.callbacks.onRestTick) {
-            this.callbacks.onRestTick(remaining, this.restTotal);
-        }
-
-        // Passaggio a 0: vibrazione + notifica, poi si continua a contare in
-        // negativo (overtime) finché non parte il set successivo o si salta.
+        // Passaggio a 0: segnali una volta, poi si continua a contare (overtime)
         if (remaining <= 0 && !this.restZeroFired) {
             this.restZeroFired = true;
-            this.vibrate([200, 100, 200]);
-            this.notify('Riposo finito 💪', 'Vai con il prossimo set');
-            if (this.callbacks.onRestZero) this.callbacks.onRestZero();
+            if (!this._silentZero) {
+                this.vibrate([200, 100, 200]);
+                this.notify(this.restKind === 'transition' ? 'Cambio esercizio' : 'Riposo finito', 'Vai con la prossima serie');
+            }
+            this._silentZero = false;
+            this._call('onRestZero');
+            if (gen !== this._gen || !this.restTimer) return;   // il callback ha fermato o riavviato il timer
         }
 
-        // Tetto all'overtime: dopo 2 minuti oltre lo 0 si ferma da solo
-        if (remaining <= -120) this.stopRestTimer();
+        this._call('onRestTick', remaining, this.restTotal);
+        if (gen !== this._gen || !this.restTimer) return;
+
+        // Tetto all'overtime: a +5:00 si ferma da solo (l'interfaccia mostra "Pronto")
+        if (this.restEndTime - now <= -this.OVERTIME_MAX * 1000) this._stopRestInternal('overtime');
     },
 
-    stopRestTimer() {
+    /** ±secondi al riposo in corso (funziona anche in overtime, finché il timer è vivo). */
+    adjustRest(delta) {
+        if (!this.restTimer) return null;
+        this.restEndTime += (Number(delta) || 0) * 1000;
+        const remaining = this._remainingFrom(this.restEndTime);
+        if (remaining > 10) this.restWarnFired = false;  // ri-arma l'avviso se torni sopra i 10 s
+        if (remaining > 0) this.restZeroFired = false;
+        this._silentZero = false;
+        this.restTotal = Math.max(this.restTotal, remaining);
+        this.restTimeTotal = this.restTotal;
+        this.scheduleRestCues();
+        this._restTick();
+        return this.getRestState();
+    },
+
+    /** Ferma il riposo (Salta, serie successiva, fine allenamento). */
+    stopRest() {
+        this._stopRestInternal('stopped');
+    },
+
+    isRestRunning() {
+        return !!this.restTimer;
+    },
+
+    /** @returns {{remaining, total, kind, endTime, overtime}|null} */
+    getRestState() {
+        if (!this.restTimer) return null;
+        const remaining = this._remainingFrom(this.restEndTime);
+        return { remaining, total: this.restTotal, kind: this.restKind, endTime: this.restEndTime, overtime: remaining < 0 };
+    },
+
+    _stopRestInternal(reason) {
+        const wasRunning = !!this.restTimer;
         if (this.restTimer) {
             clearInterval(this.restTimer);
             this.restTimer = null;
         }
+        this._gen++;
         this.cancelScheduledCues();
         this.stopKeepAlive();
         this.restTimeRemaining = 0;
+        if (wasRunning) {
+            const onStop = this.callbacks.onRestStop;
+            this.callbacks.onRestStop = null;
+            if (typeof onStop === 'function') {
+                try { onStop(reason); } catch (e) { try { console.error('[Timer] onStop', e); } catch (x) { /* no-op */ } }
+            }
+        }
+    },
+
+    /** Ferma tutto: riposo, durata, keep-alive, wake lock (annulla/fine allenamento). */
+    stopAll() {
+        this.stopRest();
+        this.stopWorkoutTimer();
+        this.keepScreenOn(false);
+    },
+
+    // ========================================
+    // RIPOSO — nomi della v1.25 (compatibilità)
+    // ========================================
+
+    startRestTimer(seconds, onTick, onZero) {
+        return this.startRest({ seconds, kind: 'rest', onTick, onZero });
+    },
+
+    stopRestTimer() {
+        this.stopRest();
     },
 
     adjustRestTime(delta) {
-        if (!this.restTimer) return;
-        this.restEndTime += delta * 1000;
-        const remaining = Math.round((this.restEndTime - Date.now()) / 1000);
-        if (remaining > 10) this.restWarnFired = false;  // ri-arma l'avviso se torni sopra i 10s
-        if (remaining > 0) this.restZeroFired = false;
-        this.restTotal = Math.max(this.restTotal, remaining);
-        this.restTimeTotal = this.restTotal;
-        this.scheduleRestCues();   // ri-schedula i beep sui nuovi tempi
-        this._restTick();          // aggiorna subito la UI
+        return this.adjustRest(delta);
     },
 
     skipRest() {
-        this.stopRestTimer();
-        if (this.callbacks.onRestComplete) {
-            this.callbacks.onRestComplete();
-        }
+        this.stopRest();
+        this._call('onRestComplete');
     },
 
-    // Ri-calcola al rientro in primo piano: se i timer erano congelati, qui il
-    // display torna esatto e, se il riposo è finito nel frattempo, lo segnala.
+    // Ri-calcola al rientro in primo piano: display esatto, toni ri-programmati, wake lock ripreso
     _bindVisibility() {
-        if (this._visBound) return;
+        if (this._visBound || typeof document === 'undefined' || !document.addEventListener) return;
         this._visBound = true;
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && this.restTimer) {
-                if (this.audioContext && this.audioContext.state === 'suspended') {
-                    this.audioContext.resume().catch(() => {});
-                }
+            if (document.visibilityState !== 'visible') return;
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                try { this.audioContext.resume().catch(() => {}); } catch (e) { /* no-op */ }
+            }
+            if (this.restTimer) {
+                this.scheduleRestCues();
                 this._restTick();
             }
+            if (this.workoutTimer) this._workoutTick();
+            if (this._wantWakeLock) this._acquireWakeLock();
         });
     },
 
-    // ---- Beep schedulati sul clock audio (affidabili anche in background) ----
+    // ========================================
+    // SUONI
+    // ========================================
+
+    // Toni per tipo di suono: 'beep' (bip elettronici) o 'bell' (campana, armonica e coda lunga)
+    _cueTones(sound) {
+        if (sound === 'bell') {
+            return {
+                warn: [
+                    { at: 0, freq: 1046.5, dur: 0.7, gain: 0.22 },
+                    { at: 0, freq: 2637, dur: 0.35, gain: 0.06 }
+                ],
+                zero: [
+                    { at: 0, freq: 1318.5, dur: 1.3, gain: 0.28 },
+                    { at: 0, freq: 3322, dur: 0.5, gain: 0.07 },
+                    { at: 0.4, freq: 1046.5, dur: 1.6, gain: 0.26 },
+                    { at: 0.4, freq: 2637, dur: 0.6, gain: 0.06 }
+                ]
+            };
+        }
+        return {
+            warn: [{ at: 0, freq: 660, dur: 0.15, gain: 0.3 }],
+            zero: [
+                { at: 0, freq: 880, dur: 0.18, gain: 0.3 },
+                { at: 0.22, freq: 880, dur: 0.18, gain: 0.3 },
+                { at: 0.44, freq: 1320, dur: 0.28, gain: 0.3 }
+            ]
+        };
+    },
+
+    // ---- Toni programmati sul clock audio (rispettano restSound: beep | bell | none) ----
     scheduleRestCues() {
         this.cancelScheduledCues();
-        const settings = Storage.getSettings();
-        if (settings.restSound === 'none') return;
+        const sound = this._settings().restSound;
+        if (sound === 'none') return;
         const ctx = this.initAudio();
         if (!ctx) return;
-        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        if (ctx.state === 'suspended') { try { ctx.resume().catch(() => {}); } catch (e) { /* no-op */ } }
 
+        const tones = this._cueTones(sound);
         const secsLeft = (this.restEndTime - Date.now()) / 1000;
-        // Avviso -10s: tono singolo
-        if (secsLeft > 10) this._scheduleTone(ctx.currentTime + (secsLeft - 10), 660, 0.15);
-        // Fine a 0: melodietta
+        if (secsLeft > 10 && this.restTotal > 10) {
+            tones.warn.forEach(t => this._scheduleTone(ctx.currentTime + (secsLeft - 10) + t.at, t.freq, t.dur, t.gain));
+        }
         if (secsLeft > 0) {
-            const t0 = ctx.currentTime + secsLeft;
-            this._scheduleTone(t0, 880, 0.18);
-            this._scheduleTone(t0 + 0.22, 880, 0.18);
-            this._scheduleTone(t0 + 0.44, 1320, 0.28);
+            tones.zero.forEach(t => this._scheduleTone(ctx.currentTime + secsLeft + t.at, t.freq, t.dur, t.gain));
         }
     },
 
-    _scheduleTone(atTime, freq, dur) {
+    _scheduleTone(atTime, freq, dur, peak = 0.3) {
         const ctx = this.audioContext;
         if (!ctx) return;
         try {
@@ -165,7 +296,7 @@ const Timer = {
             osc.frequency.value = freq;
             osc.type = 'sine';
             g.gain.setValueAtTime(0.0001, atTime);
-            g.gain.exponentialRampToValueAtTime(0.3, atTime + 0.01);
+            g.gain.exponentialRampToValueAtTime(peak, atTime + 0.01);
             g.gain.exponentialRampToValueAtTime(0.0001, atTime + dur);
             osc.start(atTime);
             osc.stop(atTime + dur + 0.02);
@@ -184,19 +315,34 @@ const Timer = {
         this._scheduledSources = [];
     },
 
-    // ---- Keep-alive: audio muto in loop per non far congelare l'app ----
+    _playCue(which) {
+        const sound = this._settings().restSound;
+        if (sound === 'none') return;
+        const ctx = this.initAudio();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') { try { ctx.resume().catch(() => {}); } catch (e) { /* no-op */ } }
+        (this._cueTones(sound)[which] || []).forEach(t => this._scheduleTone(ctx.currentTime + 0.02 + t.at, t.freq, t.dur, t.gain));
+    },
+
+    // ---- Keep-alive: audio muto in loop, SOLO se l'utente ha scelto gli avvisi in background ----
     startKeepAlive() {
+        if (this._settings().backgroundAlerts !== true) return false;
+        if (typeof Audio === 'undefined') return false;
         try {
+            this._setAmbientSession();
             if (!this._keepAliveUrl) this._keepAliveUrl = this._makeSilentWavUrl();
             if (!this._keepAlive) {
                 this._keepAlive = new Audio(this._keepAliveUrl);
                 this._keepAlive.loop = true;
                 this._keepAlive.volume = 0;
-                this._keepAlive.setAttribute('playsinline', '');
+                if (this._keepAlive.setAttribute) this._keepAlive.setAttribute('playsinline', '');
             }
             const p = this._keepAlive.play();
             if (p && p.catch) p.catch(() => {});
-        } catch (e) { /* no-op */ }
+            return true;
+        } catch (e) {
+            return false;
+        }
     },
 
     stopKeepAlive() {
@@ -206,7 +352,7 @@ const Timer = {
     },
 
     _makeSilentWavUrl() {
-        const sr = 8000, n = sr; // 1s mono 8-bit
+        const sr = 8000, n = sr; // 1 s mono 8-bit
         const buf = new ArrayBuffer(44 + n);
         const dv = new DataView(buf);
         const w = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
@@ -218,67 +364,167 @@ const Timer = {
         return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
     },
 
-    // ---- Notifiche di sistema (solo PWA installata su iOS 16.4+) ----
-    ensureNotifyPermission() {
+    // I suoni dell'app si mescolano alla musica (Spotify/Apple Music non si fermano)
+    _setAmbientSession() {
         try {
-            const settings = Storage.getSettings();
-            if (settings.notifications === false) return;
-            if (!('Notification' in window)) return;
-            if (Notification.permission === 'default') {
-                const r = Notification.requestPermission();
-                if (r && typeof r.catch === 'function') r.catch(() => {});
-            }
+            const nav = typeof navigator !== 'undefined' ? navigator : null;
+            if (nav && nav.audioSession && nav.audioSession.type !== 'ambient') nav.audioSession.type = 'ambient';
         } catch (e) { /* no-op */ }
+    },
+
+    // ========================================
+    // NOTIFICHE (mai chieste in automatico, solo con l'app in background)
+    // ========================================
+
+    _hasNotification() {
+        return typeof globalThis !== 'undefined' && typeof globalThis.Notification !== 'undefined';
+    },
+
+    /**
+     * Chiede il permesso: da chiamare SOLO da un gesto dell'utente (interruttore nelle impostazioni).
+     * @returns {Promise<'granted'|'denied'|'default'|'unsupported'>}
+     */
+    requestNotificationPermission() {
+        if (!this._hasNotification()) return Promise.resolve('unsupported');
+        const N = globalThis.Notification;
+        if (N.permission === 'granted' || N.permission === 'denied') return Promise.resolve(N.permission);
+        return new Promise(resolve => {
+            try {
+                const r = N.requestPermission(p => resolve(p));   // vecchio Safari: callback
+                if (r && typeof r.then === 'function') r.then(resolve, () => resolve('default'));
+            } catch (e) {
+                resolve('default');
+            }
+        });
+    },
+
+    getNotificationPermission() {
+        return this._hasNotification() ? globalThis.Notification.permission : 'unsupported';
+    },
+
+    // Compatibilità v1.25: NON chiede più il permesso (lo fa solo l'interruttore delle impostazioni)
+    ensureNotifyPermission() {
+        return this.getNotificationPermission();
     },
 
     notify(title, body) {
         try {
-            const settings = Storage.getSettings();
-            if (settings.notifications === false) return;
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            if (this._settings().notifications !== true) return false;
+            if (typeof document !== 'undefined' && document.visibilityState !== 'hidden') return false;
+            if (!this._hasNotification() || globalThis.Notification.permission !== 'granted') return false;
             const opts = { body, tag: 'gym-rest', renotify: true, silent: false };
-            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-                navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts)).catch(() => {
-                    try { new Notification(title, opts); } catch (e) { /* no-op */ }
-                });
+            const fallback = () => { try { new globalThis.Notification(title, opts); } catch (e) { /* no-op */ } };
+            const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : null;
+            if (sw && typeof sw.getRegistration === 'function') {
+                sw.getRegistration().then(reg => {
+                    if (reg && reg.showNotification) return reg.showNotification(title, opts);
+                    fallback();
+                }).catch(fallback);
             } else {
-                new Notification(title, opts);
+                fallback();
             }
-        } catch (e) { /* no-op */ }
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    // ========================================
+    // WAKE LOCK (schermo acceso durante la sessione)
+    // ========================================
+
+    /**
+     * Tiene lo schermo acceso (se settings.keepAwake). Riacquisito da solo al ritorno in primo piano.
+     * @returns {Promise<boolean>}
+     */
+    keepScreenOn(on) {
+        this._wantWakeLock = !!on;
+        this._bindVisibility();
+        if (!on || this._settings().keepAwake === false) {
+            return this._releaseWakeLock().then(() => false);
+        }
+        return this._acquireWakeLock();
+    },
+
+    _acquireWakeLock() {
+        if (this._wakeLock) return Promise.resolve(true);
+        const nav = typeof navigator !== 'undefined' ? navigator : null;
+        if (!nav || !nav.wakeLock || typeof nav.wakeLock.request !== 'function') return Promise.resolve(false);
+        if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return Promise.resolve(false);
+        if (this._wakePending) return this._wakePending;
+        this._wakePending = Promise.resolve()
+            .then(() => nav.wakeLock.request('screen'))
+            .then(lock => {
+                this._wakePending = null;
+                if (!this._wantWakeLock) {
+                    try { lock.release(); } catch (e) { /* no-op */ }
+                    return false;
+                }
+                this._wakeLock = lock;
+                if (lock && lock.addEventListener) {
+                    lock.addEventListener('release', () => { if (this._wakeLock === lock) this._wakeLock = null; });
+                }
+                return true;
+            })
+            .catch(() => { this._wakePending = null; return false; });
+        return this._wakePending;
+    },
+
+    _releaseWakeLock() {
+        const lock = this._wakeLock;
+        this._wakeLock = null;
+        if (!lock) return Promise.resolve();
+        try {
+            return Promise.resolve(lock.release()).catch(() => {});
+        } catch (e) {
+            return Promise.resolve();
+        }
+    },
+
+    isScreenKeptOn() {
+        return !!this._wakeLock;
     },
 
     // ========================================
     // WORKOUT TIMER
     // ========================================
 
-    startWorkoutTimer(onTick) {
+    /**
+     * @param {Function} onTick riceve 'hh:mm:ss'
+     * @param {number|Date} [startTime] per riprendere una sessione salvata
+     */
+    startWorkoutTimer(onTick, startTime) {
         this.stopWorkoutTimer();
+        this._bindVisibility();
 
-        this.workoutStartTime = Date.now();
-        this.workoutElapsed = 0;
+        const st = startTime instanceof Date ? startTime.getTime() : Number(startTime);
+        this.workoutStartTime = (st > 0 && st <= Date.now()) ? st : Date.now();
         this.callbacks.onWorkoutTick = onTick;
+        this._workoutTick();
+        this.workoutTimer = setInterval(() => this._workoutTick(), 1000);
+    },
 
-        // Initial tick
-        if (onTick) onTick(this.formatTime(0));
-
-        this.workoutTimer = setInterval(() => {
-            this.workoutElapsed = Math.floor((Date.now() - this.workoutStartTime) / 1000);
-
-            if (this.callbacks.onWorkoutTick) {
-                this.callbacks.onWorkoutTick(this.formatTime(this.workoutElapsed));
-            }
-        }, 1000);
+    _workoutTick() {
+        if (!this.workoutStartTime) return;
+        this.workoutElapsed = Math.max(0, Math.floor((Date.now() - this.workoutStartTime) / 1000));
+        this._call('onWorkoutTick', this.formatTime(this.workoutElapsed));
     },
 
     stopWorkoutTimer() {
         if (this.workoutTimer) {
             clearInterval(this.workoutTimer);
             this.workoutTimer = null;
+            if (this.workoutStartTime) {
+                this.workoutElapsed = Math.max(0, Math.floor((Date.now() - this.workoutStartTime) / 1000));
+            }
         }
         return this.workoutElapsed;
     },
 
     getWorkoutDuration() {
+        if (this.workoutTimer && this.workoutStartTime) {
+            this.workoutElapsed = Math.max(0, Math.floor((Date.now() - this.workoutStartTime) / 1000));
+        }
         return this.workoutElapsed;
     },
 
@@ -289,64 +535,37 @@ const Timer = {
     initAudio() {
         if (!this.audioContext) {
             try {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this._setAmbientSession();
+                const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+                if (AC) this.audioContext = new AC();
             } catch (e) {
-                console.log('Web Audio API not supported');
+                this.audioContext = null;
             }
         }
         return this.audioContext;
     },
 
     playBeep(frequency = 440, duration = 0.1) {
-        const settings = Storage.getSettings();
-        if (settings.restSound === 'none') return;
-
+        if (this._settings().restSound === 'none') return;
         const ctx = this.initAudio();
         if (!ctx) return;
-
-        try {
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
-
-            gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-
-            oscillator.start(ctx.currentTime);
-            oscillator.stop(ctx.currentTime + duration);
-        } catch (e) {
-            console.log('Error playing beep:', e);
-        }
+        this._scheduleTone(ctx.currentTime + 0.01, frequency, duration, 0.3);
     },
 
+    /** Suono di festa (PR): segue l'impostazione beep/bell/none. */
     playCompletionSound() {
-        const settings = Storage.getSettings();
-        if (settings.restSound === 'none') return;
-
-        if (settings.restSound === 'bell') {
-            // Play bell-like sound
-            this.playBeep(880, 0.3);
-            setTimeout(() => this.playBeep(1100, 0.2), 100);
-        } else {
-            // Default beep
-            this.playBeep(880, 0.2);
-            setTimeout(() => this.playBeep(880, 0.2), 200);
-            setTimeout(() => this.playBeep(1320, 0.3), 400);
-        }
+        this._playCue('zero');
     },
 
-    vibrate(pattern = [200, 100, 200]) {
-        const settings = Storage.getSettings();
-        if (!settings.vibration) return;
+    canVibrate() {
+        return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    },
 
-        if ('vibrate' in navigator) {
-            navigator.vibrate(pattern);
-        }
+    // iPhone non ha navigator.vibrate: nessun errore, restano suono e notifica
+    vibrate(pattern = [200, 100, 200]) {
+        if (this._settings().vibration === false) return false;
+        if (!this.canVibrate()) return false;
+        try { return navigator.vibrate(pattern); } catch (e) { return false; }
     },
 
     // ========================================
@@ -354,22 +573,22 @@ const Timer = {
     // ========================================
 
     formatTime(totalSeconds) {
+        totalSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-
         const pad = (n) => n.toString().padStart(2, '0');
-
         return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     },
 
+    /** 75 → '1:15', 9 → '9', -15 → '+15' (overtime). */
     formatRestTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-
-        if (minutes > 0) {
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        }
-        return seconds.toString();
+        seconds = Math.round(Number(seconds) || 0);
+        const over = seconds < 0;
+        const s = Math.abs(seconds);
+        const minutes = Math.floor(s / 60);
+        const secs = s % 60;
+        const txt = minutes > 0 ? `${minutes}:${secs.toString().padStart(2, '0')}` : String(secs);
+        return over ? `+${txt}` : txt;
     }
 };

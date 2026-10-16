@@ -1,7 +1,44 @@
 /**
  * GymTracker Pro - Storage Module
- * Handles all data persistence using LocalStorage
+ * Persistenza su localStorage: profilo, impostazioni, allenamenti, PR, ciclo, streak,
+ * conditioning, sessione in corso, export/import.
+ *
+ * Regole (v1.26):
+ * - Ogni lettura è sicura: un JSON rotto viene copiato in `gymtracker_corrupt_<chiave>` e
+ *   sostituito dal default. L'app non si blocca mai all'avvio per un dato rotto.
+ * - I dati della v1.25 si leggono così come sono: le migrazioni avvengono in lettura o una
+ *   volta sola in `migrate()`, senza cancellare chiavi.
+ * - PR e streak sono DERIVATI dagli allenamenti: si ricalcolano dopo ogni modifica.
+ * - Date con GT (utils.js): lunedì, giorni di calendario, arrotondamenti.
  */
+
+// Ripiego minimo se utils.js non è stato caricato (cache del Service Worker a metà
+// aggiornamento): lo Storage deve funzionare lo stesso, l'app non deve fermarsi.
+if (typeof GT === 'undefined') {
+    globalThis.GT = {
+        APP_VERSION: 'v1.26.0',
+        esc: s => (s === null || s === undefined) ? '' : String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]),
+        num: v => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; },
+        _fix: v => Math.round(v * 1000) / 1000,
+        round(x, s) { return s > 0 ? this._fix(Math.round(x / s) * s) : x; },
+        floorTo(x, s) { return s > 0 ? this._fix(Math.floor(x / s + 1e-9) * s) : x; },
+        ceilTo(x, s) { return s > 0 ? this._fix(Math.ceil(x / s - 1e-9) * s) : x; },
+        _toDate: d => d instanceof Date ? new Date(d.getTime()) : (d === null || d === undefined || d === '') ? new Date(NaN) : new Date(d),
+        isValidDate(d) { return !isNaN(this._toDate(d).getTime()); },
+        startOfDay(d = new Date()) { const x = this._toDate(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate()); },
+        startOfWeek(d = new Date()) { const x = this._toDate(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate() - (x.getDay() + 6) % 7); },
+        addDays(d, n) { const x = this._toDate(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate() + n, x.getHours(), x.getMinutes(), x.getSeconds(), x.getMilliseconds()); },
+        calendarDaysBetween(a, b = new Date()) {
+            const x = this._toDate(a), y = this._toDate(b);
+            if (isNaN(x.getTime()) || isNaN(y.getTime())) return NaN;
+            return Math.round((Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) - Date.UTC(x.getFullYear(), x.getMonth(), x.getDate())) / 86400000);
+        },
+        dateKey(d) { const x = this._toDate(d); if (isNaN(x.getTime())) return ''; const p = n => String(n).padStart(2, '0'); return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`; },
+        formatVolume: kg => `${Math.round(Number(kg) || 0)} kg`,
+        formatRelativeDay: d => new Date(d).toLocaleDateString('it-IT'),
+        formatDate: d => new Date(d).toLocaleDateString('it-IT')
+    };
+}
 
 const Storage = {
     // Keys for localStorage
@@ -15,36 +52,206 @@ const Storage = {
         PERSONAL_RECORDS: 'gymtracker_prs',
         STREAK: 'gymtracker_streak',
         CYCLE_HISTORY: 'gymtracker_cycle_history',
-        CONDITIONING: 'gymtracker_conditioning'
+        CONDITIONING: 'gymtracker_conditioning',
+        ACTIVE_SESSION: 'gymtracker_active_session',
+        META: 'gymtracker_meta'
+    },
+
+    PREFIX: 'gymtracker_',
+    CORRUPT_PREFIX: 'gymtracker_corrupt_',
+    SCHEMA_VERSION: 2,
+
+    // Ultimo errore di scrittura (es. spazio pieno) e ultimo errore di import, per l'interfaccia
+    lastError: null,
+    lastImportError: null,
+    // Chiavi trovate rotte in questa sessione: [{key, backupKey, reason}]
+    corruptionLog: [],
+
+    // ========================================
+    // LETTURA / SCRITTURA SICURE
+    // ========================================
+
+    _isObj(v) {
+        return v !== null && typeof v === 'object' && !Array.isArray(v);
+    },
+
+    _clone(v) {
+        return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+    },
+
+    _isQuotaError(e) {
+        return !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+            e.code === 22 || e.code === 1014 || /quota/i.test(String(e.message || '')));
+    },
+
+    /**
+     * Legge una chiave JSON. Se il valore non si legge o ha il tipo sbagliato, lo copia in
+     * gymtracker_corrupt_<chiave> e restituisce (e scrive) il default. Mai un'eccezione.
+     */
+    _read(key, fallback, check) {
+        let raw = null;
+        try {
+            raw = localStorage.getItem(key);
+        } catch (e) {
+            return this._clone(fallback);
+        }
+        if (raw === null || raw === undefined) return this._clone(fallback);
+        let val;
+        try {
+            val = JSON.parse(raw);
+        } catch (e) {
+            this._quarantine(key, raw, 'json', fallback);
+            return this._clone(fallback);
+        }
+        if (check && !check(val)) {
+            this._quarantine(key, raw, 'type', fallback);
+            return this._clone(fallback);
+        }
+        return val;
+    },
+
+    // Mette da parte un valore rotto (mai perso) e lo sostituisce col default
+    _quarantine(key, raw, reason, fallback) {
+        const base = this.CORRUPT_PREFIX + String(key).replace(/^gymtracker_/, '');
+        let backupKey = base;
+        try {
+            const existing = localStorage.getItem(base);
+            if (existing !== null && existing !== raw) backupKey = `${base}_${Date.now()}`;
+            if (existing !== raw) localStorage.setItem(backupKey, raw);
+            // Copia riuscita: ora si può rimettere il default al suo posto
+            if (fallback === null || fallback === undefined) localStorage.removeItem(key);
+            else localStorage.setItem(key, JSON.stringify(fallback));
+        } catch (e) {
+            // Spazio pieno: il valore originale resta dov'è, si usa il default solo in memoria
+            backupKey = null;
+        }
+        this.corruptionLog.push({ key, backupKey, reason });
+        try { console.warn(`[Storage] ${key} illeggibile (${reason})` + (backupKey ? `, copia in ${backupKey}` : '')); } catch (e) { /* no-op */ }
+    },
+
+    /** Scrive o LANCIA (err.code = 'QUOTA' | 'WRITE'): per i dati che non si possono perdere. */
+    _write(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch (e) {
+            const err = new Error(this._isQuotaError(e)
+                ? 'Spazio di archiviazione pieno: dati non salvati'
+                : 'Scrittura non riuscita: dati non salvati');
+            err.code = this._isQuotaError(e) ? 'QUOTA' : 'WRITE';
+            err.key = key;
+            err.cause = e;
+            this.lastError = err;
+            throw err;
+        }
+    },
+
+    /** Scrive e restituisce true/false: per dati derivati o di contorno. */
+    _tryWrite(key, value) {
+        try {
+            return this._write(key, value);
+        } catch (e) {
+            try { console.warn('[Storage]', e.message, key); } catch (x) { /* no-op */ }
+            return false;
+        }
+    },
+
+    _allAppKeys() {
+        const keys = [];
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.indexOf(this.PREFIX) === 0) keys.push(k);
+            }
+        } catch (e) { /* no-op */ }
+        return keys;
+    },
+
+    /** Chiavi con copie di dati rotti (per mostrarle o esportarle a mano). */
+    getCorruptKeys() {
+        return this._allAppKeys().filter(k => k.indexOf(this.CORRUPT_PREFIX) === 0);
+    },
+
+    _num(v) {
+        return GT.num(v);
+    },
+
+    _int(v) {
+        const n = parseInt(v, 10);
+        return isFinite(n) ? n : 0;
+    },
+
+    _time(d) {
+        if (d === null || d === undefined || d === '') return NaN;
+        const t = new Date(d).getTime();
+        return isNaN(t) ? NaN : t;
     },
 
     // ========================================
     // PROFILE
     // ========================================
 
-    getProfile() {
-        const data = localStorage.getItem(this.KEYS.PROFILE);
-        return data ? JSON.parse(data) : this.getDefaultProfile();
+    // Obiettivi del vecchio select del profilo → obiettivi dell'algoritmo
+    GOAL_MIGRATION: { bulk: 'hypertrophy', cut: 'recomp', maintenance: 'recomp' },
+    VALID_GOALS: ['strength', 'hypertrophy', 'recomp', 'endurance', 'toning'],
+
+    _getRawProfile() {
+        return this._read(this.KEYS.PROFILE, null, v => v === null || this._isObj(v));
     },
 
+    getProfile() {
+        const def = this.getDefaultProfile();
+        const saved = this._getRawProfile();
+        if (!saved) return def;
+
+        const p = { ...def };
+        Object.keys(saved).forEach(k => {
+            if (saved[k] !== undefined) p[k] = saved[k];
+        });
+        if (!Array.isArray(p.equipment)) p.equipment = def.equipment.slice();
+
+        // Migrazione dell'obiettivo: il vecchio valore resta in _legacyGoal (non si perde)
+        const g = typeof p.goal === 'string' ? p.goal : '';
+        if (this.GOAL_MIGRATION[g]) {
+            p._legacyGoal = p._legacyGoal || g;
+            p.goal = this.GOAL_MIGRATION[g];
+        } else if (!this.VALID_GOALS.includes(g)) {
+            if (g) p._legacyGoal = p._legacyGoal || g;
+            p.goal = def.goal;
+        }
+        return p;
+    },
+
+    /** Salva il profilo UNENDOLO a quello esistente (i campi che il form non conosce restano). */
     saveProfile(profile) {
-        localStorage.setItem(this.KEYS.PROFILE, JSON.stringify(profile));
+        const current = this._getRawProfile() || {};
+        const merged = { ...current, ...(profile || {}) };
+        // Un form vecchio senza l'obiettivo migrato manda '' o un valore ignoto: si tiene quello salvato
+        if (profile && 'goal' in profile && !this.VALID_GOALS.includes(profile.goal) && !this.GOAL_MIGRATION[profile.goal]) {
+            if (current.goal !== undefined) merged.goal = current.goal;
+            else delete merged.goal;
+        }
+        // Il vecchio obiettivo (bulk/cut/maintenance) non si perde quando viene sostituito
+        if (this.GOAL_MIGRATION[current.goal] && merged.goal !== current.goal && !merged._legacyGoal) {
+            merged._legacyGoal = current.goal;
+        }
+        return this._tryWrite(this.KEYS.PROFILE, merged);
     },
 
     getDefaultProfile() {
         return {
             name: '',
-            gender: 'male',
+            gender: '',
             birthdate: '',
-            height: 180,
-            weight: 90,
-            bodyFat: 20,
-            level: 'advanced',
-            background: 'crossfit',
-            goal: 'recomp',
-            targetWeight: 85,
-            targetBodyFat: 12,
-            daysPerWeek: 4,
+            height: null,
+            weight: null,
+            bodyFat: null,
+            level: 'beginner',
+            background: 'none',
+            goal: 'hypertrophy',
+            targetWeight: null,
+            targetBodyFat: null,
+            daysPerWeek: 3,
             sessionTime: 60,
             equipment: ['bilanciere', 'manubri', 'macchine', 'cavi', 'panca', 'sbarra']
         };
@@ -54,91 +261,177 @@ const Storage = {
     // SETTINGS
     // ========================================
 
-    getSettings() {
-        const data = localStorage.getItem(this.KEYS.SETTINGS);
-        return data ? JSON.parse(data) : this.getDefaultSettings();
+    _getRawSettings() {
+        return this._read(this.KEYS.SETTINGS, null, v => v === null || this._isObj(v));
     },
 
+    getSettings() {
+        const d = this.getDefaultSettings();
+        const s = this._getRawSettings();
+        if (!s) return d;
+        const out = { ...d, ...s };
+        if (!['beep', 'bell', 'none'].includes(out.restSound)) out.restSound = d.restSound;
+        const rc = this._int(s.restTimeCompound), ri = this._int(s.restTimeIsolation);
+        out.restTimeCompound = rc > 0 ? rc : d.restTimeCompound;
+        out.restTimeIsolation = ri > 0 ? ri : d.restTimeIsolation;
+        out.vibration = s.vibration !== false;
+        out.notifications = s.notifications === true;    // mai attive se non scelte esplicitamente
+        out.keepAwake = s.keepAwake !== false;
+        out.backgroundAlerts = s.backgroundAlerts === true;
+        return out;
+    },
+
+    /** Salva unendo alle impostazioni esistenti (un form vecchio non cancella le voci nuove). */
     saveSettings(settings) {
-        localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(settings));
+        const current = this._getRawSettings() || {};
+        return this._tryWrite(this.KEYS.SETTINGS, { ...current, ...(settings || {}) });
     },
 
     getDefaultSettings() {
         return {
-            restTimeCompound: 90,
-            restTimeIsolation: 60,
             restSound: 'beep',
             vibration: true,
             theme: 'dark',
-            weightUnit: 'kg'
+            restTimeCompound: 120,
+            restTimeIsolation: 75,
+            notifications: false,
+            keepAwake: true,
+            backgroundAlerts: false
         };
+    },
+
+    /** Riposo di default (secondi) per un esercizio senza `rest` (allenamento libero, scheda manuale). */
+    getDefaultRest(exerciseId) {
+        const s = this.getSettings();
+        return this.getExerciseType(exerciseId) === 'compound' ? s.restTimeCompound : s.restTimeIsolation;
     },
 
     // ========================================
     // WORKOUTS (History)
     // ========================================
 
-    getWorkouts() {
-        const data = localStorage.getItem(this.KEYS.WORKOUTS);
-        return data ? JSON.parse(data) : [];
+    _workoutTime(w) {
+        const t = this._time(w && w.date);
+        if (!isNaN(t)) return t;
+        const id = Number(w && w.id);
+        return isFinite(id) && id > 1e12 ? id : -Infinity;
     },
 
+    /** Tutti gli allenamenti, dal più recente. Elementi non validi ignorati. */
+    getWorkouts() {
+        const arr = this._read(this.KEYS.WORKOUTS, [], Array.isArray);
+        return arr
+            .filter(w => this._isObj(w))
+            .map((w, i) => ({ w, i, t: this._workoutTime(w) }))
+            .sort((a, b) => (b.t - a.t) || (a.i - b.i))
+            .map(x => x.w);
+    },
+
+    /**
+     * Salva un allenamento finito. Campi in più accettati: dayIndex, programId, cycleNumber,
+     * cycleWeek, isFreeWorkout. Restituisce il workout salvato.
+     * LANCIA un Error con code 'QUOTA' se lo spazio è pieno: l'app deve tenere la sessione.
+     */
     saveWorkout(workout) {
         const workouts = this.getWorkouts();
-        workout.id = Date.now();
-        workout.date = new Date().toISOString();
-        workouts.unshift(workout); // Add to beginning
-        localStorage.setItem(this.KEYS.WORKOUTS, JSON.stringify(workouts));
+        const w = { ...(workout || {}) };
 
-        // Update streak
-        this.updateStreak();
+        let id = Date.now();
+        const ids = new Set(workouts.map(x => String(x.id)));
+        while (ids.has(String(id))) id++;
+        w.id = id;
+        w.date = GT.isValidDate(w.date) ? new Date(w.date).toISOString() : new Date().toISOString();
+        if (!Array.isArray(w.exercises)) w.exercises = [];
 
-        // Update personal records
-        this.updatePersonalRecords(workout);
+        w.dayIndex = Number.isInteger(w.dayIndex) ? w.dayIndex : null;
+        w.isFreeWorkout = !!w.isFreeWorkout;
+        // Riferimenti alla scheda: se l'app non li passa, si prendono dalla scheda attiva
+        const prog = (!w.isFreeWorkout && (w.programId === undefined || w.cycleNumber === undefined || w.cycleWeek === undefined))
+            ? this.getActiveProgram() : null;
+        const md = prog && prog.metadata ? prog.metadata : {};
+        if (w.programId === undefined) w.programId = w.isFreeWorkout ? null : (md.programId ?? null);
+        if (w.cycleNumber === undefined) w.cycleNumber = w.isFreeWorkout ? null : (md.cycle ? (md.cycleNumber || 1) : null);
+        if (w.cycleWeek === undefined) w.cycleWeek = w.isFreeWorkout ? null : (md.cycle ? (md.cycle.currentWeek || 1) : null);
 
-        return workout;
+        workouts.unshift(w);
+        this._write(this.KEYS.WORKOUTS, workouts);   // lancia se pieno: niente perdite in silenzio
+
+        this._afterWorkoutsChanged();
+        return w;
+    },
+
+    _afterWorkoutsChanged() {
+        try { this.rebuildPersonalRecords(); } catch (e) { try { console.warn('[Storage] PR', e); } catch (x) { /* no-op */ } }
+        try { this.updateStreak(); } catch (e) { /* derivato: si ricalcola alla prossima lettura */ }
     },
 
     getWorkoutById(id) {
-        const workouts = this.getWorkouts();
-        return workouts.find(w => w.id === id);
+        return this.getWorkouts().find(w => String(w.id) === String(id));
     },
 
     updateWorkout(id, updatedData) {
         const workouts = this.getWorkouts();
-        const idx = workouts.findIndex(w => w.id === id);
+        const idx = workouts.findIndex(w => String(w.id) === String(id));
         if (idx === -1) return null;
-        Object.assign(workouts[idx], updatedData);
-        localStorage.setItem(this.KEYS.WORKOUTS, JSON.stringify(workouts));
-        this.updatePersonalRecords(workouts[idx]);
-        return workouts[idx];
+        const old = workouts[idx];
+        const updated = { ...old, ...(updatedData || {}), id: old.id };
+        if (!GT.isValidDate(updated.date)) updated.date = old.date;
+        workouts[idx] = updated;
+        this._write(this.KEYS.WORKOUTS, workouts);
+        this._afterWorkoutsChanged();
+        return updated;
     },
 
     deleteWorkout(id) {
-        let workouts = this.getWorkouts();
-        workouts = workouts.filter(w => w.id !== id);
-        localStorage.setItem(this.KEYS.WORKOUTS, JSON.stringify(workouts));
+        const workouts = this.getWorkouts();
+        const kept = workouts.filter(w => String(w.id) !== String(id));
+        if (kept.length === workouts.length) return false;
+        this._write(this.KEYS.WORKOUTS, kept);
+        this._afterWorkoutsChanged();
+        return true;
     },
 
     getRecentWorkouts(limit = 10) {
-        const workouts = this.getWorkouts();
-        return workouts.slice(0, limit);
+        return this.getWorkouts().slice(0, limit);
     },
 
     getWorkoutsInDateRange(startDate, endDate) {
-        const workouts = this.getWorkouts();
-        return workouts.filter(w => {
-            const date = new Date(w.date);
-            return date >= startDate && date <= endDate;
+        const s = this._time(startDate), e = this._time(endDate);
+        return this.getWorkouts().filter(w => {
+            const t = this._time(w.date);
+            return !isNaN(t) && t >= s && t <= e;
         });
     },
 
+    /** Allenamenti dal lunedì 00:00 di questa settimana (la domenica è l'ultimo giorno). */
     getWorkoutsThisWeek() {
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-        startOfWeek.setHours(0, 0, 0, 0);
-        return this.getWorkoutsInDateRange(startOfWeek, now);
+        const start = GT.startOfWeek(new Date()).getTime();
+        const end = GT.addDays(GT.startOfWeek(new Date()), 7).getTime();
+        return this.getWorkouts().filter(w => {
+            const t = this._time(w.date);
+            return !isNaN(t) && t >= start && t < end;
+        });
+    },
+
+    /** Data dell'ultimo allenamento di QUALSIASI tipo (pesi o cardio), null se nessuno. */
+    getLastWorkoutDate() {
+        let best = NaN;
+        this.getWorkouts().forEach(w => {
+            const t = this._time(w.date);
+            if (!isNaN(t) && (isNaN(best) || t > best)) best = t;
+        });
+        this.getConditioningSessions().forEach(s => {
+            const t = this._time(s.date);
+            if (!isNaN(t) && (isNaN(best) || t > best)) best = t;
+        });
+        return isNaN(best) ? null : new Date(best);
+    },
+
+    /** Giorni di calendario dall'ultimo allenamento (pesi o cardio), null se nessuno. */
+    getDaysSinceLastWorkout() {
+        const last = this.getLastWorkoutDate();
+        if (!last) return null;
+        return Math.max(0, GT.calendarDaysBetween(last, new Date()));
     },
 
     // ========================================
@@ -146,8 +439,7 @@ const Storage = {
     // ========================================
 
     getPrograms() {
-        const data = localStorage.getItem(this.KEYS.PROGRAMS);
-        return data ? JSON.parse(data) : [];
+        return this._read(this.KEYS.PROGRAMS, [], Array.isArray).filter(p => this._isObj(p));
     },
 
     saveProgram(program) {
@@ -155,33 +447,33 @@ const Storage = {
         program.id = Date.now();
         program.createdAt = new Date().toISOString();
         programs.push(program);
-        localStorage.setItem(this.KEYS.PROGRAMS, JSON.stringify(programs));
+        this._write(this.KEYS.PROGRAMS, programs);
         return program;
     },
 
     deleteProgram(id) {
-        let programs = this.getPrograms();
-        programs = programs.filter(p => p.id !== id);
-        localStorage.setItem(this.KEYS.PROGRAMS, JSON.stringify(programs));
+        const programs = this.getPrograms().filter(p => String(p.id) !== String(id));
+        this._write(this.KEYS.PROGRAMS, programs);
 
         // If this was the active program, clear it
         const activeProgram = this.getActiveProgram();
-        if (activeProgram && activeProgram.id === id) {
+        if (activeProgram && String(activeProgram.id) === String(id)) {
             this.clearActiveProgram();
         }
     },
 
     getActiveProgram() {
-        const data = localStorage.getItem(this.KEYS.ACTIVE_PROGRAM);
-        return data ? JSON.parse(data) : null;
+        // Una scheda senza giorni non è usabile: messa da parte, l'app ne farà generare un'altra
+        return this._read(this.KEYS.ACTIVE_PROGRAM, null,
+            v => v === null || (this._isObj(v) && Array.isArray(v.days)));
     },
 
     setActiveProgram(program) {
-        localStorage.setItem(this.KEYS.ACTIVE_PROGRAM, JSON.stringify(program));
+        this._write(this.KEYS.ACTIVE_PROGRAM, program);
     },
 
     clearActiveProgram() {
-        localStorage.removeItem(this.KEYS.ACTIVE_PROGRAM);
+        try { localStorage.removeItem(this.KEYS.ACTIVE_PROGRAM); } catch (e) { /* no-op */ }
     },
 
     // ========================================
@@ -189,8 +481,11 @@ const Storage = {
     // ========================================
 
     getMeasurements() {
-        const data = localStorage.getItem(this.KEYS.MEASUREMENTS);
-        return data ? JSON.parse(data) : [];
+        return this._read(this.KEYS.MEASUREMENTS, [], Array.isArray)
+            .filter(m => this._isObj(m))
+            .map((m, i) => ({ m, i, t: this._time(m.date) }))
+            .sort((a, b) => ((isNaN(b.t) ? -Infinity : b.t) - (isNaN(a.t) ? -Infinity : a.t)) || (a.i - b.i))
+            .map(x => x.m);
     },
 
     saveMeasurement(measurement) {
@@ -198,17 +493,13 @@ const Storage = {
         measurement.id = Date.now();
         measurement.date = new Date().toISOString();
         measurements.unshift(measurement);
-        localStorage.setItem(this.KEYS.MEASUREMENTS, JSON.stringify(measurements));
+        this._write(this.KEYS.MEASUREMENTS, measurements);
 
         // Also update profile with latest weight
-        const profile = this.getProfile();
-        if (measurement.weight) {
-            profile.weight = measurement.weight;
-        }
-        if (measurement.bodyFat) {
-            profile.bodyFat = measurement.bodyFat;
-        }
-        this.saveProfile(profile);
+        const patch = {};
+        if (measurement.weight) patch.weight = measurement.weight;
+        if (measurement.bodyFat) patch.bodyFat = measurement.bodyFat;
+        if (Object.keys(patch).length) this.saveProfile(patch);
 
         return measurement;
     },
@@ -219,12 +510,101 @@ const Storage = {
     },
 
     // ========================================
-    // PERSONAL RECORDS
+    // ESERCIZI: tipo, attrezzatura, passi di carico
+    // ========================================
+
+    _exercise(exerciseId) {
+        try {
+            if (typeof EXERCISES_DB !== 'undefined' && EXERCISES_DB && EXERCISES_DB[exerciseId]) return EXERCISES_DB[exerciseId];
+        } catch (e) { /* no-op */ }
+        return null;
+    },
+
+    /** 'compound' | 'isolation' dal database (ripiego euristico solo se l'esercizio manca). */
+    getExerciseType(exerciseId) {
+        const ex = this._exercise(exerciseId);
+        if (ex && (ex.type === 'compound' || ex.type === 'isolation')) return ex.type;
+        const compoundExercises = [
+            'bench-press', 'incline-bench-press', 'dumbbell-bench-press', 'dumbbell-incline-press',
+            'squat', 'front-squat', 'leg-press', 'hack-squat', 'deadlift', 'romanian-deadlift',
+            'barbell-row', 'pull-up', 'chin-up', 'lat-pulldown', 't-bar-row', 'seated-cable-row',
+            'overhead-press', 'dumbbell-shoulder-press', 'arnold-press', 'push-press',
+            'hip-thrust', 'bulgarian-split-squat', 'dumbbell-lunge', 'dips', 'close-grip-bench'
+        ];
+        const id = String(exerciseId || '');
+        return compoundExercises.some(c => id === c || id.includes(c)) ? 'compound' : 'isolation';
+    },
+
+    /** Famiglia di attrezzatura: 'bilanciere' | 'manubri' | 'macchine' | 'cavi' | 'corpo-libero' | null (sconosciuto). */
+    _equipmentClass(exerciseId) {
+        const ex = this._exercise(exerciseId);
+        if (!ex) return null;
+        const cat = ex.category;
+        if (['bilanciere', 'manubri', 'macchine', 'cavi'].includes(cat)) return cat;
+        if (cat === 'corpo-libero' || cat === 'accessori') return 'corpo-libero';
+        const eq = Array.isArray(ex.equipment) ? ex.equipment : [];
+        for (const c of ['bilanciere', 'manubri', 'macchine', 'cavi']) if (eq.includes(c)) return c;
+        return 'corpo-libero';
+    },
+
+    isBodyweightExercise(exerciseId) {
+        return this._equipmentClass(exerciseId) === 'corpo-libero';
+    },
+
+    _LEG_MUSCLES: ['quadricipiti', 'femorali', 'glutei'],
+
+    // Compound "di gambe": muscolo primario delle gambe, oppure stacco (glutei+femorali secondari)
+    _isLegCompound(exerciseId) {
+        const ex = this._exercise(exerciseId);
+        if (!ex || ex.type !== 'compound') return false;
+        const prim = Array.isArray(ex.primaryMuscles) ? ex.primaryMuscles : [];
+        if (prim.some(m => this._LEG_MUSCLES.includes(m))) return true;
+        const sec = Array.isArray(ex.secondaryMuscles) ? ex.secondaryMuscles : [];
+        return sec.filter(m => this._LEG_MUSCLES.includes(m)).length >= 2;
+    },
+
+    /** Passo minimo di carico: bilanciere 2.5; manubri 1 sotto i 10 kg, poi 2; macchine/cavi 2.5; corpo libero 0. */
+    getLoadStep(exerciseId, weight) {
+        switch (this._equipmentClass(exerciseId)) {
+            case 'bilanciere': return 2.5;
+            case 'manubri': return this._num(weight) < 10 ? 1 : 2;
+            case 'macchine':
+            case 'cavi': return 2.5;
+            case 'corpo-libero': return 0;
+            default: return 2.5;   // esercizio non in archivio: passo da bilanciere/macchina
+        }
+    },
+
+    /**
+     * Salto di progressione (UNICA fonte per sessione, riepilogo, suggerimento, stepper, detraining).
+     * Compound gambe: bilanciere/macchine 5, manubri 2. Compound upper: bilanciere/macchine 2.5,
+     * manubri = passo. Isolamento = passo. Corpo libero 0. Sempre multiplo del passo.
+     */
+    getProgressionIncrement(exerciseId, weight) {
+        const step = this.getLoadStep(exerciseId, weight);
+        if (!step) return 0;
+        const cls = this._equipmentClass(exerciseId);
+        if (this.getExerciseType(exerciseId) === 'compound') {
+            if (this._isLegCompound(exerciseId)) return cls === 'manubri' ? 2 : 5;
+            return cls === 'manubri' ? step : 2.5;
+        }
+        return step;
+    },
+
+    /** Carico disponibile subito sotto a `weight` (manubri: 10 → 9, 12 → 10; bilanciere 40 → 37.5). */
+    _nextLowerWeight(exerciseId, weight) {
+        const w = this._num(weight) - 1e-6;
+        const step = this.getLoadStep(exerciseId, w);
+        if (!step) return this._num(weight);
+        return GT.floorTo(w, step);
+    },
+
+    // ========================================
+    // PERSONAL RECORDS (derivati dagli allenamenti)
     // ========================================
 
     getPersonalRecords() {
-        const data = localStorage.getItem(this.KEYS.PERSONAL_RECORDS);
-        return data ? JSON.parse(data) : {};
+        return this._read(this.KEYS.PERSONAL_RECORDS, {}, v => this._isObj(v));
     },
 
     /**
@@ -235,533 +615,755 @@ const Storage = {
      * Sources: LeSuer et al. 1997 comparison study, NSCA guidelines
      */
     calculateE1RM(weight, reps) {
+        weight = this._num(weight);
+        reps = this._int(reps);
         if (!weight || !reps || reps <= 0) return 0;
         if (reps === 1) return weight;
 
         let e1rm;
         if (reps <= 10) {
-            // Brzycki formula — most accurate for 1-10 reps
             e1rm = weight * (36 / (37 - reps));
         } else if (reps <= 20) {
-            // Epley formula — more accurate for higher rep ranges
             e1rm = weight * (1 + reps / 30);
         } else {
-            // 20+ reps: cap at Epley with 20 reps equivalent (formulas unreliable above 20)
             e1rm = weight * (1 + 20 / 30);
         }
-
         return Math.round(e1rm * 10) / 10;
     },
 
-    updatePersonalRecords(workout) {
-        const prs = this.getPersonalRecords();
-
-        if (!workout.exercises) return;
-
-        workout.exercises.forEach(exercise => {
-            if (!exercise.sets) return;
-
-            const exerciseId = exercise.exerciseId;
-
-            // Find the BEST set of this exercise in this workout (highest E1RM)
-            let bestSet = null;
-            let bestE1rm = 0;
-
-            exercise.sets.forEach(set => {
-                if (!set.weight || !set.reps || !set.completed) return;
-
-                const weight = parseFloat(set.weight);
-                const reps = parseInt(set.reps);
-                const e1rm = this.calculateE1RM(weight, reps);
-
-                if (e1rm > bestE1rm) {
-                    bestE1rm = e1rm;
-                    bestSet = { weight, reps, e1rm };
-                }
+    // Serie completate con peso > 0 e almeno 1 rep, raggruppate per esercizio
+    _completedLoadedSets(workout) {
+        const out = new Map();
+        if (!workout || !Array.isArray(workout.exercises)) return out;
+        workout.exercises.forEach(ex => {
+            if (!ex || !ex.exerciseId || !Array.isArray(ex.sets)) return;
+            ex.sets.forEach(s => {
+                if (!s || !s.completed) return;
+                const w = this._num(s.weight), r = this._int(s.reps);
+                if (!(w > 0) || !(r > 0)) return;
+                if (!out.has(ex.exerciseId)) out.set(ex.exerciseId, []);
+                out.get(ex.exerciseId).push({ weight: w, reps: r, e1rm: this.calculateE1RM(w, r), set: s });
             });
+        });
+        return out;
+    },
 
-            if (!bestSet) return;
+    /**
+     * Ricalcola gymtracker_prs da zero da tutti gli allenamenti.
+     * maxWeight = serie più PESANTE (a parità, più reps); maxReps = più reps a ≥50% del max;
+     * estimated1RM = migliore; history = una voce per sessione (la serie con E1RM migliore), max 50.
+     * I flag isNewPR delle serie NON vengono toccati.
+     */
+    rebuildPersonalRecords() {
+        const workouts = this.getWorkouts().slice().reverse(); // dal più vecchio
+        const prs = {};
+        const allSets = {};
 
-            if (!prs[exerciseId]) {
-                prs[exerciseId] = {
-                    maxWeight: 0,
-                    maxWeightReps: 0,
-                    maxWeightDate: null,
-                    maxReps: 0,
-                    maxRepsWeight: 0,
-                    maxRepsDate: null,
-                    estimated1RM: 0,
-                    e1rmDate: null,
-                    e1rmWeight: 0,
-                    e1rmReps: 0,
-                    history: []
-                };
-            }
-
-            // Check for new max weight
-            if (bestSet.weight > prs[exerciseId].maxWeight) {
-                prs[exerciseId].maxWeight = bestSet.weight;
-                prs[exerciseId].maxWeightReps = bestSet.reps;
-                prs[exerciseId].maxWeightDate = workout.date;
-            }
-
-            // Check for new max reps (with at least 50% of max weight)
-            const bestRepsSet = exercise.sets
-                .filter(s => s.completed && s.weight && s.reps)
-                .reduce((best, s) => {
-                    const r = parseInt(s.reps);
-                    const w = parseFloat(s.weight);
-                    return (w >= prs[exerciseId].maxWeight * 0.5 && r > (best?.reps || 0))
-                        ? { weight: w, reps: r } : best;
-                }, null);
-
-            if (bestRepsSet && bestRepsSet.reps > prs[exerciseId].maxReps) {
-                prs[exerciseId].maxReps = bestRepsSet.reps;
-                prs[exerciseId].maxRepsWeight = bestRepsSet.weight;
-                prs[exerciseId].maxRepsDate = workout.date;
-            }
-
-            // Check for new estimated 1RM
-            if (bestE1rm > prs[exerciseId].estimated1RM) {
-                prs[exerciseId].estimated1RM = bestE1rm;
-                prs[exerciseId].e1rmDate = workout.date;
-                prs[exerciseId].e1rmWeight = bestSet.weight;
-                prs[exerciseId].e1rmReps = bestSet.reps;
-            }
-
-            // Add ONLY best set of this session to history (not every single set)
-            // Replace existing entry for same date (edit scenario) instead of duplicating
-            const existingIdx = prs[exerciseId].history.findIndex(h => h.date === workout.date);
-            const historyEntry = { date: workout.date, weight: bestSet.weight, reps: bestSet.reps, e1rm: bestE1rm };
-            if (existingIdx !== -1) {
-                prs[exerciseId].history[existingIdx] = historyEntry;
-            } else {
-                prs[exerciseId].history.push(historyEntry);
-            }
-
-            // Keep only last 50 sessions per exercise
-            if (prs[exerciseId].history.length > 50) {
-                prs[exerciseId].history = prs[exerciseId].history.slice(-50);
-            }
+        workouts.forEach(workout => {
+            this._completedLoadedSets(workout).forEach((sets, exId) => {
+                if (!prs[exId]) {
+                    prs[exId] = {
+                        maxWeight: 0, maxWeightReps: 0, maxWeightDate: null,
+                        maxReps: 0, maxRepsWeight: 0, maxRepsDate: null,
+                        estimated1RM: 0, e1rmDate: null, e1rmWeight: 0, e1rmReps: 0,
+                        history: []
+                    };
+                    allSets[exId] = [];
+                }
+                const rec = prs[exId];
+                let best = null;
+                sets.forEach(s => {
+                    allSets[exId].push({ weight: s.weight, reps: s.reps, date: workout.date });
+                    if (s.weight > rec.maxWeight || (s.weight === rec.maxWeight && s.reps > rec.maxWeightReps)) {
+                        rec.maxWeight = s.weight;
+                        rec.maxWeightReps = s.reps;
+                        rec.maxWeightDate = workout.date;
+                    }
+                    if (s.e1rm > rec.estimated1RM) {
+                        rec.estimated1RM = s.e1rm;
+                        rec.e1rmDate = workout.date;
+                        rec.e1rmWeight = s.weight;
+                        rec.e1rmReps = s.reps;
+                    }
+                    if (!best || s.e1rm > best.e1rm || (s.e1rm === best.e1rm && s.weight > best.weight)) best = s;
+                });
+                if (best) rec.history.push({ date: workout.date, weight: best.weight, reps: best.reps, e1rm: best.e1rm });
+            });
         });
 
-        localStorage.setItem(this.KEYS.PERSONAL_RECORDS, JSON.stringify(prs));
+        Object.keys(prs).forEach(exId => {
+            const rec = prs[exId];
+            const minW = rec.maxWeight * 0.5;
+            allSets[exId].forEach(s => {
+                if (s.weight >= minW && s.reps > rec.maxReps) {
+                    rec.maxReps = s.reps;
+                    rec.maxRepsWeight = s.weight;
+                    rec.maxRepsDate = s.date;
+                }
+            });
+            if (rec.history.length > 50) rec.history = rec.history.slice(-50);
+        });
+
+        this._tryWrite(this.KEYS.PERSONAL_RECORDS, prs);
+        return prs;
+    },
+
+    // Nome storico: ora ricalcola tutto (l'argomento è ignorato)
+    updatePersonalRecords() {
+        return this.rebuildPersonalRecords();
     },
 
     getExerciseHistory(exerciseId) {
         const prs = this.getPersonalRecords();
-        return prs[exerciseId] ? prs[exerciseId].history : [];
+        return prs[exerciseId] && Array.isArray(prs[exerciseId].history) ? prs[exerciseId].history : [];
     },
 
-    // Get last performance for an exercise (most recent workout)
-    getLastPerformance(exerciseId) {
-        const workouts = this.getWorkouts();
-
-        for (const workout of workouts) {
-            if (!workout.exercises) continue;
-
-            const exercise = workout.exercises.find(ex => ex.exerciseId === exerciseId);
-            if (exercise && exercise.sets && exercise.sets.length > 0) {
-                // Find the best completed set from this workout
-                const completedSets = exercise.sets.filter(s => s.completed && s.weight && s.reps);
-
-                if (completedSets.length > 0) {
-                    // Return the heaviest set
-                    const bestSet = completedSets.reduce((best, set) => {
-                        const volume = parseFloat(set.weight) * parseInt(set.reps);
-                        const bestVolume = parseFloat(best.weight) * parseInt(best.reps);
-                        return volume > bestVolume ? set : best;
-                    });
-
-                    return {
-                        weight: parseFloat(bestSet.weight),
-                        reps: parseInt(bestSet.reps),
-                        date: workout.date,
-                        allSets: completedSets.map(s => ({
-                            weight: parseFloat(s.weight),
-                            reps: parseInt(s.reps)
-                        }))
-                    };
-                }
-            }
-        }
-
-        return null;
-    },
-
-    // Ultime N sessioni con questo esercizio (dalla più recente) — per rilevare stalli ricorrenti
-    getRecentPerformances(exerciseId, limit = 3) {
-        const workouts = this.getWorkouts();
-        const out = [];
-        for (const workout of workouts) {
-            if (out.length >= limit) break;
-            if (!workout.exercises) continue;
-            const exercise = workout.exercises.find(ex => ex.exerciseId === exerciseId);
-            if (!exercise || !exercise.sets) continue;
-            const done = exercise.sets.filter(s => s.completed && s.weight && s.reps);
-            if (done.length === 0) continue;
-            out.push({
-                weight: Math.max(...done.map(s => parseFloat(s.weight))),
-                minReps: Math.min(...done.map(s => parseInt(s.reps))),
-                date: workout.date
-            });
-        }
-        return out;
-    },
-
-    // Get PR for an exercise
     getExercisePR(exerciseId) {
         const prs = this.getPersonalRecords();
         return prs[exerciseId] || null;
     },
 
-    // Check if a set is a new PR
-    checkForNewPR(exerciseId, weight, reps) {
-        const prs = this.getPersonalRecords();
-        const current = prs[exerciseId];
+    /**
+     * La serie appena completata è un record?
+     * @param earlierSetsThisSession serie GIÀ completate prima di questa nella stessa sessione
+     *        (esclusa quella che si sta segnando)
+     * @returns {{isNewPR:boolean, type:'weight'|'e1rm'|null, isFirstTime:boolean, oldValue?, newValue?}}
+     * Prima volta su un esercizio (nessun record salvato) = isFirstTime:true, isNewPR:false.
+     */
+    checkForNewPR(exerciseId, weight, reps, earlierSetsThisSession = []) {
+        const w = this._num(weight), r = this._int(reps);
+        const current = this.getPersonalRecords()[exerciseId];
+        const hasRecord = !!(current && (this._num(current.maxWeight) > 0 || this._num(current.estimated1RM) > 0));
 
-        if (!current) {
-            return { isNewPR: true, type: 'first' };
+        if (!hasRecord) return { isNewPR: false, type: null, isFirstTime: true };
+        if (!(w > 0) || !(r > 0)) return { isNewPR: false, type: null, isFirstTime: false };
+
+        let bestW = this._num(current.maxWeight);
+        let bestE = this._num(current.estimated1RM);
+        (Array.isArray(earlierSetsThisSession) ? earlierSetsThisSession : []).forEach(s => {
+            if (!s || ('completed' in s && !s.completed)) return;
+            const sw = this._num(s.weight), sr = this._int(s.reps);
+            if (!(sw > 0) || !(sr > 0)) return;
+            bestW = Math.max(bestW, sw);
+            bestE = Math.max(bestE, this.calculateE1RM(sw, sr));
+        });
+
+        if (w > bestW + 1e-9) {
+            return { isNewPR: true, type: 'weight', isFirstTime: false, oldValue: bestW, newValue: w };
         }
-
-        weight = parseFloat(weight);
-        reps = parseInt(reps);
-
-        // Check max weight
-        if (weight > current.maxWeight) {
-            return { isNewPR: true, type: 'weight', oldValue: current.maxWeight };
+        const e = this.calculateE1RM(w, r);
+        if (e > bestE + 1e-9) {
+            return { isNewPR: true, type: 'e1rm', isFirstTime: false, oldValue: bestE, newValue: e };
         }
+        return { isNewPR: false, type: null, isFirstTime: false };
+    },
 
-        // Check estimated 1RM using proper formula (Brzycki ≤10, Epley >10)
-        const newE1RM = this.calculateE1RM(weight, reps);
-        if (newE1RM > current.estimated1RM) {
-            return { isNewPR: true, type: 'e1rm', oldValue: current.estimated1RM, newValue: newE1RM };
+    /**
+     * PR VERI per allenamento: serie con isNewPR che battono davvero il record del momento
+     * (esclusa la prima sessione di ogni esercizio). Filtra i flag gonfiati della v1.25.
+     * @returns {Map<workoutId, number>}
+     */
+    _realPRCounts(workouts) {
+        const list = (workouts || this.getWorkouts()).slice().reverse();
+        const best = {};
+        const counts = new Map();
+        list.forEach(workout => {
+            let n = 0;
+            this._completedLoadedSets(workout).forEach((sets, exId) => {
+                const seen = !!best[exId];
+                const b = best[exId] || { w: 0, e: 0 };
+                sets.forEach(s => {
+                    const beats = s.weight > b.w + 1e-9 || s.e1rm > b.e + 1e-9;
+                    if (seen && beats && s.set.isNewPR === true) n++;
+                    b.w = Math.max(b.w, s.weight);
+                    b.e = Math.max(b.e, s.e1rm);
+                });
+                best[exId] = b;
+            });
+            counts.set(String(workout.id), n);
+        });
+        return counts;
+    },
+
+    countRealPRs(workoutsSubset) {
+        const counts = this._realPRCounts();
+        const subset = workoutsSubset || this.getWorkouts();
+        return subset.reduce((sum, w) => sum + (counts.get(String(w.id)) || 0), 0);
+    },
+
+    // ========================================
+    // ULTIME PRESTAZIONI (top set)
+    // ========================================
+
+    /**
+     * Sessioni (dalla più recente) con almeno una serie completata di questo esercizio.
+     * top = serie più pesante (a parità, più reps); workingReps = reps delle serie al peso del top set.
+     */
+    _sessionsFor(exerciseId, limit = 3) {
+        const bw = this.isBodyweightExercise(exerciseId);
+        const out = [];
+        const workouts = this.getWorkouts();
+        for (const workout of workouts) {
+            if (out.length >= limit) break;
+            if (!Array.isArray(workout.exercises)) continue;
+            const sets = [];
+            workout.exercises.forEach(ex => {
+                if (!ex || ex.exerciseId !== exerciseId || !Array.isArray(ex.sets)) return;
+                ex.sets.forEach(s => {
+                    if (!s || !s.completed) return;
+                    const w = this._num(s.weight), r = this._int(s.reps);
+                    if (!(r > 0)) return;
+                    if (!(w > 0) && !bw) return;
+                    sets.push({ weight: Math.max(0, w), reps: r });
+                });
+            });
+            if (sets.length === 0) continue;
+            const top = sets.reduce((b, s) => (s.weight > b.weight || (s.weight === b.weight && s.reps > b.reps)) ? s : b);
+            const workingReps = sets.filter(s => Math.abs(s.weight - top.weight) < 0.01).map(s => s.reps);
+            out.push({ date: workout.date, sets, top, workingReps });
         }
+        return out;
+    },
 
-        return { isNewPR: false };
+    // Ultima prestazione: top set (serie più pesante) dell'ultima sessione con l'esercizio
+    getLastPerformance(exerciseId) {
+        const s = this._sessionsFor(exerciseId, 1)[0];
+        if (!s) return null;
+        return {
+            weight: s.top.weight,
+            reps: s.top.reps,
+            date: s.date,
+            allSets: s.sets.map(x => ({ weight: x.weight, reps: x.reps })),
+            topSet: { weight: s.top.weight, reps: s.top.reps },
+            workingReps: s.workingReps.slice()
+        };
+    },
+
+    // Ultime N sessioni con questo esercizio (dalla più recente) — per rilevare stalli ricorrenti
+    getRecentPerformances(exerciseId, limit = 3) {
+        return this._sessionsFor(exerciseId, limit).map(s => ({
+            weight: s.top.weight,
+            topReps: s.top.reps,
+            minReps: Math.min(...s.workingReps),
+            date: s.date
+        }));
     },
 
     // ========================================
     // DOUBLE PROGRESSION SYSTEM
     // ========================================
 
-    /**
-     * Parse rep range string (e.g., "8-12") into min/max object
-     */
+    /** "8-12" → {min:8,max:12}; "10" → {10,10}; accetta anche 8–12, numeri e "30-45s". */
     parseRepRange(repRangeStr) {
-        if (!repRangeStr || typeof repRangeStr !== 'string') {
-            return { min: 8, max: 12 }; // Default
+        if (typeof repRangeStr === 'number' && repRangeStr > 0) return { min: repRangeStr, max: repRangeStr };
+        if (!repRangeStr || typeof repRangeStr !== 'string') return { min: 8, max: 12 };
+        const m = repRangeStr.match(/(\d+)\s*[-–—]\s*(\d+)/);
+        if (m) {
+            const a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+            return { min: Math.min(a, b), max: Math.max(a, b) };
         }
-        const parts = repRangeStr.split('-').map(p => parseInt(p.trim()));
-        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-            return { min: parts[0], max: parts[1] };
-        }
-        // Single number case (e.g., "10")
-        const single = parseInt(repRangeStr);
-        if (!isNaN(single)) {
-            return { min: single, max: single };
+        const single = repRangeStr.match(/(\d+)/);
+        if (single) {
+            const n = parseInt(single[1], 10);
+            if (n > 0) return { min: n, max: n };
         }
         return { min: 8, max: 12 };
     },
 
-    /**
-     * Calculate progression suggestion based on Double Progression method
-     * @param {string} exerciseId - The exercise ID
-     * @param {string} targetRepRange - Target rep range (e.g., "8-12")
-     * @param {string} goal - User's goal (strength, hypertrophy, recomp, endurance)
-     * @param {string} exerciseType - 'compound' or 'isolation'
-     * @returns {Object} Suggestion object with weight, message, and status
-     */
-    getProgressionSuggestion(exerciseId, targetRepRange, goal = 'hypertrophy', exerciseType = 'compound') {
-        const lastPerf = this.getLastPerformance(exerciseId);
-        const range = this.parseRepRange(targetRepRange);
+    _fmtKg(w) {
+        return `${GT.round(w, 0.01)} kg`;
+    },
 
-        // Default suggestion for first time
-        if (!lastPerf) {
-            return {
-                suggestedWeight: null,
-                suggestedReps: range.min,
-                message: 'Prima volta! Inizia con un peso che ti permetta ' + range.min + '-' + range.max + ' rep',
-                status: 'new',
-                action: 'start'
-            };
+    _reduceReps(reps, factor) {
+        const r = Math.max(1, this._int(reps));
+        let t = Math.max(1, Math.floor(r * factor));
+        if (t >= r && r > 1) t = r - 1;
+        return t;
+    },
+
+    // Peso iniziale prudente per un esercizio mai fatto (l'app lo precompila nello stepper)
+    _startingWeight(exerciseId) {
+        const cls = this._equipmentClass(exerciseId);
+        const compound = this.getExerciseType(exerciseId) === 'compound';
+        let w;
+        switch (cls) {
+            case 'corpo-libero': return 0;
+            case 'bilanciere': w = compound ? 20 : 10; break;
+            case 'manubri': w = compound ? 8 : 4; break;
+            case 'macchine': w = compound ? 20 : 10; break;
+            case 'cavi': w = compound ? 15 : 10; break;
+            default: w = 10;
         }
-
-        const lastWeight = lastPerf.weight;
-        const lastReps = lastPerf.allSets.map(s => s.reps);
-        const avgReps = Math.round(lastReps.reduce((a, b) => a + b, 0) / lastReps.length);
-        const minRepsAchieved = Math.min(...lastReps);
-        const allSetsAtTop = lastReps.every(r => r >= range.max);
-        const allSetsInRange = lastReps.every(r => r >= range.min && r <= range.max);
-
-        // Weight increment based on exercise type
-        const weightIncrement = exerciseType === 'compound' ? 2.5 : 1.25;
-        // For lower body compounds, use larger increment
-        const lowerBodyExercises = ['squat', 'front-squat', 'leg-press', 'deadlift', 'romanian-deadlift', 'hip-thrust', 'hack-squat'];
-        const isLowerBody = lowerBodyExercises.some(ex => exerciseId.includes(ex));
-        const actualIncrement = isLowerBody ? 5 : weightIncrement;
-
-        // CASE 0: pausa lunga (detraining). Se l'ultima volta è troppo lontana nel
-        // tempo, "aumenta il peso" sarebbe sbagliato: la memoria muscolare fa
-        // recuperare in fretta, ma tendini e tecnica no. Si riparte più leggeri,
-        // con RIR alto, e si risale. Questo caso ha la precedenza su tutti gli altri.
-        const daysAgo = lastPerf.date ? Math.floor((Date.now() - new Date(lastPerf.date).getTime()) / 86400000) : 0;
-        const detr = this.getDetrainingAdjustment(daysAgo);
-        if (detr) {
-            let reduced = Math.round((lastWeight * detr.factor) / actualIncrement) * actualIncrement;
-            if (reduced >= lastWeight) reduced = lastWeight - actualIncrement; // garantisci una riduzione
-            if (reduced < actualIncrement) reduced = actualIncrement;
-            const realPct = Math.round((1 - reduced / lastWeight) * 100);
-            return {
-                suggestedWeight: reduced,
-                suggestedReps: range.min,
-                message: `🔄 Rientro dopo ${detr.weeksOff} settimane di stop: riparti a ${reduced}kg (−${realPct}% dai ${lastWeight}kg), RIR 3-4. Risali gradualmente, torni ai vecchi carichi in poche sedute.`,
-                status: 'detraining',
-                action: 'return_deload',
-                weeksOff: detr.weeksOff,
-                reductionPct: realPct,
-                lastPerformance: { weight: lastWeight, reps: lastReps }
-            };
+        let gender = '';
+        try { gender = (this._getRawProfile() || {}).gender || ''; } catch (e) { /* no-op */ }
+        if (gender === 'female') {
+            const step = this.getLoadStep(exerciseId, w * 0.6) || 1;
+            w = Math.max(step, GT.floorTo(w * 0.6, step));
+            if (cls === 'bilanciere' && compound) w = 20;   // il bilanciere pesa quello che pesa
         }
-
-        // CASE 1: All sets at or above top of range → INCREASE WEIGHT
-        if (allSetsAtTop) {
-            const newWeight = lastWeight + actualIncrement;
-            return {
-                suggestedWeight: newWeight,
-                suggestedReps: range.min,
-                message: `🎯 Aumenta a ${newWeight}kg! Hai raggiunto ${range.max} rep su tutte le serie`,
-                status: 'increase_weight',
-                action: 'weight_up',
-                lastPerformance: { weight: lastWeight, reps: lastReps }
-            };
-        }
-
-        // CASE 2: All sets in range but not at top → INCREASE REPS
-        if (allSetsInRange) {
-            const targetReps = lastReps.map(r => Math.min(r + 1, range.max));
-            return {
-                suggestedWeight: lastWeight,
-                suggestedReps: targetReps,
-                message: `💪 Stesso peso (${lastWeight}kg), punta a +1 rep per serie`,
-                status: 'increase_reps',
-                action: 'reps_up',
-                lastPerformance: { weight: lastWeight, reps: lastReps }
-            };
-        }
-
-        // CASE 3: Sotto il range → back-off se lo stallo è ricorrente, altrimenti mantieni
-        if (minRepsAchieved < range.min) {
-            const recent = this.getRecentPerformances(exerciseId, 3);
-            const stalled = recent.filter(s => s.weight === lastWeight && s.minReps < range.min).length;
-            if (stalled >= 2) {
-                // Stallo su 2+ sessioni allo stesso peso → scarica ~10% (arrotondato a 1.25kg) e ricostruisci
-                const backoff = Math.max(1.25, Math.round((lastWeight * 0.9) / 1.25) * 1.25);
-                return {
-                    suggestedWeight: backoff,
-                    suggestedReps: range.min,
-                    message: `🔻 Stallo su ${lastWeight}kg da ${stalled} sessioni: scarica a ${backoff}kg e ricostruisci verso ${range.max} rep`,
-                    status: 'backoff',
-                    action: 'deload_exercise',
-                    lastPerformance: { weight: lastWeight, reps: lastReps }
-                };
-            }
-            return {
-                suggestedWeight: lastWeight,
-                suggestedReps: range.min,
-                message: `⚠️ Mantieni ${lastWeight}kg, focus su raggiungere ${range.min} rep minimo`,
-                status: 'maintain',
-                action: 'consolidate',
-                lastPerformance: { weight: lastWeight, reps: lastReps }
-            };
-        }
-
-        // CASE 4: Mixed results → MAINTAIN
-        return {
-            suggestedWeight: lastWeight,
-            suggestedReps: avgReps,
-            message: `📊 Mantieni ${lastWeight}kg, prossimo obiettivo: ${range.max} rep consistenti`,
-            status: 'maintain',
-            action: 'maintain',
-            lastPerformance: { weight: lastWeight, reps: lastReps }
-        };
+        return w;
     },
 
     /**
-     * Rilevazione pausa lunga (detraining) e fattore di riduzione del peso.
-     * Modello coach evidence-based: nessun taglio fino a ~3 settimane; oltre, il
-     * carico cala di ~2,5% a settimana (memoria muscolare: forza ritenuta bene,
-     * ma tendini/tecnica si riadattano più lenti → si riparte submassimali).
-     * Pavimento al 60% per pause molto lunghe. Ritorna null se la pausa è normale.
-     * Riferimenti: detraining ~ -5/15% forza in 8-12 sett; regain rapido (mionuclei).
-     * @param {number} daysAgo - giorni dall'ultima sessione con quell'esercizio
+     * Suggerimento per la prossima volta (doppia progressione sul TOP SET).
+     * @returns {{status, action, suggestedWeight, suggestedReps, message, lastPerformance, ...}}
+     *   suggestedWeight è SEMPRE un numero (l'app lo precompila).
+     * status: new | detraining | refamiliarize | increase_weight | increase_reps | backoff | maintain
+     */
+    getProgressionSuggestion(exerciseId, targetRepRange, goal = 'hypertrophy') {
+        const range = this.parseRepRange(targetRepRange);
+        const sessions = this._sessionsFor(exerciseId, 3);
+        const last = sessions[0];
+
+        if (!last) {
+            const w = this._startingWeight(exerciseId);
+            return {
+                status: 'new',
+                action: 'start',
+                suggestedWeight: w,
+                suggestedReps: range.min,
+                isEstimate: true,
+                message: `Prima volta: un peso da ${range.min}-${range.max} rep`,
+                lastPerformance: null
+            };
+        }
+
+        const lastW = last.top.weight;
+        const topReps = last.top.reps;
+        const working = last.workingReps;
+        const lastPerformance = {
+            weight: lastW,
+            reps: last.sets.map(s => s.reps),
+            topReps,
+            date: last.date
+        };
+        const step = this.getLoadStep(exerciseId, lastW);
+        const bw = !step;
+
+        // CASO 0: pausa della PERSONA ≥ 21 giorni → detraining
+        const pauseDays = this.getDaysSinceLastWorkout();
+        if (pauseDays !== null && pauseDays >= 21) {
+            const weeks = pauseDays / 7;
+            const factor = Math.max(0.6, 1 - 0.025 * (weeks - 2));
+            const weeksOff = Math.floor(weeks);
+            const red = this._detrainLoad(exerciseId, lastW, topReps, factor);
+            const pct = red.reducedWeight ? Math.round((1 - red.weight / lastW) * 100) : 0;
+            return {
+                status: 'detraining',
+                action: 'return_deload',
+                suggestedWeight: red.weight,
+                suggestedReps: red.reducedWeight ? range.min : red.reps,
+                rirTarget: 3,
+                weeksOff,
+                reductionPct: pct,
+                message: red.reducedWeight
+                    ? `Rientro dopo ${weeksOff} settimane: ${this._fmtKg(red.weight)} (−${pct}%), RIR 3`
+                    : (bw ? `Rientro dopo ${weeksOff} settimane: ${red.reps} rep, RIR 3`
+                        : `Rientro dopo ${weeksOff} settimane: ${this._fmtKg(red.weight)} × ${red.reps}, RIR 3`),
+                lastPerformance
+            };
+        }
+
+        // CASO 0b: esercizio assente da ≥ 6 settimane, persona in attività → riprendere confidenza
+        const exDays = GT.calendarDaysBetween(last.date, new Date());
+        if (isFinite(exDays) && exDays >= 42) {
+            let w = lastW, reps = range.min, reduced = false;
+            if (!bw) {
+                const lower = this._nextLowerWeight(exerciseId, lastW);
+                if (lower > 0 && lower >= lastW * 0.6 - 1e-9 && lower < lastW) { w = lower; reduced = true; }
+            }
+            if (!reduced) reps = this._reduceReps(topReps, 0.85);
+            const weeksAbsent = Math.floor(exDays / 7);
+            return {
+                status: 'refamiliarize',
+                action: 'refamiliarize',
+                suggestedWeight: w,
+                suggestedReps: reps,
+                rirTarget: 3,
+                weeksAbsent,
+                message: bw ? `Non lo fai da ${weeksAbsent} settimane: ${reps} rep, RIR 3`
+                    : `Non lo fai da ${weeksAbsent} settimane: ${this._fmtKg(w)}${reduced ? '' : ` × ${reps}`}, RIR 3`,
+                lastPerformance
+            };
+        }
+
+        const inc = this.getProgressionIncrement(exerciseId, lastW);
+
+        // CASO 1: tutte le serie al top set al massimo del range → più peso
+        if (working.every(r => r >= range.max)) {
+            if (inc > 0) {
+                const newWeight = GT.round(lastW + inc, 0.001);
+                return {
+                    status: 'increase_weight',
+                    action: 'weight_up',
+                    suggestedWeight: newWeight,
+                    suggestedReps: range.min,
+                    increment: inc,
+                    message: `Aumenta a ${this._fmtKg(newWeight)} (+${inc})`,
+                    lastPerformance
+                };
+            }
+            return {
+                status: 'increase_reps',
+                action: 'reps_up',
+                suggestedWeight: lastW,
+                suggestedReps: topReps + 1,
+                message: `Oltre ${range.max} rep: +1 rep o variante più dura`,
+                lastPerformance
+            };
+        }
+
+        // CASO 2: tutte nel range (o sopra il minimo) → +1 rep
+        if (working.every(r => r >= range.min)) {
+            const target = Math.min(range.max, Math.min(...working) + 1);
+            return {
+                status: 'increase_reps',
+                action: 'reps_up',
+                suggestedWeight: lastW,
+                suggestedReps: target,
+                suggestedRepsPerSet: working.map(r => Math.min(r + 1, range.max)),
+                message: bw ? `Punta a ${target} rep` : `${this._fmtKg(lastW)}, punta a ${target} rep`,
+                lastPerformance
+            };
+        }
+
+        // CASO 3: sotto il range → stallo (≥2 delle ultime 3 sessioni allo stesso top set sotto il minimo) → back-off
+        const stalled = sessions.filter(s => Math.abs(s.top.weight - lastW) < 0.01 && Math.min(...s.workingReps) < range.min).length;
+        if (stalled >= 2) {
+            if (!bw) {
+                const bStep = this.getLoadStep(exerciseId, lastW * 0.9) || step;
+                let backoff = GT.round(lastW * 0.9, bStep);
+                if (backoff >= lastW) backoff = this._nextLowerWeight(exerciseId, lastW);
+                if (backoff > 0 && backoff < lastW) {
+                    return {
+                        status: 'backoff',
+                        action: 'deload_exercise',
+                        suggestedWeight: backoff,
+                        suggestedReps: range.min,
+                        message: `Stallo a ${this._fmtKg(lastW)}: scendi a ${this._fmtKg(backoff)} e risali`,
+                        lastPerformance
+                    };
+                }
+            }
+            return {
+                status: 'backoff',
+                action: 'deload_exercise',
+                suggestedWeight: lastW,
+                suggestedReps: range.min,
+                message: `Stallo: variante più facile, punta a ${range.min} rep`,
+                lastPerformance
+            };
+        }
+
+        return {
+            status: 'maintain',
+            action: 'consolidate',
+            suggestedWeight: lastW,
+            suggestedReps: range.min,
+            message: bw ? `Punta a ${range.min} rep su tutte le serie` : `Mantieni ${this._fmtKg(lastW)}, punta a ${range.min} rep`,
+            lastPerformance
+        };
+    },
+
+    // Carico ridotto per il rientro: mai ≥ del vecchio, mai sotto il 60%; se non si può, stesso peso e meno reps
+    _detrainLoad(exerciseId, lastW, topReps, factor) {
+        const step = this.getLoadStep(exerciseId, lastW * factor);
+        const keep = () => ({ weight: lastW, reps: this._reduceReps(topReps, factor), reducedWeight: false });
+        if (!step || !(lastW > 0)) return keep();
+        let w = GT.floorTo(lastW * factor, step);
+        if (w >= lastW) w = this._nextLowerWeight(exerciseId, lastW);
+        const min = lastW * 0.6;
+        if (w < min - 1e-9) w = GT.ceilTo(min, step);
+        if (!(w > 0) || w >= lastW) return keep();
+        return { weight: w, reps: null, reducedWeight: true };
+    },
+
+    /**
+     * Pausa lunga (compatibilità): fattore di riduzione per `daysAgo` giorni di stop, null sotto i 21.
      * @returns {{weeksOff:number, factor:number}|null}
      */
     getDetrainingAdjustment(daysAgo) {
         const weeksOff = daysAgo / 7;
-        if (weeksOff < 3) return null; // pausa nella norma: progressione standard
+        if (!(weeksOff >= 3)) return null;
         const factor = Math.max(0.60, 1 - 0.025 * (weeksOff - 2));
-        return { weeksOff: Math.round(weeksOff), factor };
+        return { weeksOff: Math.floor(weeksOff), factor };
+    },
+
+    /**
+     * Valuta le serie di una sessione appena fatta (riepilogo di fine allenamento, avviso in sessione).
+     * Stessa logica del suggerimento: top set + getProgressionIncrement.
+     * @returns {{action:'up'|'reps'|'maintain'|null, increment, topWeight, nextWeight}}
+     */
+    evaluateSets(exerciseId, sets, targetRepRange) {
+        const range = this.parseRepRange(targetRepRange);
+        const bw = this.isBodyweightExercise(exerciseId);
+        const done = (sets || []).filter(s => s && s.completed && this._int(s.reps) > 0 && (this._num(s.weight) > 0 || bw))
+            .map(s => ({ weight: Math.max(0, this._num(s.weight)), reps: this._int(s.reps) }));
+        if (!done.length) return { action: null, increment: 0, topWeight: 0, nextWeight: 0 };
+        const top = done.reduce((b, s) => (s.weight > b.weight || (s.weight === b.weight && s.reps > b.reps)) ? s : b);
+        const working = done.filter(s => Math.abs(s.weight - top.weight) < 0.01).map(s => s.reps);
+        const inc = this.getProgressionIncrement(exerciseId, top.weight);
+        if (working.every(r => r >= range.max)) {
+            return { action: inc > 0 ? 'up' : 'reps', increment: inc, topWeight: top.weight, nextWeight: GT.round(top.weight + inc, 0.001) };
+        }
+        if (working.every(r => r >= range.min)) return { action: 'reps', increment: inc, topWeight: top.weight, nextWeight: top.weight };
+        return { action: 'maintain', increment: inc, topWeight: top.weight, nextWeight: top.weight };
     },
 
     /**
      * Get progression summary for all exercises in a workout
-     * @param {Array} exercises - Array of exercise objects with exerciseId and reps
-     * @param {string} goal - User's goal
-     * @returns {Array} Array of progression suggestions
      */
     getWorkoutProgressionSummary(exercises, goal = 'hypertrophy') {
-        return exercises.map(ex => {
-            const exerciseType = this.getExerciseType(ex.exerciseId);
-            return {
-                exerciseId: ex.exerciseId,
-                name: ex.name,
-                ...this.getProgressionSuggestion(ex.exerciseId, ex.reps || ex.targetReps, goal, exerciseType)
-            };
-        });
-    },
-
-    /**
-     * Determine if exercise is compound or isolation
-     */
-    getExerciseType(exerciseId) {
-        const compoundExercises = [
-            'bench-press', 'incline-bench-press', 'dumbbell-bench-press', 'dumbbell-incline-press',
-            'squat', 'front-squat', 'leg-press', 'hack-squat', 'deadlift', 'romanian-deadlift',
-            'barbell-row', 'pull-up', 'chin-up', 'lat-pulldown', 't-bar-row', 'seated-cable-row',
-            'overhead-press', 'dumbbell-shoulder-press', 'arnold-press', 'push-press',
-            'hip-thrust', 'bulgarian-split-squat', 'dumbbell-lunge', 'dips', 'close-grip-bench'
-        ];
-        return compoundExercises.some(ex => exerciseId.includes(ex)) ? 'compound' : 'isolation';
+        return (exercises || []).map(ex => ({
+            exerciseId: ex.exerciseId,
+            name: ex.name,
+            ...this.getProgressionSuggestion(ex.exerciseId, ex.reps || ex.targetReps, goal)
+        }));
     },
 
     // ========================================
     // CYCLE MANAGEMENT
     // ========================================
 
+    _getCycle(program) {
+        const c = program && program.metadata && program.metadata.cycle;
+        if (!this._isObj(c) || !Array.isArray(c.phases) || c.phases.length === 0) return null;
+        return c;
+    },
+
+    _cycleDuration(cycle) {
+        const d = this._int(cycle.duration);
+        return d > 0 ? d : cycle.phases.length;
+    },
+
+    _phaseFor(cycle, week) {
+        const phases = cycle.phases;
+        return phases.find(p => p && p.week === week) ||
+            (week > this._cycleDuration(cycle) ? phases[phases.length - 1] : phases[0]);
+    },
+
+    _isManualDeload(cycle) {
+        if (!cycle || !cycle.manualDeloadUntil) return false;
+        const t = this._time(cycle.manualDeloadUntil);
+        return !isNaN(t) && Date.now() < t;
+    },
+
+    /** Settimana del ciclo secondo il calendario (1 = prima; mai sotto 1). null senza ciclo. */
+    getCalendarCycleWeek() {
+        const cycle = this._getCycle(this.getActiveProgram());
+        if (!cycle) return null;
+        const days = GT.calendarDaysBetween(cycle.startDate, new Date());
+        if (!isFinite(days)) return 1;
+        return Math.max(1, Math.floor(days / 7) + 1);
+    },
+
     /**
-     * Get current cycle info from active program
+     * Get current cycle info from active program (forma invariata, più qualche campo).
      */
     getCycleInfo() {
         const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return null;
+        const cycle = this._getCycle(program);
+        if (!cycle) return null;
 
-        const cycle = program.metadata.cycle;
-        const currentPhase = cycle.phases.find(p => p.week === cycle.currentWeek);
-
-        // Progresso basato su settimane completate (currentWeek-1), non la settimana corrente
-        const completedWeeks = cycle.currentWeek - 1;
-        const progress = Math.round((completedWeeks / cycle.duration) * 100);
+        const duration = this._cycleDuration(cycle);
+        const currentWeek = Math.max(1, this._int(cycle.currentWeek) || 1);
+        const currentPhase = this._phaseFor(cycle, currentWeek);
+        const completedWeeks = Math.min(currentWeek, duration) - 1;
+        const manual = this._isManualDeload(cycle);
 
         return {
             ...cycle,
-            currentPhase: currentPhase || cycle.phases[0],
-            progress: progress,
-            weeksRemaining: cycle.duration - cycle.currentWeek,
-            isLastWeek: cycle.currentWeek === cycle.duration
+            duration,
+            currentWeek,
+            currentPhase,
+            progress: Math.round((completedWeeks / duration) * 100),
+            weeksRemaining: Math.max(0, duration - currentWeek),
+            isLastWeek: currentWeek >= duration,
+            isDeloadActive: manual || (currentPhase && currentPhase.phase === 'deload'),
+            isManualDeload: manual,
+            manualDeloadUntil: manual ? cycle.manualDeloadUntil : null,
+            cycleNumber: (program.metadata && program.metadata.cycleNumber) || 1,
+            calendarWeek: this.getCalendarCycleWeek()
         };
     },
 
     /**
-     * Advance cycle to next week (called after completing weekly workouts)
+     * Allinea la settimana del ciclo al calendario (senza superare l'ultima).
+     * @returns {{changed:boolean, from:number, to:number}|null}
+     */
+    syncCycleWeek() {
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle) return null;
+        const duration = this._cycleDuration(cycle);
+        const from = Math.max(1, this._int(cycle.currentWeek) || 1);
+        const to = Math.min(this.getCalendarCycleWeek() || 1, duration);
+        if (to <= from) return { changed: false, from, to: from };
+        cycle.currentWeek = to;
+        cycle.weekStartedAt = GT.addDays(GT.startOfDay(cycle.startDate), (to - 1) * 7).toISOString();
+        cycle.isDeloadActive = false;
+        cycle.manualDeloadUntil = null;
+        this.setActiveProgram(program);
+        return { changed: true, from, to };
+    },
+
+    /**
+     * Advance cycle to next week (spegne il deload manuale).
      */
     advanceCycleWeek() {
         const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return null;
+        const cycle = this._getCycle(program);
+        if (!cycle) return null;
 
-        const cycle = program.metadata.cycle;
-
-        if (cycle.currentWeek < cycle.duration) {
-            cycle.currentWeek++;
-            this.setActiveProgram(program);
+        const current = Math.max(1, this._int(cycle.currentWeek) || 1);
+        if (current < this._cycleDuration(cycle)) {
+            cycle.currentWeek = current + 1;
+            cycle.weekStartedAt = new Date().toISOString();
         }
+        cycle.isDeloadActive = false;
+        cycle.manualDeloadUntil = null;
+        this.setActiveProgram(program);
 
         return this.getCycleInfo();
     },
 
     /**
-     * Check if it's time to suggest advancing the week.
-     * Uses real calendar time: if 7+ days passed since cycle start
-     * for the current week, suggest advancement regardless of workout count.
-     * Also triggers if workout count is met (original logic).
+     * Va proposto l'avanzamento di settimana? (calendario, o sessioni della settimana fatte)
      */
     shouldAdvanceWeek() {
         const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return false;
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
 
-        const cycle = program.metadata.cycle;
-        const daysPerWeek = program.metadata.daysPerWeek || 4;
-        const cycleStart = new Date(cycle.startDate);
-        const now = new Date();
+        const current = Math.max(1, this._int(cycle.currentWeek) || 1);
+        if (current >= this._cycleDuration(cycle)) return false;
+        if ((this.getCalendarCycleWeek() || 1) > current) return true;
 
-        // Calendar-based: how many weeks have actually passed
-        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-        const calendarWeek = Math.floor((now - cycleStart) / msPerWeek) + 1;
+        const daysPerWeek = this._daysPerWeek(program);
+        const start = this._time(GT.startOfDay(cycle.startDate));
+        const done = this.getWorkouts().filter(w => !w.isFreeWorkout && this._time(w.date) >= start).length;
+        return done >= current * daysPerWeek;
+    },
 
-        if (calendarWeek > cycle.currentWeek) {
-            return true;
-        }
-
-        // Workout-count-based (original): all expected workouts completed
-        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
-        const expectedWorkouts = cycle.currentWeek * daysPerWeek;
-
-        return workouts.length >= expectedWorkouts;
+    _daysPerWeek(program) {
+        const md = (program && program.metadata) || {};
+        const d = this._int(md.daysPerWeek) || (Array.isArray(program && program.days) ? program.days.length : 0);
+        return d > 0 ? d : 3;
     },
 
     /**
-     * Toggle deload mode manually
+     * Il ciclo è da chiudere? Oltre l'ultima settimana per calendario, oppure ultima settimana
+     * con tutte le sessioni fatte.
+     */
+    shouldCompleteCycle() {
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
+        const duration = this._cycleDuration(cycle);
+        const calWeek = this.getCalendarCycleWeek() || 1;
+        if (calWeek > duration) return true;
+
+        const current = Math.max(1, this._int(cycle.currentWeek) || 1);
+        if (current < duration && calWeek < duration) return false;
+
+        // Inizio dell'ultima settimana: quando ci si è arrivati a mano, o per calendario
+        const calStart = GT.addDays(GT.startOfDay(cycle.startDate), (duration - 1) * 7).getTime();
+        let since = calStart;
+        if (current >= duration && cycle.weekStartedAt) {
+            const t = this._time(cycle.weekStartedAt);
+            if (!isNaN(t)) since = isNaN(calStart) ? t : Math.min(t, calStart);
+        }
+        if (isNaN(since)) return false;
+        const done = this.getWorkouts().filter(w => !w.isFreeWorkout && this._time(w.date) >= since).length;
+        return done >= this._daysPerWeek(program);
+    },
+
+    /**
+     * Deload manuale/anticipato per 7 giorni: scade da solo, advanceCycleWeek lo spegne.
+     */
+    startManualDeload() {
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
+        cycle.manualDeloadUntil = GT.addDays(new Date(), 7).toISOString();
+        cycle.isDeloadActive = true;
+        this.setActiveProgram(program);
+        return true;
+    },
+
+    stopManualDeload() {
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
+        cycle.manualDeloadUntil = null;
+        cycle.isDeloadActive = false;
+        this.setActiveProgram(program);
+        return true;
+    },
+
+    /**
+     * Interruttore del deload manuale (compatibilità): restituisce lo stato dopo il cambio.
      */
     toggleDeload() {
         const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return false;
-
-        program.metadata.cycle.isDeloadActive = !program.metadata.cycle.isDeloadActive;
-        this.setActiveProgram(program);
-
-        return program.metadata.cycle.isDeloadActive;
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
+        if (this._isManualDeload(cycle)) this.stopManualDeload();
+        else this.startManualDeload();
+        return this.isDeloadActive();
     },
 
     /**
-     * Check if deload is currently active
+     * Deload attivo = fase della settimana corrente deload, OPPURE deload manuale non scaduto.
      */
     isDeloadActive() {
-        const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return false;
-
-        const cycle = program.metadata.cycle;
-        const currentPhase = cycle.phases.find(p => p.week === cycle.currentWeek);
-
-        // Deload is active if manually toggled OR if current phase is deload
-        return cycle.isDeloadActive || currentPhase?.phase === 'deload';
+        const cycle = this._getCycle(this.getActiveProgram());
+        if (!cycle) return false;
+        if (this._isManualDeload(cycle)) return true;
+        const phase = this._phaseFor(cycle, Math.max(1, this._int(cycle.currentWeek) || 1));
+        return !!phase && phase.phase === 'deload';
     },
 
     /**
      * Get volume multiplier for current phase
      */
     getCurrentVolumeMultiplier() {
-        const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return 1;
+        const cycle = this._getCycle(this.getActiveProgram());
+        if (!cycle) return 1;
+        if (this._isManualDeload(cycle)) {
+            const dl = cycle.phases.find(p => p && p.phase === 'deload');
+            return (dl && dl.volumeMultiplier) || 0.5;
+        }
+        const phase = this._phaseFor(cycle, Math.max(1, this._int(cycle.currentWeek) || 1));
+        return (phase && phase.volumeMultiplier) || 1;
+    },
 
-        if (program.metadata.cycle.isDeloadActive) return 0.5;
-
-        const currentPhase = program.metadata.cycle.phases.find(
-            p => p.week === program.metadata.cycle.currentWeek
-        );
-
-        return currentPhase?.volumeMultiplier || 1;
+    // Lunedì da cui parte un ciclo nuovo: questo, oppure il prossimo se la settimana
+    // corrente appartiene ancora al ciclo vecchio ed è già stata usata (ci si è allenati)
+    _newCycleStartDate(oldCycle) {
+        const thisMonday = GT.startOfWeek(new Date());
+        if (!oldCycle) return thisMonday;
+        const duration = this._cycleDuration(oldCycle);
+        const days = GT.calendarDaysBetween(oldCycle.startDate, new Date());
+        const calWeek = isFinite(days) ? Math.floor(days / 7) + 1 : duration + 1;
+        if (calWeek > duration) return thisMonday;
+        const trainedThisWeek = this.getWorkoutsThisWeek().some(w => !w.isFreeWorkout);
+        return trainedThisWeek ? GT.addDays(thisMonday, 7) : thisMonday;
     },
 
     /**
-     * Reset cycle (start new mesocycle)
+     * Reset cycle (stessa scheda, settimana 1). Per la chiusura vera usare completeCycle().
      */
     resetCycle() {
         const program = this.getActiveProgram();
-        if (!program?.metadata?.cycle) return null;
+        const cycle = this._getCycle(program);
+        if (!cycle) return null;
 
-        program.metadata.cycle.currentWeek = 1;
-        program.metadata.cycle.startDate = new Date().toISOString();
-        program.metadata.cycle.isDeloadActive = false;
+        cycle.startDate = this._newCycleStartDate(cycle).toISOString();
+        cycle.currentWeek = 1;
+        cycle.isDeloadActive = false;
+        cycle.manualDeloadUntil = null;
+        delete cycle.weekStartedAt;
 
         this.setActiveProgram(program);
         return this.getCycleInfo();
@@ -771,80 +1373,138 @@ const Storage = {
     // CYCLE HISTORY & STATISTICS
     // ========================================
 
-    /**
-     * Get cycle history
-     */
     getCycleHistory() {
-        const data = localStorage.getItem(this.KEYS.CYCLE_HISTORY);
-        return data ? JSON.parse(data) : [];
+        return this._read(this.KEYS.CYCLE_HISTORY, [], Array.isArray).filter(c => this._isObj(c));
     },
 
-    /**
-     * Save a completed cycle to history
-     */
     saveCycleToHistory(cycleData) {
         const history = this.getCycleHistory();
         cycleData.id = Date.now();
         cycleData.completedAt = new Date().toISOString();
         history.unshift(cycleData);
         // Keep last 20 cycles
-        if (history.length > 20) history.pop();
-        localStorage.setItem(this.KEYS.CYCLE_HISTORY, JSON.stringify(history));
+        if (history.length > 20) history.length = 20;
+        this._write(this.KEYS.CYCLE_HISTORY, history);
         return cycleData;
     },
 
-    /**
-     * Complete current cycle and save to history with stats
-     * Rotates exercises and progressively increases volume for the new cycle
-     */
-    completeCycle() {
-        const cycleInfo = this.getCycleInfo();
-        if (!cycleInfo) return null;
-
-        const stats = this.getCycleStatistics();
-        const program = this.getActiveProgram();
-
-        // Create cycle record for history
-        const cycleRecord = {
-            duration: cycleInfo.duration,
-            goal: program?.metadata?.goal || 'hypertrophy',
-            level: program?.metadata?.level || 'intermediate',
-            split: program?.metadata?.split || 'upper-lower',
-            startDate: cycleInfo.startDate,
-            phases: cycleInfo.phases.map(p => p.phaseName),
-            statistics: stats
-        };
-
-        // Save to history
-        this.saveCycleToHistory(cycleRecord);
-
-        // Rotate exercises and create new cycle with progressive volume
-        if (typeof TrainingAlgorithm !== 'undefined' && program) {
-            const profile = this.getProfile() || {};
-            profile.level = program.metadata?.level || 'intermediate';
-            profile.equipment = profile.equipment || [];
-
-            const oldProgram = JSON.parse(JSON.stringify(program)); // deep copy for summary
-            const rotatedProgram = TrainingAlgorithm.rotateProgram(program, profile);
-
-            if (rotatedProgram) {
-                this.setActiveProgram(rotatedProgram);
-
-                // Store rotation summary for UI display
-                const summary = TrainingAlgorithm.getRotationSummary(oldProgram, rotatedProgram);
-                this._lastRotationSummary = summary;
-
-                return this.getCycleInfo();
+    _normalizeAdded(list) {
+        return (Array.isArray(list) ? list : []).map(x => {
+            if (typeof x === 'string') {
+                const ex = this._exercise(x);
+                return { id: x, name: (ex && ex.name) || x };
             }
-        }
+            if (this._isObj(x)) {
+                const id = x.id || x.exerciseId;
+                const ex = this._exercise(id);
+                return { ...x, id, name: x.name || (ex && ex.name) || id };
+            }
+            return null;
+        }).filter(Boolean);
+    },
 
-        // Fallback: simple reset if rotation fails
-        return this.resetCycle();
+    _programExerciseIds(program) {
+        const ids = new Set();
+        (program && Array.isArray(program.days) ? program.days : []).forEach(d => {
+            (d && Array.isArray(d.exercises) ? d.exercises : []).forEach(e => { if (e && e.exerciseId) ids.add(e.exerciseId); });
+        });
+        return ids;
     },
 
     /**
-     * Get the last rotation summary (what exercises changed)
+     * Chiude il ciclo corrente: storico + statistiche, rotazione degli esercizi
+     * (TrainingAlgorithm.rotateProgram, protetta), nuovo ciclo da settimana 1 con cycleNumber+1.
+     * Se la rotazione fallisce: nuovo ciclo con gli stessi esercizi. Mai bloccato.
+     * @returns {{completedCycle, statistics, rotation: {added[], removed[]}|null}|null}
      */
+    completeCycle() {
+        const program = this.getActiveProgram();
+        const oldCycle = this._getCycle(program);
+        if (!oldCycle) return null;
+        const cycleInfo = this.getCycleInfo();
+        const md = program.metadata || {};
+        const oldNumber = this._int(md.cycleNumber) || 1;
+
+        let statistics = null;
+        try { statistics = this.getCycleStatistics(); } catch (e) { statistics = null; }
+
+        const completedCycle = {
+            cycleNumber: oldNumber,
+            programName: program.name || null,
+            duration: cycleInfo.duration,
+            goal: md.goal || 'hypertrophy',
+            level: md.level || 'intermediate',
+            split: md.split || null,
+            startDate: oldCycle.startDate,
+            endDate: new Date().toISOString(),
+            weeksReached: cycleInfo.currentWeek,
+            phases: oldCycle.phases.map(p => p && p.phaseName),
+            statistics
+        };
+
+        // Rotazione degli esercizi (protetta: qualsiasi errore → stessi esercizi)
+        let newProgram = null;
+        let rotation = null;
+        try {
+            if (typeof TrainingAlgorithm !== 'undefined' && TrainingAlgorithm && typeof TrainingAlgorithm.rotateProgram === 'function') {
+                const raw = this._getRawProfile() || {};
+                const profile = this.getProfile();
+                // Livello: quello scelto nel profilo; se il profilo non è mai stato salvato, quello della scheda
+                if (!raw.level && md.level) profile.level = md.level;
+                const res = TrainingAlgorithm.rotateProgram(this._clone(program), profile);
+                if (res && this._isObj(res.program) && Array.isArray(res.program.days)) {
+                    newProgram = res.program;
+                    rotation = { added: this._normalizeAdded(res.added), removed: this._normalizeAdded(res.removed) };
+                } else if (res && Array.isArray(res.days)) {
+                    newProgram = res; // firma vecchia: restituiva la scheda
+                }
+                if (newProgram && !rotation) {
+                    const a = this._programExerciseIds(program), b = this._programExerciseIds(newProgram);
+                    rotation = {
+                        added: this._normalizeAdded([...b].filter(id => !a.has(id))),
+                        removed: this._normalizeAdded([...a].filter(id => !b.has(id)))
+                    };
+                }
+            }
+        } catch (e) {
+            try { console.warn('[Storage] rotazione non riuscita, stessi esercizi', e); } catch (x) { /* no-op */ }
+            newProgram = null;
+            rotation = null;
+        }
+        if (!newProgram || !Array.isArray(newProgram.days) || newProgram.days.length === 0) {
+            newProgram = this._clone(program);
+            rotation = null;
+        }
+
+        // Nuovo ciclo: settimana 1, dal lunedì, numero +1
+        newProgram.metadata = this._isObj(newProgram.metadata) ? newProgram.metadata : {};
+        const nm = newProgram.metadata;
+        // Struttura del ciclo: quella nuova della scheda ruotata, altrimenti la vecchia
+        const cycle = this._clone(this._getCycle(newProgram) || oldCycle);
+        cycle.currentWeek = 1;
+        cycle.startDate = this._newCycleStartDate(oldCycle).toISOString();
+        cycle.isDeloadActive = false;
+        cycle.manualDeloadUntil = null;
+        delete cycle.weekStartedAt;
+        nm.cycle = cycle;
+        nm.cycleNumber = oldNumber + 1;
+
+        // Prima la scheda (se lo spazio è pieno lancia, e lo storico non si sdoppia)
+        this.setActiveProgram(newProgram);
+        try { this.saveCycleToHistory(completedCycle); } catch (e) { /* lo storico è di contorno */ }
+
+        this._lastRotationSummary = rotation ? {
+            added: rotation.added,
+            removed: rotation.removed,
+            kept: [...this._programExerciseIds(newProgram)].filter(id => this._programExerciseIds(program).has(id))
+                .map(id => ({ id, name: (this._exercise(id) || {}).name || id })),
+            totalChanged: rotation.added.length + rotation.removed.length,
+            cycleNumber: nm.cycleNumber
+        } : { added: [], removed: [], kept: [], totalChanged: 0, cycleNumber: nm.cycleNumber };
+
+        return { completedCycle, statistics, rotation };
+    },
+
     getLastRotationSummary() {
         return this._lastRotationSummary || null;
     },
@@ -856,8 +1516,9 @@ const Storage = {
         const cycleInfo = this.getCycleInfo();
         if (!cycleInfo) return null;
 
-        const cycleStart = new Date(cycleInfo.startDate);
-        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
+        const start = GT.startOfDay(cycleInfo.startDate);
+        const startT = this._time(start);
+        const workouts = isNaN(startT) ? [] : this.getWorkouts().filter(w => this._time(w.date) >= startT);
 
         if (workouts.length === 0) {
             return {
@@ -868,101 +1529,85 @@ const Storage = {
                 exercisesWorked: 0,
                 prsAchieved: 0,
                 avgRir: null,
-                weeklyBreakdown: []
+                weeklyBreakdown: [],
+                daysActive: isNaN(startT) ? 0 : Math.max(0, GT.calendarDaysBetween(start, new Date()))
             };
         }
 
-        // Calculate totals
         let totalVolume = 0;
         let totalSets = 0;
         let rirSum = 0;
         let rirCount = 0;
         const exercisesSet = new Set();
-        let prsCount = 0;
 
         workouts.forEach(w => {
-            totalVolume += w.totalVolume || 0;
-            totalSets += w.totalSets || 0;
-
-            w.exercises?.forEach(ex => {
+            totalVolume += this._num(w.totalVolume);
+            totalSets += this._int(w.totalSets);
+            (Array.isArray(w.exercises) ? w.exercises : []).forEach(ex => {
+                if (!ex) return;
                 exercisesSet.add(ex.exerciseId || ex.name);
-                ex.sets?.forEach(set => {
-                    if (set.rir !== undefined) {
-                        rirSum += set.rir;
-                        rirCount++;
+                (Array.isArray(ex.sets) ? ex.sets : []).forEach(set => {
+                    if (set && set.completed && set.rir !== undefined && set.rir !== null && set.rir !== '') {
+                        const r = Number(set.rir);
+                        if (isFinite(r)) { rirSum += r; rirCount++; }
                     }
-                    if (set.isNewPR) prsCount++;
                 });
             });
         });
 
-        // Weekly breakdown
         const weeklyBreakdown = [];
-        for (let week = 1; week <= cycleInfo.currentWeek; week++) {
-            const weekStart = new Date(cycleStart);
-            weekStart.setDate(weekStart.getDate() + (week - 1) * 7);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 7);
-
+        const lastWeek = Math.min(cycleInfo.currentWeek, cycleInfo.duration);
+        for (let week = 1; week <= lastWeek; week++) {
+            const ws = GT.addDays(start, (week - 1) * 7).getTime();
+            const we = GT.addDays(start, week * 7).getTime();
             const weekWorkouts = workouts.filter(w => {
-                const d = new Date(w.date);
-                return d >= weekStart && d < weekEnd;
+                const t = this._time(w.date);
+                return t >= ws && t < we;
             });
-
-            const phase = cycleInfo.phases.find(p => p.week === week);
-
+            const phase = cycleInfo.phases.find(p => p && p.week === week);
             weeklyBreakdown.push({
-                week: week,
-                phase: phase?.phaseName || 'Sconosciuto',
+                week,
+                phase: (phase && phase.phaseName) || 'Sconosciuto',
                 workouts: weekWorkouts.length,
-                volume: weekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0)
+                volume: weekWorkouts.reduce((sum, w) => sum + this._num(w.totalVolume), 0)
             });
         }
 
         return {
             totalWorkouts: workouts.length,
             totalVolume: Math.round(totalVolume),
-            totalSets: totalSets,
+            totalSets,
             avgVolumePerWorkout: Math.round(totalVolume / workouts.length),
             exercisesWorked: exercisesSet.size,
-            prsAchieved: prsCount,
+            prsAchieved: this.countRealPRs(workouts),
             avgRir: rirCount > 0 ? (rirSum / rirCount).toFixed(1) : null,
-            weeklyBreakdown: weeklyBreakdown,
-            daysActive: Math.ceil((Date.now() - cycleStart.getTime()) / (1000 * 60 * 60 * 24))
+            weeklyBreakdown,
+            daysActive: Math.max(0, GT.calendarDaysBetween(start, new Date()))
         };
     },
 
     /**
-     * Get progress metrics for the current cycle
-     * Compares first week to last week performance
+     * Get progress metrics for the current cycle (prima settimana vs settimana corrente)
      */
     getCycleProgressMetrics() {
         const cycleInfo = this.getCycleInfo();
         if (!cycleInfo || cycleInfo.currentWeek < 2) return null;
 
-        const cycleStart = new Date(cycleInfo.startDate);
-        const workouts = this.getWorkouts().filter(w => new Date(w.date) >= cycleStart);
-
+        const start = GT.startOfDay(cycleInfo.startDate);
+        const startT = this._time(start);
+        if (isNaN(startT)) return null;
+        const workouts = this.getWorkouts().filter(w => this._time(w.date) >= startT);
         if (workouts.length < 2) return null;
 
-        // Get first week workouts
-        const firstWeekEnd = new Date(cycleStart);
-        firstWeekEnd.setDate(firstWeekEnd.getDate() + 7);
-        const firstWeekWorkouts = workouts.filter(w => {
-            const d = new Date(w.date);
-            return d >= cycleStart && d < firstWeekEnd;
-        });
-
-        // Get current week workouts
-        const currentWeekStart = new Date(cycleStart);
-        currentWeekStart.setDate(currentWeekStart.getDate() + (cycleInfo.currentWeek - 1) * 7);
-        const currentWeekWorkouts = workouts.filter(w => new Date(w.date) >= currentWeekStart);
+        const firstEnd = GT.addDays(start, 7).getTime();
+        const firstWeekWorkouts = workouts.filter(w => this._time(w.date) < firstEnd);
+        const curStart = GT.addDays(start, (cycleInfo.currentWeek - 1) * 7).getTime();
+        const currentWeekWorkouts = workouts.filter(w => this._time(w.date) >= curStart);
 
         if (firstWeekWorkouts.length === 0) return null;
 
-        const firstWeekVolume = firstWeekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
-        const currentWeekVolume = currentWeekWorkouts.reduce((sum, w) => sum + (w.totalVolume || 0), 0);
-
+        const firstWeekVolume = firstWeekWorkouts.reduce((sum, w) => sum + this._num(w.totalVolume), 0);
+        const currentWeekVolume = currentWeekWorkouts.reduce((sum, w) => sum + this._num(w.totalVolume), 0);
         const volumeChange = firstWeekVolume > 0
             ? Math.round(((currentWeekVolume - firstWeekVolume) / firstWeekVolume) * 100)
             : 0;
@@ -977,112 +1622,137 @@ const Storage = {
     },
 
     // ========================================
-    // STREAK
+    // STREAK (a SETTIMANE, derivato dagli allenamenti)
     // ========================================
 
-    getStreak() {
-        const data = localStorage.getItem(this.KEYS.STREAK);
-        return data ? JSON.parse(data) : { current: 0, best: 0, lastWorkoutDate: null };
+    /** Allenamenti a settimana perché la settimana conti: giorni della scheda − 1 (min 1); senza scheda 2. */
+    getStreakTarget() {
+        const program = this.getActiveProgram();
+        if (!program) return 2;
+        return Math.max(1, this._daysPerWeek(program) - 1);
     },
 
+    _computeWeekStreak() {
+        const target = this.getStreakTarget();
+        const perWeek = new Map(); // chiave lunedì → Set di giorni con allenamento
+        let lastT = NaN;
+        this.getWorkouts().forEach(w => {
+            const t = this._time(w.date);
+            if (isNaN(t)) return;
+            if (isNaN(lastT) || t > lastT) lastT = t;
+            const wk = GT.dateKey(GT.startOfWeek(new Date(t)));
+            if (!perWeek.has(wk)) perWeek.set(wk, new Set());
+            perWeek.get(wk).add(GT.dateKey(new Date(t)));
+        });
+        const count = d => (perWeek.get(GT.dateKey(d)) || { size: 0 }).size;
+
+        const thisMonday = GT.startOfWeek(new Date());
+        const thisWeek = count(thisMonday);
+
+        // Serie attuale: la settimana in corso conta se già raggiunta, ma non la spezza finché non è finita
+        let current = thisWeek >= target ? 1 : 0;
+        let cursor = GT.addDays(thisMonday, -7);
+        while (count(cursor) >= target) {
+            current++;
+            cursor = GT.addDays(cursor, -7);
+        }
+
+        // Record storico: la serie più lunga di settimane consecutive
+        let best = 0;
+        if (perWeek.size) {
+            const keys = [...perWeek.keys()].sort();
+            const [y, m, d] = keys[0].split('-').map(Number);
+            let wk = new Date(y, m - 1, d);
+            let run = 0;
+            while (wk.getTime() <= thisMonday.getTime()) {
+                if (count(wk) >= target) { run++; if (run > best) best = run; }
+                else if (wk.getTime() !== thisMonday.getTime()) run = 0;
+                wk = GT.addDays(wk, 7);
+            }
+        }
+        best = Math.max(best, current);
+        return { current, best, thisWeek, target, lastWorkoutDate: isNaN(lastT) ? null : new Date(lastT).toISOString() };
+    },
+
+    _getRawStreak() {
+        return this._read(this.KEYS.STREAK, null, v => v === null || this._isObj(v));
+    },
+
+    /**
+     * Streak a settimane: {current, best, thisWeek, target}. Il record `best` resta salvato
+     * nella chiave di sempre (il vecchio record a giorni è conservato in legacyDaysBest).
+     */
+    getStreak() {
+        const s = this._computeWeekStreak();
+        const raw = this._getRawStreak() || {};
+        const savedBest = raw.unit === 'weeks' ? this._int(raw.best) : 0;
+        s.best = Math.max(s.best, savedBest);
+        if (raw.unit !== 'weeks' || raw.best !== s.best || raw.current !== s.current) {
+            const rec = { ...raw, current: s.current, best: s.best, lastWorkoutDate: s.lastWorkoutDate, unit: 'weeks' };
+            if (raw.unit !== 'weeks' && (raw.best !== undefined || raw.current !== undefined)) {
+                rec.legacyDaysBest = raw.best ?? null;
+                rec.legacyDaysCurrent = raw.current ?? null;
+            }
+            this._tryWrite(this.KEYS.STREAK, rec);
+        }
+        return s;
+    },
+
+    // Nome storico: ricalcola e salva il record
     updateStreak() {
-        const streak = this.getStreak();
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
-
-        if (streak.lastWorkoutDate === today) {
-            // Already worked out today
-            return streak;
-        }
-
-        if (streak.lastWorkoutDate === yesterday) {
-            // Continue streak
-            streak.current++;
-        } else if (streak.lastWorkoutDate !== today) {
-            // Streak broken, start new
-            streak.current = 1;
-        }
-
-        // Update best streak
-        if (streak.current > streak.best) {
-            streak.best = streak.current;
-        }
-
-        streak.lastWorkoutDate = today;
-        localStorage.setItem(this.KEYS.STREAK, JSON.stringify(streak));
-
-        return streak;
+        return this.getStreak();
     },
 
     // ========================================
     // STATISTICS
     // ========================================
 
+    _workoutVolume(workout) {
+        let v = 0;
+        (Array.isArray(workout.exercises) ? workout.exercises : []).forEach(ex => {
+            (ex && Array.isArray(ex.sets) ? ex.sets : []).forEach(set => {
+                if (set && set.completed) {
+                    const w = this._num(set.weight), r = this._int(set.reps);
+                    if (w > 0 && r > 0) v += w * r;
+                }
+            });
+        });
+        return v;
+    },
+
     getStatistics() {
         const workouts = this.getWorkouts();
         const streak = this.getStreak();
-        const prs = this.getPersonalRecords();
 
-        // Total workouts
-        const totalWorkouts = workouts.length;
-
-        // Total volume (all time)
         let totalVolume = 0;
-        workouts.forEach(workout => {
-            if (workout.exercises) {
-                workout.exercises.forEach(exercise => {
-                    if (exercise.sets) {
-                        exercise.sets.forEach(set => {
-                            if (set.completed && set.weight && set.reps) {
-                                totalVolume += parseFloat(set.weight) * parseInt(set.reps);
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        workouts.forEach(w => { totalVolume += this._workoutVolume(w); });
 
-        // Count PRs
-        const prCount = Object.keys(prs).length;
-
-        // Weekly stats
         const weeklyWorkouts = this.getWorkoutsThisWeek();
         let weeklyVolume = 0;
-        weeklyWorkouts.forEach(workout => {
-            if (workout.exercises) {
-                workout.exercises.forEach(exercise => {
-                    if (exercise.sets) {
-                        exercise.sets.forEach(set => {
-                            if (set.completed && set.weight && set.reps) {
-                                weeklyVolume += parseFloat(set.weight) * parseInt(set.reps);
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        weeklyWorkouts.forEach(w => { weeklyVolume += this._workoutVolume(w); });
+
+        const totalPRs = this.countRealPRs(workouts);
 
         return {
-            totalWorkouts,
+            totalWorkouts: workouts.length,
             totalVolume: Math.round(totalVolume),
             weeklyWorkouts: weeklyWorkouts.length,
             weeklyVolume: Math.round(weeklyVolume),
             currentStreak: streak.current,
             bestStreak: streak.best,
-            prCount
+            streak,
+            totalPRs,
+            prCount: totalPRs
         };
     },
 
-    // Get workout days for calendar
+    // Giorni con allenamento (chiave toDateString) per il calendario
     getWorkoutDays() {
-        const workouts = this.getWorkouts();
         const days = {};
-
-        workouts.forEach(w => {
-            const date = new Date(w.date).toDateString();
-            days[date] = true;
+        this.getWorkouts().forEach(w => {
+            const t = this._time(w.date);
+            if (!isNaN(t)) days[new Date(t).toDateString()] = true;
         });
-
         return days;
     },
 
@@ -1090,196 +1760,380 @@ const Storage = {
     // EXPORT / IMPORT
     // ========================================
 
+    // Campo dell'export ↔ chiave, con il tipo atteso
+    _EXPORT_FIELDS: [
+        ['profile', 'PROFILE', 'object'],
+        ['settings', 'SETTINGS', 'object'],
+        ['workouts', 'WORKOUTS', 'array'],
+        ['programs', 'PROGRAMS', 'array'],
+        ['activeProgram', 'ACTIVE_PROGRAM', 'object|null'],
+        ['measurements', 'MEASUREMENTS', 'array'],
+        ['personalRecords', 'PERSONAL_RECORDS', 'object'],
+        ['streak', 'STREAK', 'object'],
+        ['cycleHistory', 'CYCLE_HISTORY', 'array'],
+        ['conditioning', 'CONDITIONING', 'array']
+    ],
+
+    // Chiavi di progresso: con un backup schemaVersion ≥ 2, se mancano si svuotano
+    _PROGRESS_FIELDS: ['workouts', 'personalRecords', 'streak', 'cycleHistory', 'conditioning', 'measurements'],
+
+    _isExcludedFromExport(key) {
+        return key === this.KEYS.ACTIVE_SESSION || key === this.KEYS.META || key.indexOf(this.CORRUPT_PREFIX) === 0;
+    },
+
+    _typeOk(v, type) {
+        if (type === 'array') return Array.isArray(v);
+        if (type === 'object') return this._isObj(v);
+        if (type === 'object|null') return v === null || (this._isObj(v) && Array.isArray(v.days));
+        return true;
+    },
+
+    /** Export JSON: tutte le chiavi gymtracker_* (tranne sessione in corso, meta e copie rotte). */
     exportAllData() {
         const data = {
-            version: '1.16.5',
-            exportDate: new Date().toISOString(),
-            profile: this.getProfile(),
-            settings: this.getSettings(),
-            workouts: this.getWorkouts(),
-            programs: this.getPrograms(),
-            activeProgram: this.getActiveProgram(),
-            measurements: this.getMeasurements(),
-            personalRecords: this.getPersonalRecords(),
-            streak: this.getStreak()
+            version: String(GT.APP_VERSION || 'v1.26.0').replace(/^v/, ''),
+            schemaVersion: this.SCHEMA_VERSION,
+            appVersion: GT.APP_VERSION,
+            exportDate: new Date().toISOString()
         };
-
+        const known = new Set();
+        this._EXPORT_FIELDS.forEach(([field, keyName, type]) => {
+            const key = this.KEYS[keyName];
+            known.add(key);
+            const def = type === 'array' ? [] : (type === 'object|null' ? null : (field === 'profile' || field === 'settings' ? null : {}));
+            const v = this._read(key, def, x => x === null || (type === 'array' ? Array.isArray(x) : this._isObj(x)));
+            if (v !== null || type === 'object|null') data[field] = v;
+        });
+        // Altre chiavi dell'app (future): copiate così come sono, come testo
+        const extra = {};
+        this._allAppKeys().forEach(k => {
+            if (known.has(k) || this._isExcludedFromExport(k)) return;
+            try { extra[k] = localStorage.getItem(k); } catch (e) { /* no-op */ }
+        });
+        if (Object.keys(extra).length) data.extra = extra;
         return JSON.stringify(data, null, 2);
     },
 
+    /**
+     * Import da backup (anche quelli vecchi, version '1.16.5' senza cycle_history/conditioning).
+     * Valida il tipo di ogni chiave; copia di sicurezza in memoria e rollback se una scrittura fallisce.
+     * @returns {boolean} (in caso di errore il motivo è in Storage.lastImportError)
+     */
     importAllData(jsonString) {
+        this.lastImportError = null;
+        let data;
         try {
-            const data = JSON.parse(jsonString);
-
-            if (!data.version) {
-                throw new Error('Invalid data format');
-            }
-
-            // Import all data
-            if (data.profile) {
-                localStorage.setItem(this.KEYS.PROFILE, JSON.stringify(data.profile));
-            }
-            if (data.settings) {
-                localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(data.settings));
-            }
-            if (data.workouts) {
-                localStorage.setItem(this.KEYS.WORKOUTS, JSON.stringify(data.workouts));
-            }
-            if (data.programs) {
-                localStorage.setItem(this.KEYS.PROGRAMS, JSON.stringify(data.programs));
-            }
-            if (data.activeProgram) {
-                localStorage.setItem(this.KEYS.ACTIVE_PROGRAM, JSON.stringify(data.activeProgram));
-            }
-            if (data.measurements) {
-                localStorage.setItem(this.KEYS.MEASUREMENTS, JSON.stringify(data.measurements));
-            }
-            if (data.personalRecords) {
-                localStorage.setItem(this.KEYS.PERSONAL_RECORDS, JSON.stringify(data.personalRecords));
-            }
-            if (data.streak) {
-                localStorage.setItem(this.KEYS.STREAK, JSON.stringify(data.streak));
-            }
-
-            return true;
+            data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
         } catch (e) {
-            console.error('Import error:', e);
+            this.lastImportError = 'File non leggibile (JSON non valido)';
             return false;
         }
+        if (!this._isObj(data) || !(data.version || data.schemaVersion)) {
+            this.lastImportError = 'Non è un backup di GymTracker';
+            return false;
+        }
+
+        const schema = this._int(data.schemaVersion) || 1;
+        const writes = [];
+        const removes = [];
+        for (const [field, keyName, type] of this._EXPORT_FIELDS) {
+            const key = this.KEYS[keyName];
+            if (data[field] === undefined || (data[field] === null && type !== 'object|null')) {
+                if (schema >= 2 && this._PROGRESS_FIELDS.includes(field)) removes.push(key);
+                continue;
+            }
+            if (!this._typeOk(data[field], type)) {
+                this.lastImportError = `Backup non valido: "${field}" ha un formato sbagliato`;
+                return false;
+            }
+            if (field === 'activeProgram' && data[field] === null) continue; // non toglie la scheda attuale
+            // Negli array si tengono solo gli elementi-oggetto (null o testo sparsi non sono dati)
+            writes.push([key, type === 'array' ? data[field].filter(x => this._isObj(x)) : data[field]]);
+        }
+        if (data.extra !== undefined) {
+            if (!this._isObj(data.extra)) {
+                this.lastImportError = 'Backup non valido: "extra" ha un formato sbagliato';
+                return false;
+            }
+            Object.keys(data.extra).forEach(k => {
+                if (k.indexOf(this.PREFIX) !== 0 || this._isExcludedFromExport(k)) return;
+                if (Object.values(this.KEYS).includes(k)) return;
+                const v = data.extra[k];
+                writes.push([k, typeof v === 'string' ? v : JSON.stringify(v), true]);
+            });
+        }
+
+        // Copia di sicurezza in memoria di TUTTE le chiavi dell'app
+        const snapshot = {};
+        this._allAppKeys().forEach(k => {
+            try { snapshot[k] = localStorage.getItem(k); } catch (e) { /* no-op */ }
+        });
+
+        try {
+            writes.forEach(([k, v, isRaw]) => localStorage.setItem(k, isRaw ? v : JSON.stringify(v)));
+            removes.forEach(k => localStorage.removeItem(k));
+        } catch (e) {
+            // Rollback: tutto come prima
+            try {
+                const touched = new Set([...writes.map(w => w[0]), ...removes]);
+                touched.forEach(k => {
+                    if (Object.prototype.hasOwnProperty.call(snapshot, k) && snapshot[k] !== null) localStorage.setItem(k, snapshot[k]);
+                    else localStorage.removeItem(k);
+                });
+            } catch (x) { /* no-op */ }
+            this.lastImportError = this._isQuotaError(e) ? 'Spazio pieno: import annullato, dati di prima intatti'
+                : 'Scrittura non riuscita: import annullato, dati di prima intatti';
+            return false;
+        }
+
+        // Dopo l'import: dati derivati e migrazioni (errori qui non annullano l'import)
+        try { this._migrateProgramCycle(); } catch (e) { /* no-op */ }
+        try { if (data.workouts !== undefined) this.rebuildPersonalRecords(); } catch (e) { /* no-op */ }
+        try { this.getStreak(); } catch (e) { /* no-op */ }
+        return true;
     },
 
+    /** Cancella TUTTI i dati dell'app (richiesta esplicita dell'utente). */
     clearAllData() {
-        Object.values(this.KEYS).forEach(key => {
-            localStorage.removeItem(key);
+        this._allAppKeys().forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) { /* no-op */ }
         });
     },
 
     /**
-     * Clear only progress data (workouts, PRs, streak, cycle history)
+     * Clear only progress data (workouts, PRs, streak, cycle history, conditioning)
      * Keeps profile, settings, programs, active program, measurements
      */
     clearProgressData() {
-        localStorage.removeItem(this.KEYS.WORKOUTS);
-        localStorage.removeItem(this.KEYS.PERSONAL_RECORDS);
-        localStorage.removeItem(this.KEYS.STREAK);
-        localStorage.removeItem(this.KEYS.CYCLE_HISTORY);
-        localStorage.removeItem(this.KEYS.CONDITIONING);
+        [this.KEYS.WORKOUTS, this.KEYS.PERSONAL_RECORDS, this.KEYS.STREAK, this.KEYS.CYCLE_HISTORY, this.KEYS.CONDITIONING]
+            .forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* no-op */ } });
 
-        // Reset cycle in active program but keep the program
         const program = this.getActiveProgram();
-        if (program?.metadata?.cycle) {
-            program.metadata.cycle.currentWeek = 1;
-            program.metadata.cycle.startDate = new Date().toISOString();
-            program.metadata.cycle.isDeloadActive = false;
-            this.setActiveProgram(program);
+        const cycle = this._getCycle(program);
+        if (cycle) {
+            cycle.currentWeek = 1;
+            cycle.startDate = GT.startOfWeek(new Date()).toISOString();
+            cycle.isDeloadActive = false;
+            cycle.manualDeloadUntil = null;
+            delete cycle.weekStartedAt;
+            this._tryWrite(this.KEYS.ACTIVE_PROGRAM, program);
         }
+    },
+
+    // ========================================
+    // SESSIONE IN CORSO
+    // ========================================
+
+    /** Salva la sessione in corso (a ogni modifica). Restituisce false se non riesce, senza lanciare. */
+    saveActiveSession(obj) {
+        try {
+            localStorage.setItem(this.KEYS.ACTIVE_SESSION, JSON.stringify({ ...(obj || {}), savedAt: new Date().toISOString() }));
+            return true;
+        } catch (e) {
+            this.lastError = e;
+            return false;
+        }
+    },
+
+    getActiveSession() {
+        return this._read(this.KEYS.ACTIVE_SESSION, null, v => v === null || this._isObj(v));
+    },
+
+    clearActiveSession() {
+        try { localStorage.removeItem(this.KEYS.ACTIVE_SESSION); } catch (e) { /* no-op */ }
+    },
+
+    // ========================================
+    // PERSISTENZA (Safari non cancella dopo 7 giorni)
+    // ========================================
+
+    requestPersistence() {
+        if (this._persistPromise) return this._persistPromise;
+        try {
+            const st = typeof navigator !== 'undefined' ? navigator.storage : null;
+            if (st && typeof st.persist === 'function') {
+                const already = typeof st.persisted === 'function' ? st.persisted() : Promise.resolve(false);
+                this._persistPromise = Promise.resolve(already)
+                    .then(p => p || st.persist())
+                    .then(p => !!p)
+                    .catch(() => false);
+            } else {
+                this._persistPromise = Promise.resolve(false);
+            }
+        } catch (e) {
+            this._persistPromise = Promise.resolve(false);
+        }
+        return this._persistPromise;
     },
 
     // ========================================
     // CONDITIONING SESSIONS
     // ========================================
 
-    /**
-     * Get all conditioning sessions
-     */
+    /** Sessione con i campi nuovi, letta anche dai formati vecchi (type 'HIIT'/'hiit', duration in minuti). */
+    _normalizeConditioning(s) {
+        const type = String(s.type || '').toLowerCase();
+        let durationSec = this._num(s.durationSec);
+        if (!(durationSec > 0)) {
+            if (this._num(s.duration) > 0) durationSec = Math.round(this._num(s.duration) * 60);
+            else durationSec = Math.round(this._num(s.actualDuration) || this._num(s.plannedDuration) || 0);
+        }
+        const est = s.estimatedCalories !== undefined && s.estimatedCalories !== null
+            ? this._num(s.estimatedCalories) : this._num(s.calories);
+        const manual = s.manualCalories !== undefined && s.manualCalories !== null && s.manualCalories !== '' && this._num(s.manualCalories) > 0
+            ? this._num(s.manualCalories) : null;
+        return {
+            ...s,
+            type,
+            protocol: type === 'liss' ? null : (s.protocol ?? null),
+            activity: s.activity ?? null,
+            exercises: Array.isArray(s.exercises) ? s.exercises : [],
+            durationSec,
+            duration: Math.round(durationSec / 60),
+            estimatedCalories: Math.round(est),
+            manualCalories: manual,
+            calories: Math.round(manual ?? est),
+            notes: typeof s.notes === 'string' ? s.notes : ''
+        };
+    },
+
     getConditioningSessions() {
-        const data = localStorage.getItem(this.KEYS.CONDITIONING);
-        return data ? JSON.parse(data) : [];
+        return this._read(this.KEYS.CONDITIONING, [], Array.isArray)
+            .filter(s => this._isObj(s))
+            .map(s => this._normalizeConditioning(s))
+            .map((s, i) => ({ s, i, t: this._time(s.date) }))
+            .sort((a, b) => ((isNaN(b.t) ? -Infinity : b.t) - (isNaN(a.t) ? -Infinity : a.t)) || (a.i - b.i))
+            .map(x => x.s);
     },
 
     /**
-     * Save a conditioning session
+     * Salva una sessione di conditioning:
+     * {id, date, type:'hiit'|'liss', protocol, activity, exercises, durationSec, duration (min),
+     *  estimatedCalories, manualCalories|null, calories, notes}. LANCIA con code 'QUOTA' se pieno.
      */
     saveConditioningSession(session) {
-        const sessions = this.getConditioningSessions();
-        session.id = Date.now();
-        session.date = new Date().toISOString();
-        sessions.unshift(session);
-        localStorage.setItem(this.KEYS.CONDITIONING, JSON.stringify(sessions));
-        return session;
+        const raw = this._read(this.KEYS.CONDITIONING, [], Array.isArray).filter(s => this._isObj(s));
+        const rec = this._normalizeConditioning({ ...(session || {}) });
+        let id = Date.now();
+        const ids = new Set(raw.map(s => String(s.id)));
+        while (ids.has(String(id))) id++;
+        rec.id = id;
+        rec.date = GT.isValidDate(rec.date) ? new Date(rec.date).toISOString() : new Date().toISOString();
+        raw.unshift(rec);
+        this._write(this.KEYS.CONDITIONING, raw);
+        return rec;
     },
 
-    /**
-     * Get conditioning sessions from this week
-     */
     getConditioningThisWeek() {
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const sessions = this.getConditioningSessions();
-        return sessions.filter(s => new Date(s.date) >= startOfWeek);
+        const start = GT.startOfWeek(new Date()).getTime();
+        const end = GT.addDays(GT.startOfWeek(new Date()), 7).getTime();
+        return this.getConditioningSessions().filter(s => {
+            const t = this._time(s.date);
+            return !isNaN(t) && t >= start && t < end;
+        });
     },
 
-    /**
-     * Get conditioning sessions in current cycle
-     */
     getConditioningInCycle() {
         const cycleInfo = this.getCycleInfo();
         if (!cycleInfo) return [];
-
-        const cycleStart = new Date(cycleInfo.startDate);
-        const sessions = this.getConditioningSessions();
-        return sessions.filter(s => new Date(s.date) >= cycleStart);
+        const start = this._time(GT.startOfDay(cycleInfo.startDate));
+        if (isNaN(start)) return [];
+        return this.getConditioningSessions().filter(s => this._time(s.date) >= start);
     },
 
-    /**
-     * Get conditioning statistics
-     */
     getConditioningStatistics() {
         const sessions = this.getConditioningSessions();
         const thisWeek = this.getConditioningThisWeek();
 
         if (sessions.length === 0) {
             return {
-                totalSessions: 0,
-                totalDuration: 0,
-                totalCalories: 0,
-                hiitCount: 0,
-                lissCount: 0,
-                weekSessions: 0,
-                weekDuration: 0,
-                weekCalories: 0,
-                avgDurationPerSession: 0
+                totalSessions: 0, totalDuration: 0, totalCalories: 0, hiitCount: 0, lissCount: 0,
+                weekSessions: 0, weekDuration: 0, weekCalories: 0, avgDurationPerSession: 0
             };
         }
 
-        const totalDuration = sessions.reduce((sum, s) => sum + (s.actualDuration || s.plannedDuration || 0), 0);
-        const totalCalories = sessions.reduce((sum, s) => sum + (s.manualCalories || s.estimatedCalories || 0), 0);
-        const hiitCount = sessions.filter(s => s.type === 'HIIT').length;
-        const lissCount = sessions.filter(s => s.type === 'LISS').length;
-
-        const weekDuration = thisWeek.reduce((sum, s) => sum + (s.actualDuration || s.plannedDuration || 0), 0);
-        const weekCalories = thisWeek.reduce((sum, s) => sum + (s.manualCalories || s.estimatedCalories || 0), 0);
-
+        const totalSec = sessions.reduce((sum, s) => sum + s.durationSec, 0);
+        const weekSec = thisWeek.reduce((sum, s) => sum + s.durationSec, 0);
         return {
             totalSessions: sessions.length,
-            totalDuration: Math.round(totalDuration / 60), // in minuti
-            totalCalories,
-            hiitCount,
-            lissCount,
+            totalDuration: Math.round(totalSec / 60), // in minuti
+            totalCalories: sessions.reduce((sum, s) => sum + s.calories, 0),
+            hiitCount: sessions.filter(s => s.type === 'hiit').length,
+            lissCount: sessions.filter(s => s.type === 'liss').length,
             weekSessions: thisWeek.length,
-            weekDuration: Math.round(weekDuration / 60),
-            weekCalories,
-            avgDurationPerSession: Math.round(totalDuration / sessions.length / 60)
+            weekDuration: Math.round(weekSec / 60),
+            weekCalories: thisWeek.reduce((sum, s) => sum + s.calories, 0),
+            avgDurationPerSession: Math.round(totalSec / sessions.length / 60)
         };
     },
 
-    /**
-     * Delete a conditioning session
-     */
     deleteConditioningSession(id) {
-        let sessions = this.getConditioningSessions();
-        sessions = sessions.filter(s => s.id !== id);
-        localStorage.setItem(this.KEYS.CONDITIONING, JSON.stringify(sessions));
+        const raw = this._read(this.KEYS.CONDITIONING, [], Array.isArray);
+        const kept = raw.filter(s => !(this._isObj(s) && String(s.id) === String(id)));
+        if (kept.length === raw.length) return false;
+        this._write(this.KEYS.CONDITIONING, kept);
+        return true;
+    },
+
+    getRecentConditioningSessions(limit = 5) {
+        return this.getConditioningSessions().slice(0, limit);
+    },
+
+    // ========================================
+    // MIGRAZIONE (una volta, non distruttiva)
+    // ========================================
+
+    // Vecchio deload anticipato "per sempre" (isDeloadActive senza scadenza) → 7 giorni da ora
+    _migrateProgramCycle() {
+        const program = this.getActiveProgram();
+        // Scheda della v1.25 senza programId: gliene serve uno perché i workout nuovi lo portino
+        // (getNextDayIndex). I workout vecchi restano senza e si riconoscono dal tipo del giorno.
+        if (program && this._isObj(program.metadata) && program.metadata.programId === undefined) {
+            program.metadata.programId = Date.now();
+            this.setActiveProgram(program);
+        }
+        const cycle = this._getCycle(program);
+        if (!cycle) return false;
+        if (cycle.isDeloadActive === true && cycle.manualDeloadUntil === undefined) {
+            cycle.manualDeloadUntil = GT.addDays(new Date(), 7).toISOString();
+            this.setActiveProgram(program);
+            return true;
+        }
+        if (cycle.manualDeloadUntil === undefined) {
+            cycle.manualDeloadUntil = null;
+            this.setActiveProgram(program);
+            return true;
+        }
+        return false;
     },
 
     /**
-     * Get recent conditioning sessions
+     * Migrazione dai dati della v1.25 (idempotente). Non cancella chiavi:
+     * - deload manuale vecchio → con scadenza;
+     * - streak a giorni → a settimane (il vecchio record resta in legacyDaysBest);
+     * - PR ricalcolati dagli allenamenti (la copia vecchia resta in gymtracker_meta.prsBeforeV126).
      */
-    getRecentConditioningSessions(limit = 5) {
-        const sessions = this.getConditioningSessions();
-        return sessions.slice(0, limit);
+    migrate() {
+        const meta = this._read(this.KEYS.META, {}, v => this._isObj(v));
+        try { this._migrateProgramCycle(); } catch (e) { /* no-op */ }
+        try { this.getStreak(); } catch (e) { /* no-op */ }
+        if ((this._int(meta.schemaVersion) || 1) < this.SCHEMA_VERSION) {
+            try {
+                const oldPrs = localStorage.getItem(this.KEYS.PERSONAL_RECORDS);
+                if (oldPrs && oldPrs.length < 400000 && meta.prsBeforeV126 === undefined) meta.prsBeforeV126 = oldPrs;
+                if (this.getWorkouts().length) this.rebuildPersonalRecords();
+            } catch (e) { /* no-op */ }
+            meta.schemaVersion = this.SCHEMA_VERSION;
+            meta.migratedAt = new Date().toISOString();
+            meta.appVersion = GT.APP_VERSION;
+            if (!this._tryWrite(this.KEYS.META, meta)) {
+                delete meta.prsBeforeV126;
+                this._tryWrite(this.KEYS.META, meta);
+            }
+        }
+        return meta;
     }
 };
+
+// Migrazione all'avvio: protetta, l'app parte comunque
+try { Storage.migrate(); } catch (e) { try { console.warn('[Storage] migrazione', e); } catch (x) { /* no-op */ } }

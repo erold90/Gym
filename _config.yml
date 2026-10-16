@@ -1,0 +1,8 @@
+# GitHub Pages (build "legacy" = Jekyll, nessun .nojekyll): file da NON pubblicare.
+# Senza questo elenco erold90.github.io/Gym/CLAUDE.md e README.md rispondevano 200 (G4).
+exclude:
+  - CLAUDE.md
+  - README.md
+  - tests
+  - .analisi-2026-10
+  - .memsearch

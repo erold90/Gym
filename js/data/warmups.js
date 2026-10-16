@@ -856,55 +856,51 @@ const WARMUPS_DB = {
     }
 };
 
+// ========================================
+// DAL TIPO DI GIORNO ALLA ROUTINE
+// ========================================
+
+// Tipo del giorno ("Push B", "Lower A", "Full Body E", "upper-a", "Glute Burn", nomi liberi
+// del costruttore...) → chiave di routine. Le lettere di variante non cambiano la routine,
+// tranne Lower A (quadricipiti) e Lower/Legs B (femorali). Nulla di riconosciuto: full-body.
+function resolveRoutineKey(workoutType) {
+    const t = String(workoutType || '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!t) return 'full-body';
+    if (/^lower a$/.test(t)) return 'legs-quad';
+    if (/^(lower|legs) b$/.test(t)) return 'legs-hamstring';
+    if (/\bpush\b|spinta/.test(t)) return 'push';
+    if (/\bpull\b|trazion|tirata/.test(t)) return 'pull';
+    if (/\b(lower|legs?)\b|gambe|inferiore/.test(t)) return 'lower';
+    if (/glute|glutei/.test(t)) return 'glutei';
+    if (/\bfull\b|total|complet/.test(t)) return 'full-body';
+    if (/\barms?\b|braccia/.test(t) && /shoulder|spalle/.test(t)) return 'upper';
+    if (/\bupper\b|superiore/.test(t)) return 'upper';
+    if (/chest|petto/.test(t)) return 'petto';
+    if (/\bback\b|schiena|dorso/.test(t)) return 'schiena';
+    if (/shoulder|spalle/.test(t)) return 'spalle';
+    if (/tricip/.test(t)) return 'tricipiti';
+    if (/\barms?\b|braccia|bicip/.test(t)) return 'bicipiti';
+    if (/quad/.test(t)) return 'quadricipiti';
+    if (/femoral|hamstring/.test(t)) return 'femorali';
+    if (/calf|calves|polpacc/.test(t)) return 'polpacci';
+    if (/\bcore\b|\babs?\b|addom|addome/.test(t)) return 'addome';
+    return 'full-body';
+}
+
+// Defaticamento che corrisponde a un riscaldamento: stesse chiavi, tranne quelle che il
+// database degli stretching non ha (tricipiti → braccia, polpacci → lower body)
+const COOLDOWN_FOR_WARMUP = { tricipiti: 'bicipiti', polpacci: 'lower' };
+// Per il giorno dei glutei il riscaldamento è di attivazione, il defaticamento completo
+const COOLDOWN_FOR_TYPE = { glutei: 'lower' };
+
 // Function to get warmup for a workout type
 function getWarmupForWorkout(workoutType) {
-    // Map workout types to warmup types
-    const warmupMap = {
-        // Upper/Lower Split
-        "upper-a": "upper",
-        "upper-b": "upper",
-        "upper-c": "upper",
-        "Upper A": "upper",
-        "Upper B": "upper",
-        "Upper C": "upper",
-        "lower-a": "legs-quad",      // Lower A = quad focus
-        "lower-b": "legs-hamstring", // Lower B = hamstring focus
-        "lower-c": "lower",
-        "Lower A": "legs-quad",
-        "Lower B": "legs-hamstring",
-        "Lower C": "lower",
-        // Push/Pull/Legs
-        "push": "push",
-        "Push": "push",
-        "pull": "pull",
-        "Pull": "pull",
-        "legs": "lower",
-        "Legs": "lower",
-        // Single muscle focus
-        "chest": "petto",
-        "Chest": "petto",
-        "back": "schiena",
-        "Back": "schiena",
-        "shoulders": "spalle",
-        "Shoulders": "spalle",
-        "arms": "bicipiti",
-        "Arms": "bicipiti",
-        "Arms & Shoulders": "upper",
-        // Full body
-        "full-body": "full-body",
-        "Full Body": "full-body",
-        "Full Body A": "full-body",
-        "Full Body B": "full-body",
-        "Full Body C": "full-body",
-        // Upper extras
-        "Upper": "upper"
-    };
-
-    return WARMUPS_DB[warmupMap[workoutType]] || WARMUPS_DB["full-body"];
+    return WARMUPS_DB[resolveRoutineKey(workoutType)] || WARMUPS_DB["full-body"];
 }
 
 // Function to get warmup for specific muscle groups
 function getWarmupForMuscles(primaryMuscles) {
+    if (!Array.isArray(primaryMuscles)) primaryMuscles = [];
     // If multiple muscles, check which warmup covers the most
     // Push muscles (chest, shoulders, triceps)
     if (primaryMuscles.includes("petto") && primaryMuscles.includes("spalle")) {
@@ -1548,50 +1544,68 @@ const COOLDOWN_DB = {
     }
 };
 
-// Get cooldown for workout type
-function getCooldownForWorkout(workoutType) {
-    const cooldownMap = {
-        // Upper/Lower Split
-        "upper-a": "upper",
-        "upper-b": "upper",
-        "upper-c": "upper",
-        "Upper A": "upper",
-        "Upper B": "upper",
-        "Upper C": "upper",
-        "lower-a": "legs-quad",      // Lower A typically focuses on quads
-        "lower-b": "legs-hamstring", // Lower B typically focuses on hamstrings
-        "lower-c": "lower",
-        "Lower A": "legs-quad",
-        "Lower B": "legs-hamstring",
-        "Lower C": "lower",
-        // Push/Pull/Legs
-        "push": "push",
-        "Push": "push",
-        "pull": "pull",
-        "Pull": "pull",
-        "legs": "lower",
-        "Legs": "lower",
-        // Single muscle focus
-        "chest": "petto",
-        "Chest": "petto",
-        "back": "schiena",
-        "Back": "schiena",
-        "shoulders": "spalle",
-        "Shoulders": "spalle",
-        "arms": "bicipiti",
-        "Arms": "bicipiti",
-        "Arms & Shoulders": "upper",
-        // Full body
-        "full-body": "full-body",
-        "Full Body": "full-body",
-        "Full Body A": "full-body",
-        "Full Body B": "full-body",
-        "Full Body C": "full-body",
-        // Upper extras
-        "Upper": "upper"
-    };
+// ========================================
+// SERIE E DURATE NUMERICHE (letti dall'app e dall'algoritmo)
+// ========================================
 
-    return COOLDOWN_DB[cooldownMap[workoutType]] || COOLDOWN_DB["full-body"];
+const REP_SECONDS = 3;          // una ripetizione lenta di mobilità
+const SET_REST_SECONDS = 15;    // pausa fra due serie dello stesso esercizio
+const CHANGE_SECONDS = 15;      // cambio di esercizio
+
+// Secondi di UNA serie, ricavati dalla durata scritta:
+// "30 sec per lato" → 60, "2 minuti" → 120, "10 per gamba" → 60, "15 reps" → 45
+function estimateExerciseSeconds(ex) {
+    const d = String(ex && ex.duration || '').toLowerCase();
+    let sides = 1;
+    if (/per direzione per (gamba|piede)/.test(d)) sides = 4;
+    else if (/ciascun/.test(d)) sides = 3;
+    else if (/per (lato|gamba|braccio|direzione|piede|mano)/.test(d)) sides = 2;
+    let m;
+    if ((m = d.match(/(\d+)\s*minut/))) return Number(m[1]) * 60;
+    if ((m = d.match(/(\d+)\s*sec/))) return Number(m[1]) * sides;
+    if ((m = d.match(/(\d+)/))) return Number(m[1]) * REP_SECONDS * sides;
+    return 30;
+}
+
+// Ogni esercizio ha `sets` (intero ≥1) e `durationSec` (una serie); ogni routine ha
+// `durationMin` (numero) e `duration` coerente ("9 min"). Calcolato una volta al caricamento,
+// così resta giusto anche se si cambiano gli esercizi.
+function normalizeRoutines(db) {
+    Object.values(db).forEach(routine => {
+        let total = 0;
+        routine.exercises.forEach(ex => {
+            const sets = Math.round(Number(ex.sets));
+            ex.sets = Number.isFinite(sets) && sets >= 1 ? sets : 1;
+            ex.durationSec = estimateExerciseSeconds(ex);
+            total += ex.sets * ex.durationSec + (ex.sets - 1) * SET_REST_SECONDS + CHANGE_SECONDS;
+        });
+        routine.durationMin = Math.max(1, Math.round(total / 60));
+        routine.duration = `${routine.durationMin} min`;
+    });
+}
+normalizeRoutines(WARMUPS_DB);
+normalizeRoutines(COOLDOWN_DB);
+
+// Minuti del riscaldamento con quella chiave (day.warmup); chiave sconosciuta → full-body
+function getWarmupDurationMin(key) {
+    return (WARMUPS_DB[key] || WARMUPS_DB["full-body"]).durationMin;
+}
+
+// Defaticamento coerente col riscaldamento del giorno (day.warmup):
+// legs-quad → legs-quad, legs-hamstring → legs-hamstring, push → push, upper → upper, ...
+function getCooldownByKey(warmupKey) {
+    const key = COOLDOWN_FOR_WARMUP[warmupKey] || warmupKey;
+    return COOLDOWN_DB[key] || COOLDOWN_DB["full-body"];
+}
+
+function getCooldownDurationMin(warmupKey) {
+    return getCooldownByKey(warmupKey).durationMin;
+}
+
+// Get cooldown for workout type (ripiego quando il giorno non ha `warmup`)
+function getCooldownForWorkout(workoutType) {
+    const key = resolveRoutineKey(workoutType);
+    return getCooldownByKey(COOLDOWN_FOR_TYPE[key] || key);
 }
 
 // Get cooldown by muscle groups trained
@@ -1633,9 +1647,13 @@ return {
     getWarmupForWorkout,
     getWarmupForMuscles,
     getWarmupByMuscle,
+    getWarmupDurationMin,
     getCooldownForWorkout,
     getCooldownForMuscles,
-    getCooldownByMuscle
+    getCooldownByMuscle,
+    getCooldownByKey,
+    getCooldownDurationMin,
+    resolveRoutineKey
 };
 
 })();

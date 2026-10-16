@@ -16,7 +16,7 @@ const HIIT_EXERCISES = {
         difficulty: "advanced",
         equipment: [],
         metValue: 10,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2025/08/Burpee-with-Push-Up.gif"
     },
     "half-burpees": {
         name: "Half Burpees",
@@ -25,7 +25,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 8,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Half-Burpee.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/burpees.gif"
     },
     "mountain-climbers": {
         name: "Mountain Climbers",
@@ -34,7 +34,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 8,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-climber.gif"
     },
     "jumping-jacks": {
         name: "Jumping Jacks",
@@ -43,7 +43,7 @@ const HIIT_EXERCISES = {
         difficulty: "beginner",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jumping-Jack.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Jumping-jack.gif"
     },
     "star-jumps": {
         name: "Star Jumps",
@@ -52,7 +52,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 9,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Star-Jump.gif"
+        gifUrl: "https://static.exercisedb.dev/media/HtfCpfi.gif"
     },
 
     // === LOWER BODY ===
@@ -72,7 +72,7 @@ const HIIT_EXERCISES = {
         difficulty: "advanced",
         equipment: [],
         metValue: 9,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Split-Jump.gif"
+        gifUrl: null
     },
     "high-knees": {
         name: "High Knees",
@@ -81,7 +81,7 @@ const HIIT_EXERCISES = {
         difficulty: "beginner",
         equipment: [],
         metValue: 8,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/High-Knee-Run.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/High-Knee-Run.gif"
     },
     "butt-kicks": {
         name: "Butt Kicks",
@@ -90,7 +90,7 @@ const HIIT_EXERCISES = {
         difficulty: "beginner",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butt-Kicks.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/10/Butt-Kicks.gif"
     },
     "squat-pulse": {
         name: "Squat Pulse",
@@ -99,7 +99,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 6,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Squat-Pulse.gif"
+        gifUrl: null
     },
     "skater-jumps": {
         name: "Skater Jumps",
@@ -108,7 +108,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 8,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Skater-Hops.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Skater.gif"
     },
     "box-jump": {
         name: "Box Jump",
@@ -117,7 +117,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: ["box"],
         metValue: 9,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Box-Jump.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/07/The-Box-Jump.gif"
     },
     "lateral-shuffle": {
         name: "Lateral Shuffle",
@@ -126,7 +126,7 @@ const HIIT_EXERCISES = {
         difficulty: "beginner",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Lateral-Shuffle.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Lateral-Speed-Step.gif"
     },
 
     // === UPPER BODY ===
@@ -137,7 +137,7 @@ const HIIT_EXERCISES = {
         difficulty: "advanced",
         equipment: [],
         metValue: 8,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Clapping-Push-up.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Clap-Push-Up.gif"
     },
     "plank-shoulder-tap": {
         name: "Plank Shoulder Tap",
@@ -146,7 +146,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 6,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Plank-Shoulder-Tap.gif"
+        gifUrl: "https://static.exercisedb.dev/media/yRpV5TC.gif"
     },
     "push-up-to-t": {
         name: "Push-up to T",
@@ -155,7 +155,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Push-up-to-Side-Plank.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/01/push-up-with-rotation.gif"
     },
     "diamond-push-up": {
         name: "Diamond Push-up",
@@ -175,7 +175,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/V-Up.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jackknife-Sit-ups.gif"
     },
     "bicycle-crunch": {
         name: "Bicycle Crunch",
@@ -193,7 +193,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: [],
         metValue: 7,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Plank-Jack.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/06/Plank-Jacks-Extended-Leg.gif"
     },
     "russian-twist-fast": {
         name: "Russian Twist Veloce",
@@ -220,7 +220,7 @@ const HIIT_EXERCISES = {
         difficulty: "beginner",
         equipment: [],
         metValue: 5,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Toe-Touches.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/12/Lying-Toe-Touches.gif"
     },
 
     // === CON ATTREZZATURA ===
@@ -231,7 +231,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: ["kettlebell"],
         metValue: 10,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Kettlebell-Swing.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Kettlebell-Swings.gif"
     },
     "battle-ropes": {
         name: "Battle Ropes",
@@ -240,7 +240,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: ["battle-ropes"],
         metValue: 10,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Battling-Ropes.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/07/Battle-Rope.gif"
     },
     "sled-push": {
         name: "Sled Push",
@@ -258,7 +258,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: ["med-ball"],
         metValue: 9,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Medicine-Ball-Overhead-Slam.gif"
+        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/06/Medicine-ball-Overhead-Slam-exercise.gif"
     },
     "dumbbell-thruster": {
         name: "Dumbbell Thruster",
@@ -267,7 +267,7 @@ const HIIT_EXERCISES = {
         difficulty: "intermediate",
         equipment: ["manubri"],
         metValue: 9,
-        gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Thruster.gif"
+        gifUrl: "https://static.exercisedb.dev/media/yWxMvB5.gif"
     }
 };
 
@@ -321,69 +321,59 @@ const LISS_ACTIVITIES = {
 };
 
 // ========================================
-// PROTOCOLLI HIIT
+// PROTOCOLLI HIIT — UNICA FONTE (app e algoritmo leggono da qui)
 // ========================================
+//
+// Campi (v1.26):
+//   id, name, description
+//   work / rest        secondi di lavoro e di recupero di ogni intervallo
+//   rounds             giri (circuit), serie per esercizio (block), minuti (emom)
+//   exercisesCount     esercizi consigliati
+//   order              'circuit' = giro su tutti gli esercizi e si ricomincia
+//                      'block'   = tutte le serie di un esercizio, poi il successivo (Tabata)
+//                      'emom'    = un intervallo al minuto, esercizi a turno
+//   intervals          intervalli lavoro+recupero totali (calcolato)
+//   totalMin           durata in minuti (calcolata: intervals × (work + rest))
+//   level              'beginner' | 'intermediate' | 'advanced'
+// Alias per il codice v1.25 (stessi valori): workTime, restTime, difficulty, totalDuration.
 
-const HIIT_PROTOCOLS = {
-    tabata: {
-        name: "Tabata",
-        workTime: 20,
-        restTime: 10,
-        rounds: 8,
-        exercisesCount: 4,
-        totalDuration: 16,  // minuti
-        difficulty: "advanced",
-        description: "8 round di 20s lavoro + 10s riposo per esercizio. Intensità massima."
-    },
-    circuit30: {
-        name: "Circuito 30/30",
-        workTime: 30,
-        restTime: 30,
-        rounds: 3,
-        exercisesCount: 5,
-        totalDuration: 15,
-        difficulty: "intermediate",
-        description: "30s lavoro + 30s riposo per esercizio, 3 giri completi."
-    },
-    circuit4020: {
-        name: "Circuito 40/20",
-        workTime: 40,
-        restTime: 20,
-        rounds: 3,
-        exercisesCount: 5,
-        totalDuration: 15,
-        difficulty: "intermediate",
-        description: "40s lavoro + 20s riposo per esercizio, 3 giri completi."
-    },
-    beginner: {
-        name: "Principiante",
-        workTime: 20,
-        restTime: 40,
-        rounds: 2,
-        exercisesCount: 4,
-        totalDuration: 8,
-        difficulty: "beginner",
-        description: "20s lavoro + 40s riposo, 2 giri. Ideale per iniziare."
-    },
-    emom10: {
-        name: "EMOM 10",
-        workTime: 40,
-        restTime: 20,
-        rounds: 10,
-        exercisesCount: 2,
-        totalDuration: 10,
-        difficulty: "intermediate",
-        description: "Every Minute On the Minute: esegui gli esercizi all'inizio di ogni minuto."
-    }
-};
+const HIIT_PROTOCOLS = (() => {
+    const list = [
+        { id: 'beginner', name: 'Principiante', work: 20, rest: 40, rounds: 2, exercisesCount: 4, order: 'circuit', level: 'beginner',
+          description: '20s lavoro + 40s recupero, 2 giri' },
+        { id: 'circuit30', name: 'Circuito 30/30', work: 30, rest: 30, rounds: 3, exercisesCount: 5, order: 'circuit', level: 'intermediate',
+          description: '30s lavoro + 30s recupero, 3 giri' },
+        { id: 'circuit4020', name: 'Circuito 40/20', work: 40, rest: 20, rounds: 3, exercisesCount: 5, order: 'circuit', level: 'intermediate',
+          description: '40s lavoro + 20s recupero, 3 giri' },
+        { id: 'emom10', name: 'EMOM 10', work: 40, rest: 20, rounds: 10, exercisesCount: 2, order: 'emom', level: 'intermediate',
+          description: 'Ogni minuto 40s di lavoro, esercizi a turno' },
+        { id: 'tabata', name: 'Tabata', work: 20, rest: 10, rounds: 8, exercisesCount: 4, order: 'block', level: 'advanced',
+          description: '8 × 20s/10s per esercizio, intensità massima' }
+    ];
+    const out = {};
+    list.forEach(p => {
+        p.intervals = p.order === 'emom' ? p.rounds : p.rounds * p.exercisesCount;
+        p.totalMin = Math.round(p.intervals * (p.work + p.rest) / 60);
+        // Alias v1.25
+        p.workTime = p.work;
+        p.restTime = p.rest;
+        p.difficulty = p.level;
+        p.totalDuration = p.totalMin;
+        out[p.id] = p;
+    });
+    return out;
+})();
 
 // ========================================
 // CONFIGURAZIONE PER OBIETTIVO
 // ========================================
+// frequency = sessioni/settimana consigliate, maxFrequency = tetto oltre il quale il cardio
+// comincia a rubare recupero ai pesi. preferredType 'HIIT' | 'LISS' | 'mixed' (alterna).
+// protocol = chiave di HIIT_PROTOCOLS (l'app la abbassa se supera il livello della persona).
 
 const CONDITIONING_BY_GOAL = {
     strength: {
-        frequency: 0,  // sessioni/settimana raccomandate
+        frequency: 0,
         maxFrequency: 1,
         preferredType: "LISS",
         hiitAllowed: false,
@@ -423,145 +413,30 @@ const CONDITIONING_BY_GOAL = {
         protocol: "tabata",
         preferredDays: ["any"],
         note: "Cardio prioritario. Può precedere il resistance training."
+    },
+    // Tonificazione = perdere grasso tenendo (e un po' costruendo) muscolo, soprattutto
+    // glutei e gambe. Perché 2 sessioni a settimana, una HIIT breve e una LISS:
+    // - Il cardio aggiunto ai pesi non toglie ipertrofia, ma la forza delle gambe ne risente se
+    //   è tanto e fatto vicino alla seduta di gambe (Schumann et al., Sports Med 2022, meta-analisi;
+    //   Wilson et al., J Strength Cond Res 2012: l'interferenza cresce con frequenza e durata
+    //   del cardio ed è minore in bici/camminata che nella corsa). Quindi: ≤3 sedute, 15-30 min,
+    //   a basso impatto, HIIT mai il giorno prima delle gambe (safeDaysForHIIT).
+    // - Per la massa grassa HIIT e cardio continuo moderato si equivalgono, con l'HIIT che chiede
+    //   circa il 40% del tempo (Wewege et al., Obes Rev 2017; Viana et al., Br J Sports Med 2019).
+    //   Alternarli dà il risultato dell'uno e dell'altro senza sommare la fatica di due HIIT.
+    // - Per dimagrire servono 150-250 min/sett di attività moderata, pesi compresi (ACSM,
+    //   Donnelly et al., Med Sci Sports Exerc 2009): 3 sedute di pesi + 15' HIIT + 30' LISS ci stanno.
+    // Il protocollo 30/30 resta sostenibile anche per chi non è allenata all'HIIT.
+    toning: {
+        frequency: 2,
+        maxFrequency: 3,
+        preferredType: "mixed",
+        hiitAllowed: true,
+        hiitDuration: 15,
+        lissDuration: 30,
+        duration: 25,
+        protocol: "circuit30",
+        preferredDays: ["off-day", "post-upper"],
+        note: "Una HIIT breve e una camminata in salita a settimana, lontano dal giorno di gambe."
     }
 };
-
-// ========================================
-// FUNZIONI HELPER
-// ========================================
-
-/**
- * Seleziona esercizi HIIT in base a livello, attrezzatura e muscoli da evitare
- */
-function selectHIITExercises(userLevel, equipment = [], avoidMuscles = [], count = 5) {
-    const levelOrder = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
-    const userLevelNum = levelOrder[userLevel] || 2;
-
-    const eligible = Object.entries(HIIT_EXERCISES)
-        .filter(([id, ex]) => {
-            // Filtra per difficoltà
-            const exLevelNum = levelOrder[ex.difficulty] || 2;
-            if (exLevelNum > userLevelNum) return false;
-
-            // Filtra per attrezzatura (se richiesta)
-            if (ex.equipment.length > 0) {
-                const hasEquipment = ex.equipment.some(eq => equipment.includes(eq));
-                if (!hasEquipment) return false;
-            }
-
-            // Evita muscoli già allenati (se specificato)
-            if (avoidMuscles.length > 0) {
-                const worksSameMuscles = ex.muscles.some(m =>
-                    avoidMuscles.includes(m) && m !== 'full-body' && m !== 'core'
-                );
-                if (worksSameMuscles) return false;
-            }
-
-            return true;
-        })
-        .map(([id, ex]) => ({ id, ...ex }));
-
-    // Mescola e prendi il numero richiesto
-    const shuffled = eligible.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
-}
-
-/**
- * Ottieni protocollo consigliato per obiettivo e livello
- */
-function getRecommendedProtocol(goal, userLevel) {
-    const config = CONDITIONING_BY_GOAL[goal];
-    if (!config || !config.protocol) return HIIT_PROTOCOLS.circuit30;
-
-    let protocol = HIIT_PROTOCOLS[config.protocol];
-
-    // Adatta al livello utente
-    const levelOrder = { beginner: 1, intermediate: 2, advanced: 3, expert: 3 };
-    const userLevelNum = levelOrder[userLevel] || 2;
-    const protocolLevelNum = levelOrder[protocol.difficulty] || 2;
-
-    // Se il protocollo è troppo difficile, scala a uno più facile
-    if (protocolLevelNum > userLevelNum) {
-        if (userLevelNum === 1) return HIIT_PROTOCOLS.beginner;
-        return HIIT_PROTOCOLS.circuit30;
-    }
-
-    return protocol;
-}
-
-/**
- * Stima calorie bruciate
- * Formula: (MET × 3.5 × peso in kg) / 200 × minuti
- */
-function estimateConditioningCalories(exercises, durationMinutes, userWeightKg, type = 'HIIT') {
-    let avgMET;
-
-    if (type === 'LISS' || !exercises || exercises.length === 0) {
-        avgMET = 5; // MET medio per LISS
-    } else {
-        // Calcola MET medio degli esercizi
-        const totalMET = exercises.reduce((sum, ex) => {
-            const exData = HIIT_EXERCISES[ex.id || ex.exerciseId];
-            return sum + (exData?.metValue || 8);
-        }, 0);
-        avgMET = totalMET / exercises.length;
-    }
-
-    const caloriesPerMinute = (avgMET * 3.5 * userWeightKg) / 200;
-    return Math.round(caloriesPerMinute * durationMinutes);
-}
-
-/**
- * Ottieni suggerimento conditioning per la settimana
- */
-function getConditioningSuggestion(goal, userLevel, daysPerWeek, completedThisWeek = 0) {
-    const config = CONDITIONING_BY_GOAL[goal];
-    if (!config) return null;
-
-    const remaining = config.frequency - completedThisWeek;
-
-    if (remaining <= 0) {
-        return {
-            suggested: false,
-            message: `Hai completato le ${config.frequency} sessioni consigliate questa settimana!`,
-            canDoMore: completedThisWeek < config.maxFrequency,
-            config
-        };
-    }
-
-    return {
-        suggested: true,
-        remaining,
-        type: config.preferredType === 'mixed' ? (completedThisWeek % 2 === 0 ? 'HIIT' : 'LISS') : config.preferredType,
-        duration: config.preferredType === 'HIIT' ? config.hiitDuration || config.duration : config.lissDuration || config.duration,
-        protocol: getRecommendedProtocol(goal, userLevel),
-        message: `${remaining} session${remaining > 1 ? 'i' : 'e'} conditioning consigliat${remaining > 1 ? 'e' : 'a'} questa settimana`,
-        config
-    };
-}
-
-/**
- * Verifica se oggi è un buon giorno per HIIT
- * in base agli ultimi workout (evita HIIT vicino a leg day)
- */
-function isGoodDayForHIIT(recentWorkouts) {
-    if (!recentWorkouts || recentWorkouts.length === 0) return true;
-
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Cerca leg day nelle ultime 24h o pianificato per domani
-    const hasRecentLegDay = recentWorkouts.some(w => {
-        const workoutDate = new Date(w.date);
-        const isYesterdayOrToday = workoutDate >= yesterday && workoutDate <= today;
-        const isLegDay = w.type?.toLowerCase().includes('lower') ||
-                         w.type?.toLowerCase().includes('leg') ||
-                         w.type?.toLowerCase().includes('gambe');
-        return isYesterdayOrToday && isLegDay;
-    });
-
-    return !hasRecentLegDay;
-}
