@@ -4,7 +4,7 @@
  */
 
 // Versione attesa: la aggiorna scripts/versione.sh insieme a sw.js, utils.js e index.html
-const GT_EXPECTED_VERSION = 'v2.0.0';
+const GT_EXPECTED_VERSION = 'v2.0.1';
 
 // Guardia: una pagina nuova con moduli vecchi (cache di un service worker precedente) non deve
 // partire — con storage.js della v1.25 la seduta non verrebbe mai salvata (R1-01).

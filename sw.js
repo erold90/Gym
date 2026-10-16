@@ -2,7 +2,7 @@
 // Versione: si cambia SOLO con `scripts/versione.sh X.Y.Z` (aggiorna anche index.html, utils.js, main.js).
 // CSS e JS hanno ?v=<versione> nell'URL: così una pagina nuova non può mai ricevere uno script
 // vecchio da una cache precedente (R1-01: HTML v2 con storage.js v1.25 = seduta persa).
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 const CACHE_VERSION = `v${APP_VERSION}`;
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 const VERSIONED = /\.(?:js|css)$/;

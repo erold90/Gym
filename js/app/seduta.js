@@ -1,9 +1,9 @@
 /**
  * GymTracker 2.0 — area SEDUTA: avvio (anche libera e "ho poco tempo"), sessione salvata a ogni
  * modifica e ripresa dopo una ricarica, esercizio corrente con UNA serie aperta, recupero nel dock
- * (stessa macchina a timestamp di Timer), superset, rampa di riscaldamento, "Trova il peso",
- * calcolatore dischi, Scambia, nota per esercizio, riscaldamento e defaticamento, fine e riepilogo
- * a pagina intera (#riepilogo).
+ * (stessa macchina a timestamp di Timer), superset (con la riga del compagno da preparare), rampa di
+ * riscaldamento, "Trova il peso", calcolatore dischi, Scambia, nota per esercizio, riscaldamento e
+ * defaticamento, fine e riepilogo a pagina intera (#riepilogo).
  *
  * Dati della sessione (App.activeWorkout, salvata in gymtracker_active_session):
  *   esercizio: { exerciseId, name, sets, reps, rest, targetReps, targetSets, originalSets, targetRir,
@@ -2040,8 +2040,9 @@ Object.assign(App, {
         const gif = this._gifUrl(ex.exerciseId);
         const group = this._group(this.currentExerciseIndex);
         const letter = group ? this._exLetter(ex) : '';
-        const partners = group ? group.filter(i => i !== this.currentExerciseIndex).map(i => w.exercises[i].name) : [];
-        const ssBadge = group ? `<span class="ss-badge">${this.ico('superset')}${ex.isGiantSet || group.length > 2 ? 'Giant set' : 'Superset'} con ${GT.esc(partners.join(' e '))}</span>` : '';
+        // superset: il badge dice solo il tipo, i compagni hanno la loro riga sotto l'intestazione
+        const ssBadge = group ? `<span class="ss-badge">${this.ico('superset')}${ex.isGiantSet || group.length > 2 ? 'Giant set' : 'Superset'}</span>` : '';
+        const mates = group ? this._sedMatesHTML(group) : '';
         const lastLetter = group ? this._exLetter(w.exercises[group[group.length - 1]]) : '';
         const restSec = group ? (ex.supersetRest || ex.rest || 90) : (ex.rest || this._defaultRest(ex.exerciseId));
         const rir = this._targetRir(ex);
@@ -2127,6 +2128,7 @@ Object.assign(App, {
 
         el.innerHTML = `
             ${top}
+            ${mates}
             <div class="ex__goal" role="group" aria-label="${goalLabel}">
                 <span class="tag"><span class="num">${ex.targetSets} × ${GT.esc(ex.targetReps)}</span>${timed ? '<small>s</small>' : ''}</span>
                 <span class="tag"><small>RIR</small><span class="num">${rir}</span></span>
@@ -2136,12 +2138,107 @@ Object.assign(App, {
             <div class="tools">${tools}</div>
         `;
         el.querySelectorAll('img').forEach(img => img.addEventListener('error', () => {
+            if (img.closest('.sed-mate')) return this._sedMateImgError(img);
             const box = img.closest('.thumb, .media-full');
             if (box?.classList.contains('thumb')) {
                 box.outerHTML = `<span class="thumb thumb--md thumb--icon" aria-hidden="true">${this.ico(this._equipIcon(ex.exerciseId), 'ico--lg')}</span>`;
             } else if (box) box.remove();
         }, { once: true }));
         this._renderedHeadFor = this.currentExerciseIndex;
+    },
+
+    // ---------- superset: il compagno da preparare (una riga per compagno, anche nel giant set) ----------
+
+    // Righe dei compagni dell'esercizio corrente, nell'ordine del giro
+    _sedMatesHTML(group) {
+        const rows = group.filter(i => i !== this.currentExerciseIndex).map(i => this._sedMateHTML(i)).join('');
+        return rows ? `<ul class="sed-mates" aria-label="${group.length > 2 ? 'Giant set' : 'Superset'}">${rows}</ul>` : '';
+    },
+
+    // Serie che il compagno farà al suo turno: la prima da fare dopo l'ultima fatta (come _openIndex,
+    // senza la serie aperta a mano per correggere), altrimenti la prima di lavoro da fare; null = finito
+    _sedMateSet(mate) {
+        const sets = mate?.setsData || [];
+        let last = -1;
+        sets.forEach((s, i) => { if (s.completed) last = i; });
+        for (let i = last + 1; i < sets.length; i++) if (!sets[i].completed) return sets[i];
+        return sets.find(s => !s.completed && this._isWork(s)) || null;
+    },
+
+    // Dischi per lato del peso previsto, come nel foglio Dischi ("20 + 5"); null se non si carica a dischi
+    _sedMatePlates(exerciseId, kg) {
+        if (!(kg > 0) || !this._storeFn('getPlates')) return null;
+        let res = null;
+        try { res = Storage.getPlates(exerciseId, kg); } catch (e) { res = null; }
+        if (!res || res.belowBar) return null;
+        const per = (res.perSide || []).map(p => this.fmt(p));
+        if (!per.length) return Number(res.barKg) > 0 ? { html: 'solo bilanciere', spoken: 'solo bilanciere' } : null;
+        // peso che i dischi non fanno esatto: i dischi più vicini, detto (il foglio Dischi spiega il resto)
+        const near = res.exact === false;
+        return {
+            html: `per lato <span class="num">${near ? '≈ ' : ''}${per.map(p => GT.esc(p)).join(' + ')}</span>`,
+            spoken: `per lato ${near ? 'circa ' : ''}${per.join(' più ')}`
+        };
+    },
+
+    // Una riga: miniatura (→ esecuzione grande) e, toccando il resto, si passa al compagno.
+    // Lettera, nome, peso × ripetizioni della sua prossima serie, dischi per lato. Niente giallo: non è "adesso".
+    _sedMateHTML(idx) {
+        const mate = this.activeWorkout?.exercises?.[idx];
+        if (!mate) return '';
+        // stessa precompilazione di quando lo si apre (peso suggerito o ultimo, prova, rampa): i numeri coincidono
+        this._prefill(mate);
+        const rawName = mate.name || EXERCISES_DB[mate.exerciseId]?.name || mate.exerciseId;
+        const name = GT.esc(rawName);
+        const letter = this._exLetter(mate);
+        const gif = this._gifUrl(mate.exerciseId);
+        const s = this._sedMateSet(mate);
+        let line;
+        let spoken;
+        if (!s) {
+            line = `<span class="sed-mate__done">${this.ico('check', 'ico--sm')}Fatto</span>`;
+            spoken = 'fatto';
+        } else {
+            const kind = this._setKind(s);
+            const plates = this._sedMatePlates(mate.exerciseId, GT.num(s.weight));
+            const tag = kind === 'warm' ? 'avvicinamento' : (kind === 'calib' ? 'prova' : '');
+            line = `<span class="sed-mate__val">${this._valHTML(mate, s, false)}</span>` +
+                (plates ? `<span class="sed-mate__plates">${plates.html}</span>` : '') +
+                (tag ? `<span class="set__tag">${tag}</span>` : '');
+            spoken = `${tag ? `${tag}, ` : ''}${this._valSpoken(mate, s, false)}${plates ? `, ${plates.spoken}` : ''}`;
+        }
+        const thumb = gif
+            ? `<img src="${GT.esc(gif)}" alt="" loading="lazy" decoding="async">`
+            : this.ico(this._equipIcon(mate.exerciseId), 'sed-mate__equip');
+        return `<li class="sed-mate">
+            <button type="button" class="thumb sed-mate__thumb${gif ? '' : ' thumb--icon'}" data-sed-info="${idx}" data-equip="${GT.esc(this._equipIcon(mate.exerciseId))}" aria-haspopup="dialog" aria-label="Come si fa: ${name}">
+                ${thumb}<span class="sed-mate__zoom" aria-hidden="true">${this.ico('expand')}</span>
+            </button>
+            <button type="button" class="sed-mate__go" data-sed-goto="${idx}" aria-label="${GT.esc(`Con ${letter} ${rawName}: ${spoken}. Apri ${letter}`)}">
+                <span class="sed-mate__body">
+                    <span class="sed-mate__title"><span class="sed-mate__con">Con</span> <span class="sed-mate__letter">${GT.esc(letter)}</span> <span class="sed-mate__name">${name}</span></span>
+                    <span class="sed-mate__line">${line}</span>
+                </span>
+                ${this.ico('next', 'ico--sm sed-mate__chev')}
+            </button>
+        </li>`;
+    },
+
+    // GIF del compagno che non si carica: resta il bottone, con l'icona dell'attrezzo
+    _sedMateImgError(img) {
+        const btn = img.closest('.sed-mate__thumb');
+        img.remove();
+        if (!btn || btn.classList.contains('thumb--icon')) return;
+        btn.classList.add('thumb--icon');
+        btn.insertAdjacentHTML('afterbegin', this.ico(btn.dataset.equip || 'dumbbell', 'sed-mate__equip'));
+    },
+
+    // Esecuzione grande del compagno (foglio sopra la seduta): chiudendo si resta dove si era
+    _sedShowMate(idx) {
+        const mate = this.activeWorkout?.exercises?.[idx];
+        if (!mate) return;
+        if (typeof this.openExercise === 'function' && EXERCISES_DB[mate.exerciseId]) this.openExercise(mate.exerciseId);
+        else if (typeof this.showExerciseInfoModal === 'function') this.showExerciseInfoModal(mate.exerciseId, mate.name, 'workout');
     },
 
     // "Volta scorsa" alla stessa posizione (o l'ultima serie disponibile)
@@ -2322,7 +2419,10 @@ Object.assign(App, {
         if (!el || !ex) return;
         const open = this._openIndex(ex);
         const rows = ex.setsData.map((_, i) => this._rowHTML(ex, i, open)).join('');
-        const ni = this._nextExerciseIndex();
+        let ni = this._nextExerciseIndex();
+        // il compagno di superset ha già la sua riga sotto l'intestazione: "Poi" è l'esercizio dopo il giro
+        const grp = this._group(this.currentExerciseIndex);
+        if (grp && ni != null && grp.includes(ni)) ni = grp[grp.length - 1] + 1 < w.exercises.length ? grp[grp.length - 1] + 1 : null;
         let next = '';
         if (ni != null) {
             const nx = w.exercises[ni];
@@ -2477,6 +2577,16 @@ Object.assign(App, {
         }
         if (t.closest('[data-history]')) {
             this._openHistory();
+            return;
+        }
+        const mateInfo = t.closest('[data-sed-info]');
+        if (mateInfo) {
+            this._sedShowMate(parseInt(mateInfo.dataset.sedInfo, 10));
+            return;
+        }
+        const mateGo = t.closest('[data-sed-goto]');
+        if (mateGo) {
+            this._goToExercise(parseInt(mateGo.dataset.sedGoto, 10));
             return;
         }
         if (t.closest('[data-expand]')) {

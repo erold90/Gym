@@ -40,6 +40,34 @@ button.thumb:active { transform: scale(0.98); }
 .thumb--icon { display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
 .thumb--icon img { display: none; }
 
+/* superset: il compagno da preparare, una riga per compagno sotto l'intestazione. Miniatura → esecuzione
+   grande (foglio); il resto della riga → si passa al compagno. Neutra: il giallo resta a "adesso" */
+.sed-mates { display: flex; flex-direction: column; gap: var(--s-2); }
+.sed-mate { display: flex; align-items: center; gap: var(--s-1); padding: 5px; border-radius: var(--r-md); background: var(--surface-1); border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.sed-mate__thumb { width: 52px; height: 52px; border-radius: 11px; }
+.sed-mate__thumb.thumb--icon { display: grid; place-items: center; }   /* senza GIF: l'icona al centro (button.thumb è block) */
+.sed-mate__equip { width: 26px; height: 26px; }
+.sed-mate__zoom { position: absolute; right: 3px; bottom: 3px; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: rgb(20 19 15 / 0.72); color: #F4F2EA; }
+.sed-mate__zoom .ico { width: 13px; height: 13px; stroke-width: 2.5; }
+.sed-mate__go { flex: 1; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: var(--s-1); padding: 2px 2px 2px 6px; text-align: left; border-radius: 10px; color: var(--text); }
+.sed-mate__go:active { background: var(--surface-2); }
+.sed-mate__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.sed-mate__title { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 1rem; font-weight: 640; line-height: 1.25; }
+.sed-mate__con { flex: none; color: var(--text-2); font-weight: 500; }
+.sed-mate__letter { flex: none; display: inline-grid; place-items: center; min-width: 28px; height: 22px; padding: 0 5px; border-radius: 6px; background: var(--surface-3); color: var(--text); font-size: var(--fs-cap); font-weight: 800; font-stretch: var(--narrow); letter-spacing: 0.02em; }
+.sed-mate__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* peso × ripetizioni e dischi: se a 360 px non ci stanno insieme, i dischi vanno sotto (mai tagliati) */
+.sed-mate__line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-2); row-gap: 2px; font-size: var(--fs-sm); color: var(--text-2); line-height: 1.2; }
+.sed-mate__val { display: inline-flex; align-items: baseline; gap: 4px; color: var(--text); font-size: 1.0625rem; white-space: nowrap; }
+.sed-mate__val .num { font-weight: 720; }
+.sed-mate__val small { font-size: var(--fs-sm); font-weight: 500; color: var(--text-2); }
+.sed-mate__plates { white-space: nowrap; }
+.sed-mate__plates .num { color: var(--text); font-weight: 650; font-size: 1rem; }
+.sed-mate__line .set__tag { align-self: center; }
+.sed-mate__done { display: inline-flex; align-items: center; gap: 4px; }
+.sed-mate__done .ico { color: var(--ok-text); }
+.sed-mate__chev { flex: none; color: var(--text-3); }
+
 /* esecuzione ingrandita: titolo, GIF grande, i primi passi, Riduci */
 .ex__media { display: flex; flex-direction: column; gap: var(--s-3); }
 .ex__media .media-full { max-height: none; }
