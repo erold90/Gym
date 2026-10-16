@@ -4059,7 +4059,7 @@ const EXERCISE_DETAILS = {
 
 // Detailed info for warmup exercises
 const WARMUP_DETAILS = {
-    "Arm Circles": {
+    "Circonduzioni delle braccia": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Arm-Circles_Shoulders.gif",
         svgAnimation: "arm-circles",
         execution: {
@@ -4076,7 +4076,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Shoulder Rolls": {
+    "Rotazioni delle spalle": {
         gifUrl: null,
         svgAnimation: "shoulder-rolls",
         execution: {
@@ -4092,7 +4092,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Band Pull-Apart": {
+    "Aperture con elastico": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Band-pull-apart.gif",
         execution: {
             steps: [
@@ -4109,7 +4109,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Wall Slides": {
+    "Scivolamenti al muro": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/wall-slide.gif",
         svgAnimation: "wall-slides",
         execution: {
@@ -4126,7 +4126,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Cat-Cow": {
+    "Gatto-cammello": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/cat-cow.gif",
         execution: {
             steps: [
@@ -4142,7 +4142,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Leg Swings Frontali": {
+    "Slanci frontali della gamba": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2025/07/Leg-Swings-Front-to-Back.gif",
         svgAnimation: "leg-swings",
         execution: {
@@ -4153,13 +4153,13 @@ const WARMUP_DETAILS = {
                 "Aumenta gradualmente l'ampiezza dell'oscillazione"
             ],
             tips: [
-                "Non forzare l'ampiezza oltre il tuo range naturale",
+                "Non forzare l'ampiezza oltre il tuo limite naturale",
                 "Mantieni il busto eretto",
                 "Ottimo per femorali e flessori dell'anca"
             ]
         }
     },
-    "Leg Swings Laterali": {
+    "Slanci laterali della gamba": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/06/Lateral-Leg-Swings.gif",
         svgAnimation: "leg-swings-lateral",
         execution: {
@@ -4175,7 +4175,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Hip Circles": {
+    "Circonduzioni dell'anca": {
         gifUrl: null,
         svgAnimation: "hip-circles",
         execution: {
@@ -4191,7 +4191,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Bodyweight Squats": {
+    "Squat a corpo libero": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/bodyweight-squat-full-version.gif",
         execution: {
             steps: [
@@ -4206,7 +4206,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Walking Lunges": {
+    "Affondi camminati": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/09/bodyweight-walking-lunge.gif",
         execution: {
             steps: [
@@ -4221,7 +4221,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Glute Bridges": {
+    "Ponte glutei": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge-.gif",
         execution: {
             steps: [
@@ -4236,7 +4236,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Inchworms": {
+    "Bruco": {
         gifUrl: "https://static.exercisedb.dev/media/ZgsNQ6d.gif",
         execution: {
             steps: [
@@ -4246,12 +4246,12 @@ const WARMUP_DETAILS = {
                 "Alzati e ripeti"
             ],
             tips: [
-                "Ottimo per stretch femorali e attivazione core",
+                "Ottimo per allungare i femorali e attivare il core",
                 "Mantieni le gambe più dritte possibile"
             ]
         }
     },
-    "World's Greatest Stretch": {
+    "Affondo con rotazione": {
         gifUrl: "https://static.exercisedb.dev/media/DFGXwZr.gif",
         svgAnimation: "worlds-greatest-stretch",
         execution: {
@@ -4267,7 +4267,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Dead Bug": {
+    "Dead bug": {
         gifUrl: "https://static.exercisedb.dev/media/iny3m5y.gif",
         execution: {
             steps: [
@@ -4282,7 +4282,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Bird Dog": {
+    "Bird dog": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/07/Bird-Dog.gif",
         execution: {
             steps: [
@@ -4297,7 +4297,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Plank Hold": {
+    "Plank": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/plank.gif",
         execution: {
             steps: [
@@ -4312,7 +4312,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Jumping Jacks": {
+    "Jumping jack": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Jumping-jack.gif",
         execution: {
             steps: [
@@ -4327,7 +4327,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Mountain Climbers": {
+    "Mountain climber": {
         gifUrl: "https://static.exercisedb.dev/media/RJgzwny.gif",
         execution: {
             steps: [
@@ -4342,7 +4342,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "High Knees": {
+    "Skip alto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Run-in-Place.gif",
         execution: {
             steps: [
@@ -4357,12 +4357,12 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Push-Up Plus": {
+    "Piegamenti con protrazione": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Push-Up-Plus.gif",
         execution: {
             steps: [
                 "Posizionati in plank alto, mani sotto le spalle",
-                "Esegui un push-up standard",
+                "Fai un piegamento normale",
                 "In alto, spingi ulteriormente separando le scapole",
                 "La parte alta della schiena si arrotonda leggermente",
                 "Torna alla posizione iniziale e ripeti"
@@ -4374,7 +4374,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Scapular Push-Ups": {
+    "Piegamenti scapolari": {
         gifUrl: "https://static.exercisedb.dev/media/jV65tKx.gif",
         execution: {
             steps: [
@@ -4391,7 +4391,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Cat-Cow Stretch": {
+    "Allungamento gatto-cammello": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/cat-cow.gif",
         execution: {
             steps: [
@@ -4407,7 +4407,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Thoracic Rotations": {
+    "Rotazioni toraciche": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/08/Kneeling-T-spine-Rotation.gif",
         execution: {
             steps: [
@@ -4424,7 +4424,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Dynamic Chest Stretch": {
+    "Apertura dinamica del petto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Dynamic-Chest-Stretch.gif",
         execution: {
             steps: [
@@ -4439,7 +4439,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Incline Push-Up": {
+    "Piegamenti su rialzo": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Incline-Push-Up.gif",
         execution: {
             steps: [
@@ -4450,11 +4450,11 @@ const WARMUP_DETAILS = {
             ],
             tips: [
                 "Ottimo per riscaldare petto e tricipiti",
-                "Più facile del push-up standard"
+                "Più facile del piegamento normale"
             ]
         }
     },
-    "Scapular Retraction": {
+    "Retrazioni scapolari": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/10/Scapular-Protraction-and-Retraction.gif",
         execution: {
             steps: [
@@ -4469,7 +4469,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Arm Swings Orizzontali": {
+    "Slanci orizzontali delle braccia": {
         gifUrl: "https://static.exercisedb.dev/media/3uj0Ozg.gif",
         execution: {
             steps: [
@@ -4484,7 +4484,7 @@ const WARMUP_DETAILS = {
             ]
         }
     },
-    "Lat Stretch Dinamico": {
+    "Allungamento dinamico dei dorsali": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Standing-Side-Bend-Stretch.gif",
         execution: {
             steps: [
@@ -4495,11 +4495,11 @@ const WARMUP_DETAILS = {
             ],
             tips: [
                 "Movimento dinamico, non statico",
-                "Senti lo stretch nel dorsale"
+                "Senti l'allungamento nel dorsale"
             ]
         }
     },
-    "Dynamic Bicep Stretch": {
+    "Allungamento dinamico del bicipite": {
         gifUrl: null,
         svgAnimation: "bicep-stretch",
         execution: {
@@ -4511,18 +4511,18 @@ const WARMUP_DETAILS = {
             ],
             tips: [
                 "Mantieni le braccia dritte",
-                "Senti lo stretch nei bicipiti e nelle spalle anteriori"
+                "Senti l'allungamento nei bicipiti e nelle spalle anteriori"
             ]
         }
     },
-    "Arm Circles Progressivi": {
+    "Circonduzioni progressive delle braccia": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Arm-Circles_Shoulders.gif",
         execution: {
             steps: ["In piedi con le braccia distese ai lati", "Inizia con piccoli cerchi in avanti", "Aumenta progressivamente il diametro", "Inverti la direzione dopo 15 secondi"],
             tips: ["Parti con cerchi piccoli e aumenta gradualmente", "Ottimo per scaldare la cuffia dei rotatori"]
         }
     },
-    "Shoulder Dislocates": {
+    "Passaggi sopra la testa": {
         gifUrl: null,
         svgAnimation: "shoulder-dislocates",
         execution: {
@@ -4530,14 +4530,14 @@ const WARMUP_DETAILS = {
             tips: ["Usa una presa abbastanza larga da non forzare", "Movimento lento e controllato"]
         }
     },
-    "External Rotation": {
+    "Extrarotazioni con elastico": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/06/Banded-Shoulder-External-Rotation.gif",
         execution: {
             steps: ["Gomito a 90° aderente al fianco", "Ruota l'avambraccio verso l'esterno", "Mantieni il gomito fermo", "Torna controllando"],
             tips: ["Usa un peso leggero o un elastico", "Fondamentale per la salute della cuffia dei rotatori"]
         }
     },
-    "Y-T-W Raises": {
+    "Alzate Y-T-W": {
         gifUrl: null,
         svgAnimation: "ytw-raises",
         execution: {
@@ -4545,7 +4545,7 @@ const WARMUP_DETAILS = {
             tips: ["Senza peso o con peso molto leggero", "Ottimo per attivare trapezio e cuffia dei rotatori"]
         }
     },
-    "Empty Can Exercise": {
+    "Alzate a pollici in giù": {
         gifUrl: null,
         svgAnimation: "empty-can",
         execution: {
@@ -4553,176 +4553,176 @@ const WARMUP_DETAILS = {
             tips: ["Peso leggero o senza peso", "Attiva il sovraspinato della cuffia dei rotatori"]
         }
     },
-    "Scapular Pull-Ups": {
+    "Trazioni scapolari": {
         gifUrl: "https://static.exercisedb.dev/media/uTBt1HV.gif",
         execution: {
             steps: ["Appeso alla sbarra, braccia distese", "Senza piegare i gomiti, tira le scapole verso il basso", "Solleva il corpo di pochi cm", "Rilascia controllando"],
             tips: ["Movimento piccolo ma controllato", "Attiva i dorsali e la stabilità scapolare"]
         }
     },
-    "Band Face Pull": {
+    "Face pull con elastico": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/Face-pull.gif",
         execution: {
             steps: ["Fissa l'elastico all'altezza del viso", "Tira verso il viso separando le mani", "Gomiti alti, ruota le mani verso l'esterno", "Contrai scapole e deltoidi posteriori"],
             tips: ["Ottimo per postura e salute delle spalle", "Mantieni i gomiti sopra le spalle"]
         }
     },
-    "Thoracic Extension": {
+    "Estensioni toraciche sul rullo": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Foam-Roller-Upper-Back.gif",
         execution: {
-            steps: ["Sdraiato su un foam roller posizionato alla parte alta della schiena", "Mani dietro la testa", "Estendi la schiena sopra il rullo", "Torna alla posizione iniziale"],
+            steps: ["Sdraiato su un rullo in schiuma all'altezza della parte alta della schiena", "Mani dietro la testa", "Estendi la schiena sopra il rullo", "Torna alla posizione iniziale"],
             tips: ["Non estendere la zona lombare", "Concentrati sulla parte toracica"]
         }
     },
-    "Wrist Circles": {
+    "Rotazioni dei polsi": {
         gifUrl: "https://static.exercisedb.dev/media/2zNKRUB.gif",
         execution: {
             steps: ["Intreccia le dita delle mani", "Ruota i polsi in cerchio", "Fai cerchi in entrambe le direzioni", "10-15 cerchi per direzione"],
             tips: ["Movimento fluido e controllato", "Ottimo prima di esercizi di presa"]
         }
     },
-    "Light Band Curls": {
+    "Curl leggeri con elastico": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Band-Biceps-Curl.gif",
         execution: {
             steps: ["In piedi sull'elastico, impugnalo con entrambe le mani", "Curl classico con resistenza leggera", "Contrai i bicipiti in alto", "Abbassa controllando"],
             tips: ["Usa resistenza leggera, serve solo per attivare", "15-20 ripetizioni veloci"]
         }
     },
-    "Light Band Pushdowns": {
+    "Pushdown leggeri con elastico": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Band-Pushdown.gif",
         execution: {
             steps: ["Fissa l'elastico in alto", "Impugna con entrambe le mani, gomiti al fianco", "Estendi le braccia verso il basso", "Torna controllando"],
             tips: ["Resistenza leggera per attivazione", "Mantieni i gomiti fermi al fianco"]
         }
     },
-    "Tricep Stretch Dinamico": {
+    "Allungamento dinamico del tricipite": {
         gifUrl: "https://static.exercisedb.dev/media/Z5YStHW.gif",
         execution: {
             steps: ["Porta un braccio sopra la testa", "Piega il gomito portando la mano dietro la nuca", "Con l'altra mano spingi leggermente il gomito", "Alterna i lati in modo dinamico"],
             tips: ["Movimento fluido, non statico", "Non forzare troppo il gomito"]
         }
     },
-    "Diamond Push-Ups (ginocchia)": {
+    "Piegamenti a diamante sulle ginocchia": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Diamond-Push-up.gif",
         execution: {
             steps: ["Ginocchia a terra, mani unite a diamante sotto il petto", "Abbassa il petto verso le mani", "Spingi tornando su", "Mantieni il core attivo"],
-            tips: ["Le ginocchia facilitano il movimento", "Focus sui tricipiti"]
+            tips: ["Le ginocchia facilitano il movimento", "Lavora soprattutto sui tricipiti"]
         }
     },
-    "Push-Ups (ginocchia se necessario)": {
+    "Piegamenti (anche sulle ginocchia)": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
         execution: {
             steps: ["Posizione plank, mani alla larghezza delle spalle", "Abbassa il petto verso il pavimento", "Spingi tornando alla posizione iniziale", "Ginocchia a terra se necessario"],
             tips: ["Mantieni il core attivo", "Corpo in linea retta dalla testa ai piedi"]
         }
     },
-    "Superman Hold": {
+    "Superman": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Superman-exercise.gif",
         execution: {
             steps: ["Sdraiato a pancia in giù, braccia distese davanti", "Solleva braccia, petto e gambe da terra", "Contrai glutei e schiena", "Mantieni la posizione"],
             tips: ["Non iperestendere il collo", "Ottimo per erettori spinali e glutei"]
         }
     },
-    "Camminata sul Posto": {
+    "Camminata sul posto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Walking.gif",
         execution: {
             steps: ["In piedi, inizia a camminare sul posto", "Solleva le ginocchia a un'altezza comoda", "Pompa le braccia naturalmente", "Mantieni un ritmo costante"],
             tips: ["Ottimo per alzare la frequenza cardiaca gradualmente", "Atterra morbido"]
         }
     },
-    "Camminata Leggera": {
+    "Camminata leggera": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Walking.gif",
         execution: {
             steps: ["Cammina a passo leggero", "Muovi le braccia naturalmente", "Respira profondamente", "2-3 minuti per alzare il battito"],
-            tips: ["Non serve velocità, solo attivazione", "Ottimo come warm-up iniziale"]
+            tips: ["Non serve velocità, solo attivazione", "Ottimo per iniziare il riscaldamento"]
         }
     },
-    "Camminata/Corsa Leggera": {
+    "Camminata o corsa leggera": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Walking.gif",
         execution: {
             steps: ["Inizia camminando e aumenta gradualmente il ritmo", "Passa a una corsa leggera se possibile", "Mantieni per 3-5 minuti", "Obiettivo: alzare la frequenza cardiaca"],
             tips: ["Non è uno sprint, mantieni un ritmo confortevole", "Respira regolarmente"]
         }
     },
-    "Quad Stretch Dinamico": {
+    "Allungamento dinamico del quadricipite": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
         execution: {
             steps: ["In piedi, afferra una caviglia portando il tallone al gluteo", "Mantieni 2-3 secondi", "Rilascia e alterna gamba", "Movimento dinamico, non statico"],
             tips: ["Tieniti a un supporto se necessario", "Mantieni le ginocchia vicine"]
         }
     },
-    "Goblet Squat Paused": {
+    "Goblet squat con pausa": {
         gifUrl: "https://static.exercisedb.dev/media/yn8yg1r.gif",
         execution: {
             steps: ["Tieni un manubrio leggero o nessun peso al petto", "Scendi in squat profondo", "Mantieni la posizione bassa per 3-5 secondi", "Spingi i gomiti dentro le ginocchia per aprire le anche"],
             tips: ["Ottimo per mobilità delle anche", "Mantieni il petto alto"]
         }
     },
-    "Good Mornings a Corpo Libero": {
+    "Good morning a corpo libero": {
         gifUrl: "https://static.exercisedb.dev/media/XlZ4lAC.gif",
         execution: {
-            steps: ["In piedi, mani dietro la testa o incrociate al petto", "Piegati in avanti dalle anche mantenendo la schiena dritta", "Scendi fino a sentire lo stretch nei femorali", "Risali contraendo glutei e femorali"],
+            steps: ["In piedi, mani dietro la testa o incrociate al petto", "Piegati in avanti dalle anche mantenendo la schiena dritta", "Scendi fino a sentire l'allungamento nei femorali", "Risali contraendo glutei e femorali"],
             tips: ["Ginocchia leggermente piegate", "Non arrotondare la schiena"]
         }
     },
-    "Single Leg RDL Senza Peso": {
+    "Stacco rumeno su una gamba": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Bodyweight-Single-Leg-Deadlift.gif",
         execution: {
             steps: ["In piedi su una gamba", "Piegati in avanti estendendo l'altra gamba dietro", "Braccia verso il pavimento per equilibrio", "Torna alla posizione eretta"],
             tips: ["Mantieni la schiena dritta", "Ottimo per equilibrio e attivazione femorali/glutei"]
         }
     },
-    "Hamstring Walkouts": {
+    "Ponte camminato": {
         gifUrl: null,
         svgAnimation: "hamstring-walkouts",
         execution: {
-            steps: ["In piedi, piegati toccando il pavimento", "Cammina con le mani in avanti fino a plank", "Mantieni le gambe più dritte possibile", "Cammina con i piedi verso le mani e alzati"],
-            tips: ["Simile all'inchworm", "Focus sullo stretch dei femorali durante il ritorno"]
+            steps: ["Sdraiato supino, ginocchia piegate, solleva il bacino in ponte", "Cammina con i talloni in avanti a piccoli passi finché le gambe sono quasi tese", "Torna indietro a piccoli passi tenendo il bacino alto", "Abbassa il bacino e ripeti"],
+            tips: ["Il bacino resta alto per tutto il movimento", "Senti il lavoro nei femorali quando le gambe si allungano"]
         }
     },
-    "Clamshells": {
+    "Apertura a conchiglia": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Side-Lying-Clam.gif",
         execution: {
             steps: ["Sdraiato sul fianco, ginocchia piegate a 45°", "Piedi uniti, apri il ginocchio superiore", "Come una conchiglia che si apre", "Chiudi controllando e ripeti"],
             tips: ["Non ruotare il bacino", "Ottimo per gluteo medio e stabilità dell'anca"]
         }
     },
-    "Fire Hydrants": {
+    "Slanci laterali a quattro zampe": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Fire-Hydrant.gif",
         execution: {
             steps: ["A quattro zampe, core attivato", "Solleva un ginocchio lateralmente mantenendo 90°", "Come un cane all'idrante", "Abbassa controllando e ripeti"],
             tips: ["Non ruotare il busto", "Attiva gluteo medio e piccolo"]
         }
     },
-    "Donkey Kicks": {
+    "Slanci indietro a quattro zampe": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Donkey-Kicks.gif",
         execution: {
             steps: ["A quattro zampe, core attivato", "Solleva una gamba piegata verso il soffitto", "Spingi il tallone verso l'alto", "Contrai il gluteo in alto e abbassa controllando"],
             tips: ["Non arcuare la schiena", "Movimento controllato, non usare slancio"]
         }
     },
-    "Monster Walks": {
+    "Passi laterali con elastico": {
         gifUrl: "https://static.exercisedb.dev/media/O95afRA.gif",
         execution: {
             steps: ["Elastico sopra le ginocchia o alle caviglie", "Posizione semi-squat", "Cammina lateralmente a passi ampi", "Mantieni tensione sull'elastico"],
             tips: ["Ginocchia in fuori, non farle crollare", "Ottimo per attivare i glutei prima di squat"]
         }
     },
-    "Ankle Circles": {
+    "Circonduzioni delle caviglie": {
         gifUrl: "https://static.exercisedb.dev/media/uL9CsKm.gif",
         execution: {
             steps: ["In piedi su una gamba o seduto", "Solleva un piede da terra", "Ruota la caviglia in cerchio", "Fai cerchi in entrambe le direzioni"],
             tips: ["10-15 cerchi per direzione per piede", "Ottimo per mobilità della caviglia"]
         }
     },
-    "Calf Raises Leggeri": {
+    "Sollevamenti sulle punte": {
         gifUrl: "https://static.exercisedb.dev/media/bJYHBIN.gif",
         execution: {
             steps: ["In piedi, piedi alla larghezza delle spalle", "Solleva sui talloni alzandoti sulle punte", "Mantieni un secondo in alto", "Abbassa lentamente"],
             tips: ["Senza peso aggiuntivo", "Serve per attivare i polpacci"]
         }
     },
-    "Toe Walks": {
+    "Camminata sulle punte": {
         gifUrl: null,
         svgAnimation: "toe-walks",
         execution: {
@@ -4730,22 +4730,22 @@ const WARMUP_DETAILS = {
             tips: ["Mantieni una postura eretta", "Attiva polpacci e stabilità della caviglia"]
         }
     },
-    "Heel Walks": {
+    "Camminata sui talloni": {
         gifUrl: null,
         svgAnimation: "heel-walks",
         execution: {
             steps: ["Solleva le punte dei piedi, cammina sui talloni", "Mantieni le punte sollevate", "Cammina in avanti per 20-30 passi", "Senti il lavoro sui tibiali anteriori"],
-            tips: ["Mantieni il busto eretto", "Ottimo per prevenire shin splints"]
+            tips: ["Mantieni il busto eretto", "Ottimo per prevenire il dolore alle tibie"]
         }
     },
-    "Dynamic Calf Stretch": {
+    "Allungamento dinamico del polpaccio": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Standing-Wall-Calf-Stretch.gif",
         execution: {
             steps: ["Di fronte a un muro, un piede avanti e uno dietro", "Spingi il tallone posteriore a terra", "Oscilla avanti e indietro dinamicamente", "Alterna le gambe"],
-            tips: ["Non mantenere la posizione statica, movimento dinamico", "Senti lo stretch nel polpaccio"]
+            tips: ["Non mantenere la posizione statica, movimento dinamico", "Senti l'allungamento nel polpaccio"]
         }
     },
-    "Hip Circles (in piedi)": {
+    "Rotazioni del bacino": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/01/hip-circles.gif",
         svgAnimation: "hip-circles",
         execution: {
@@ -4753,7 +4753,7 @@ const WARMUP_DETAILS = {
             tips: ["Movimento fluido e controllato", "Ottimo per mobilità dell'anca e zona lombare"]
         }
     },
-    "Torso Rotations": {
+    "Rotazioni del busto": {
         gifUrl: null,
         svgAnimation: "torso-rotations",
         execution: {
@@ -4761,19 +4761,19 @@ const WARMUP_DETAILS = {
             tips: ["Non forzare la rotazione", "Ottimo per mobilità toracica e core"]
         }
     },
-    "Leg Swings": {
+    "Slanci delle gambe": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2025/07/Leg-Swings-Front-to-Back.gif",
         svgAnimation: "leg-swings",
         execution: {
             steps: ["In piedi accanto a un supporto", "Oscilla una gamba avanti e indietro", "Aumenta gradualmente l'ampiezza", "Ripeti sull'altra gamba"],
-            tips: ["Mantieni il busto eretto", "Non forzare oltre il range naturale"]
+            tips: ["Mantieni il busto eretto", "Non forzare oltre l'ampiezza naturale"]
         }
     }
 };
 
 // Detailed info for cooldown/stretching exercises
 const COOLDOWN_DETAILS = {
-    "Chest Doorway Stretch": {
+    "Allungamento del petto allo stipite": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-one-arm-chest-stretch.gif",
         svgAnimation: "doorway-stretch",
         execution: {
@@ -4782,7 +4782,7 @@ const COOLDOWN_DETAILS = {
                 "Appoggia l'avambraccio contro lo stipite, gomito a 90°",
                 "Fai un passo avanti con il piede dello stesso lato",
                 "Ruota il corpo allontanandoti dallo stipite",
-                "Senti lo stretch nel petto e nella spalla anteriore"
+                "Senti l'allungamento nel petto e nella spalla anteriore"
             ],
             tips: [
                 "Varia l'altezza del braccio per colpire diverse aree del petto",
@@ -4791,7 +4791,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Cross-Body Shoulder Stretch": {
+    "Allungamento spalla a braccio incrociato": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
         svgAnimation: "cross-body-stretch",
         execution: {
@@ -4799,7 +4799,7 @@ const COOLDOWN_DETAILS = {
                 "Porta un braccio attraverso il petto",
                 "Con l'altra mano, tira il braccio verso di te",
                 "Mantieni la spalla rilassata, non alzarla",
-                "Senti lo stretch nel deltoide posteriore"
+                "Senti l'allungamento nel deltoide posteriore"
             ],
             tips: [
                 "Non ruotare il busto",
@@ -4807,7 +4807,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Tricep Stretch": {
+    "Allungamento del tricipite": {
         gifUrl: "https://static.exercisedb.dev/media/Z5YStHW.gif",
         svgAnimation: "tricep-stretch",
         execution: {
@@ -4815,7 +4815,7 @@ const COOLDOWN_DETAILS = {
                 "Porta un braccio sopra la testa",
                 "Piega il gomito portando la mano dietro la nuca",
                 "Con l'altra mano, spingi il gomito verso il basso",
-                "Senti lo stretch nel tricipite"
+                "Senti l'allungamento nel tricipite"
             ],
             tips: [
                 "Mantieni il busto eretto",
@@ -4823,7 +4823,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Child's Pose": {
+    "Posizione del bambino": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/Balasana-Child-Pose.gif",
         execution: {
             steps: [
@@ -4838,7 +4838,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Standing Quad Stretch": {
+    "Allungamento del quadricipite in piedi": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
         svgAnimation: "quad-stretch",
         execution: {
@@ -4846,7 +4846,7 @@ const COOLDOWN_DETAILS = {
                 "In piedi, afferra la caviglia di una gamba",
                 "Tira il tallone verso il gluteo",
                 "Mantieni le ginocchia vicine",
-                "Spingi il fianco in avanti per maggiore stretch"
+                "Spingi il fianco in avanti per allungare di più"
             ],
             tips: [
                 "Tieniti a un supporto se necessario",
@@ -4854,7 +4854,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Standing Hamstring Stretch": {
+    "Allungamento dei femorali in piedi": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
         svgAnimation: "hamstring-stretch",
         execution: {
@@ -4862,7 +4862,7 @@ const COOLDOWN_DETAILS = {
                 "Posiziona un piede su un rialzo (panca, gradino)",
                 "Mantieni la gamba dritta",
                 "Inclina il busto in avanti dalla vita",
-                "Senti lo stretch nel femorale"
+                "Senti l'allungamento nel femorale"
             ],
             tips: [
                 "Mantieni la schiena dritta, non arrotondarla",
@@ -4870,7 +4870,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Hip Flexor Stretch (Lunge)": {
+    "Affondo per i flessori dell'anca": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
         svgAnimation: "hip-flexor-stretch",
         execution: {
@@ -4878,7 +4878,7 @@ const COOLDOWN_DETAILS = {
                 "Posizionati in affondo, ginocchio posteriore a terra",
                 "Il ginocchio anteriore a 90°, sopra la caviglia",
                 "Spingi il bacino in avanti e in basso",
-                "Senti lo stretch nel flessore dell'anca posteriore"
+                "Senti l'allungamento nel flessore dell'anca posteriore"
             ],
             tips: [
                 "Contrai il gluteo della gamba posteriore",
@@ -4886,7 +4886,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Pigeon Pose": {
+    "Posizione del piccione": {
         gifUrl: null,
         svgAnimation: "pigeon-pose",
         execution: {
@@ -4897,12 +4897,12 @@ const COOLDOWN_DETAILS = {
                 "Rilassa i fianchi e respira profondamente"
             ],
             tips: [
-                "Ottimo stretch per i glutei e i rotatori esterni",
+                "Ottimo allungamento per i glutei e i rotatori esterni",
                 "Se troppo intenso, mantieni il busto più eretto"
             ]
         }
     },
-    "Butterfly Stretch": {
+    "Allungamento a farfalla": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Butterfly-Stretch.gif",
         svgAnimation: "butterfly-stretch",
         execution: {
@@ -4910,7 +4910,7 @@ const COOLDOWN_DETAILS = {
                 "Seduto, unisci le piante dei piedi davanti a te",
                 "Tieni i piedi con le mani",
                 "Lascia cadere le ginocchia verso il pavimento",
-                "Inclina il busto in avanti per maggiore stretch"
+                "Inclina il busto in avanti per allungare di più"
             ],
             tips: [
                 "Non forzare le ginocchia verso il basso con le mani",
@@ -4918,7 +4918,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Seated Forward Fold": {
+    "Flessione del busto da seduto": {
         gifUrl: null,
         svgAnimation: "forward-fold",
         execution: {
@@ -4934,7 +4934,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Figure-4 Stretch": {
+    "Allungamento a figura 4": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Lying-glute-stretch.gif",
         svgAnimation: "figure-4-stretch",
         execution: {
@@ -4942,7 +4942,7 @@ const COOLDOWN_DETAILS = {
                 "Sdraiato supino, piedi a terra",
                 "Appoggia una caviglia sulla coscia opposta",
                 "Tira la coscia verso il petto",
-                "Senti lo stretch nel gluteo e nel piriforme"
+                "Senti l'allungamento nel gluteo e nel piriforme"
             ],
             tips: [
                 "Mantieni la testa e le spalle a terra",
@@ -4950,7 +4950,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Calf Stretch": {
+    "Allungamento del polpaccio": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/02/Standing-Wall-Calf-Stretch.gif",
         svgAnimation: "calf-stretch",
         execution: {
@@ -4966,7 +4966,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Lying Spinal Twist": {
+    "Torsione da sdraiato": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/12/Supine-Spinal-Twist.gif",
         svgAnimation: "spinal-twist",
         execution: {
@@ -4982,7 +4982,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Cobra Stretch": {
+    "Posizione del cobra": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/abdominal-stretch.gif",
         execution: {
             steps: [
@@ -4997,7 +4997,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Deep Breathing": {
+    "Respirazione profonda": {
         gifUrl: null,
         svgAnimation: "breathing",
         execution: {
@@ -5015,14 +5015,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Bicep Wall Stretch": {
+    "Allungamento del braccio al muro": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-one-arm-chest-stretch.gif",
         execution: {
             steps: [
                 "In piedi di fianco a un muro",
                 "Appoggia il palmo della mano sul muro, braccio disteso",
                 "Ruota il corpo lontano dal muro",
-                "Senti lo stretch nel bicipite e nella spalla anteriore"
+                "Senti l'allungamento nel bicipite e nella spalla anteriore"
             ],
             tips: [
                 "Mantieni il braccio dritto",
@@ -5030,14 +5030,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Wall Bicep Stretch": {
+    "Allungamento del bicipite al muro": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-one-arm-chest-stretch.gif",
         execution: {
             steps: [
                 "In piedi di fianco a un muro",
                 "Appoggia il palmo della mano sul muro, braccio disteso",
                 "Ruota il corpo lontano dal muro",
-                "Senti lo stretch nel bicipite e nella spalla anteriore"
+                "Senti l'allungamento nel bicipite e nella spalla anteriore"
             ],
             tips: [
                 "Mantieni il braccio dritto",
@@ -5045,7 +5045,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Seated Bicep Stretch": {
+    "Allungamento del bicipite da seduto": {
         gifUrl: null,
         svgAnimation: "bicep-stretch",
         execution: {
@@ -5053,7 +5053,7 @@ const COOLDOWN_DETAILS = {
                 "Seduto a terra, mani dietro di te con le dita verso i piedi",
                 "Lentamente scorri il bacino in avanti",
                 "Mantieni le mani ferme a terra",
-                "Senti lo stretch nei bicipiti"
+                "Senti l'allungamento nei bicipiti"
             ],
             tips: [
                 "Non sollevare le mani da terra",
@@ -5061,7 +5061,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Lat Stretch": {
+    "Allungamento dei dorsali": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Standing-Side-Bend-Stretch.gif",
         execution: {
             steps: [
@@ -5076,7 +5076,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Neck Stretches": {
+    "Allungamento del collo": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Side-Neck-Stretch.gif",
         execution: {
             steps: [
@@ -5091,7 +5091,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Neck Rolls": {
+    "Rotazioni del collo": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/07/Rotating-Neck-Stretch.gif",
         execution: {
             steps: [
@@ -5106,14 +5106,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Upper Back Stretch": {
+    "Allungamento della schiena alta": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Upper-Back-Stretch.gif",
         execution: {
             steps: [
                 "In piedi o seduto, intreccia le mani davanti a te",
                 "Spingi le mani in avanti arrotondando la schiena",
                 "Porta il mento al petto",
-                "Senti lo stretch tra le scapole"
+                "Senti l'allungamento tra le scapole"
             ],
             tips: [
                 "Espira mentre arrotondi la schiena",
@@ -5124,7 +5124,7 @@ const COOLDOWN_DETAILS = {
     // ==========================================
     // ALIAS e COOLDOWN MANCANTI
     // ==========================================
-    "Doorway Chest Stretch": {
+    "Allungamento del petto alla porta": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/01/Doorway-chest-and-sshoulder-stretch.gif",
         execution: {
             steps: [
@@ -5139,7 +5139,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Chest Opener": {
+    "Apertura del petto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Standing-Reverse-Shoulder-Stretch.gif",
         execution: {
             steps: [
@@ -5154,14 +5154,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Floor Chest Stretch": {
+    "Allungamento del petto a terra": {
         gifUrl: null,
         execution: {
             steps: [
                 "Sdraiati a pancia in giù",
                 "Distendi un braccio di lato a 90° rispetto al corpo",
                 "Ruota il corpo dalla parte opposta del braccio",
-                "Senti lo stretch profondo nel petto"
+                "Senti l'allungamento profondo nel petto"
             ],
             tips: [
                 "Movimento lento e controllato",
@@ -5169,14 +5169,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Corner Stretch": {
+    "Allungamento del petto all'angolo": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/01/Doorway-chest-and-sshoulder-stretch.gif",
         execution: {
             steps: [
                 "Posizionati di fronte a un angolo della stanza",
                 "Appoggia le mani sulle due pareti all'altezza delle spalle",
                 "Piegati in avanti verso l'angolo",
-                "Senti lo stretch nel petto e nelle spalle anteriori"
+                "Senti l'allungamento nel petto e nelle spalle anteriori"
             ],
             tips: [
                 "Mantieni i gomiti leggermente sotto le spalle",
@@ -5184,14 +5184,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Cross-Body Stretch": {
+    "Braccio incrociato al petto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
         execution: {
             steps: [
                 "Porta un braccio attraverso il petto",
                 "Con l'altra mano, tira il braccio verso di te",
                 "Mantieni la spalla rilassata, non alzarla",
-                "Senti lo stretch nel deltoide posteriore"
+                "Senti l'allungamento nel deltoide posteriore"
             ],
             tips: [
                 "Non ruotare il busto",
@@ -5199,14 +5199,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Overhead Tricep Stretch": {
+    "Allungamento del tricipite sopra la testa": {
         gifUrl: "https://static.exercisedb.dev/media/Z5YStHW.gif",
         execution: {
             steps: [
                 "Porta un braccio sopra la testa",
                 "Piega il gomito portando la mano dietro la nuca",
                 "Con l'altra mano, spingi il gomito verso il basso",
-                "Senti lo stretch nel tricipite"
+                "Senti l'allungamento nel tricipite"
             ],
             tips: [
                 "Mantieni il busto eretto",
@@ -5214,14 +5214,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Overhead Tricep/Shoulder Stretch": {
+    "Allungamento di tricipite e spalla": {
         gifUrl: "https://static.exercisedb.dev/media/Z5YStHW.gif",
         execution: {
             steps: [
                 "Porta un braccio sopra la testa",
                 "Piega il gomito portando la mano dietro la nuca",
                 "Con l'altra mano, spingi il gomito verso il basso e leggermente indietro",
-                "Senti lo stretch nel tricipite e nella spalla"
+                "Senti l'allungamento nel tricipite e nella spalla"
             ],
             tips: [
                 "Mantieni il busto eretto e il core attivo",
@@ -5229,14 +5229,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Shoulder Stretch": {
+    "Allungamento della spalla": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/04/Across-Chest-Shoulder-Stretch.gif",
         execution: {
             steps: [
                 "Porta un braccio attraverso il petto",
                 "Con l'altra mano, tira delicatamente il braccio verso di te",
                 "Mantieni la spalla bassa e rilassata",
-                "Senti lo stretch nella parte posteriore della spalla"
+                "Senti l'allungamento nella parte posteriore della spalla"
             ],
             tips: [
                 "Non alzare la spalla del braccio stirato",
@@ -5244,14 +5244,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Wall Shoulder Stretch": {
+    "Allungamento della spalla al muro": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-one-arm-chest-stretch.gif",
         execution: {
             steps: [
                 "In piedi di fianco a un muro",
                 "Appoggia la mano sul muro all'altezza della spalla",
                 "Ruota lentamente il corpo lontano dal muro",
-                "Senti lo stretch nella spalla anteriore e nel petto"
+                "Senti l'allungamento nella spalla anteriore e nel petto"
             ],
             tips: [
                 "Varia l'altezza della mano per colpire diverse aree",
@@ -5259,7 +5259,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Eagle Arms": {
+    "Braccia dell'aquila": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/The-Eagle-Yoga-Pose.gif",
         execution: {
             steps: [
@@ -5274,7 +5274,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Thread the Needle": {
+    "Infila l'ago": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/05/Parsva-Balasana-Thread-the-Needle-Pose.gif",
         execution: {
             steps: [
@@ -5289,7 +5289,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Cat-Cow Stretch": {
+    "Allungamento gatto-cammello": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/cat-cow.gif",
         execution: {
             steps: [
@@ -5304,7 +5304,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Cat-Cow": {
+    "Gatto-cammello": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/cat-cow.gif",
         execution: {
             steps: [
@@ -5319,7 +5319,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Seated Spinal Twist": {
+    "Torsione da seduto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/07/Sitting-Rotation-Hip-Stretch.gif",
         execution: {
             steps: [
@@ -5334,7 +5334,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Knee-to-Chest Stretch": {
+    "Allungamento ginocchio al petto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/10/Single-Knee-To-Chest-Stretch.gif",
         svgAnimation: "knee-to-chest",
         execution: {
@@ -5346,11 +5346,11 @@ const COOLDOWN_DETAILS = {
             ],
             tips: [
                 "Mantieni la testa e le spalle a terra",
-                "Stretch per la parte bassa della schiena e i glutei"
+                "Allungamento per la parte bassa della schiena e i glutei"
             ]
         }
     },
-    "Knee-to-Chest": {
+    "Ginocchio al petto": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/10/Single-Knee-To-Chest-Stretch.gif",
         svgAnimation: "knee-to-chest",
         execution: {
@@ -5362,18 +5362,18 @@ const COOLDOWN_DETAILS = {
             ],
             tips: [
                 "Mantieni la testa rilassata a terra",
-                "Stretch per glutei e parte bassa della schiena"
+                "Allungamento per glutei e parte bassa della schiena"
             ]
         }
     },
-    "Quad Stretch": {
+    "Allungamento del quadricipite": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Standing-Quadriceps-Stretch.gif",
         execution: {
             steps: [
                 "In piedi, afferra la caviglia di una gamba",
                 "Tira il tallone verso il gluteo",
                 "Mantieni le ginocchia vicine",
-                "Spingi il fianco in avanti per maggiore stretch"
+                "Spingi il fianco in avanti per allungare di più"
             ],
             tips: [
                 "Tieniti a un supporto se necessario",
@@ -5381,7 +5381,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Kneeling Quad Stretch": {
+    "Allungamento del quadricipite in ginocchio": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Kneeling-Quad-Stretch.gif",
         execution: {
             steps: [
@@ -5392,11 +5392,11 @@ const COOLDOWN_DETAILS = {
             ],
             tips: [
                 "Usa un cuscino sotto il ginocchio a terra",
-                "Stretch più profondo rispetto alla versione in piedi"
+                "Allungamento più profondo rispetto alla versione in piedi"
             ]
         }
     },
-    "Lying Quad Stretch": {
+    "Allungamento del quadricipite sul fianco": {
         gifUrl: "https://static.exercisedb.dev/media/BWnJR72.gif",
         execution: {
             steps: [
@@ -5411,29 +5411,29 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Couch Stretch": {
+    "Allungamento del quadricipite al muro": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Kneeling-Quad-Stretch.gif",
         execution: {
             steps: [
                 "Mettiti in ginocchio davanti a un muro o divano",
-                "Appoggia un piede/shin contro il muro dietro di te",
+                "Appoggia il collo del piede e la tibia contro il muro dietro di te",
                 "L'altra gamba in posizione di affondo con piede a terra",
                 "Spingi il bacino in avanti e raddrizza il busto"
             ],
             tips: [
-                "Stretch molto intenso per i quadricipiti e i flessori dell'anca",
+                "Allungamento molto intenso per i quadricipiti e i flessori dell'anca",
                 "Inizia gradualmente, non forzare"
             ]
         }
     },
-    "Hamstring Stretch": {
+    "Allungamento dei femorali": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Hamstring-Stretch.gif",
         execution: {
             steps: [
                 "Posiziona un piede su un rialzo (panca, gradino)",
                 "Mantieni la gamba dritta",
                 "Inclina il busto in avanti dalla vita",
-                "Senti lo stretch nel femorale"
+                "Senti l'allungamento nel femorale"
             ],
             tips: [
                 "Mantieni la schiena dritta, non arrotondarla",
@@ -5441,7 +5441,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Standing Toe Touch": {
+    "Tocco delle punte in piedi": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Standing-Toe-Touch.gif",
         execution: {
             steps: [
@@ -5456,7 +5456,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Single Leg Forward Fold": {
+    "Flessione del busto su una gamba": {
         gifUrl: null,
         svgAnimation: "forward-fold",
         execution: {
@@ -5472,7 +5472,7 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Lying Hamstring Stretch": {
+    "Allungamento dei femorali da sdraiato": {
         gifUrl: "https://static.exercisedb.dev/media/sU5BrfP.gif",
         execution: {
             steps: [
@@ -5487,14 +5487,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Seated Glute Stretch": {
+    "Allungamento dei glutei da seduto": {
         gifUrl: "https://static.exercisedb.dev/media/QY39eBr.gif",
         execution: {
             steps: [
                 "Seduto su una sedia o a terra",
                 "Appoggia una caviglia sulla coscia opposta (posizione 4)",
                 "Piegati in avanti dal busto",
-                "Senti lo stretch nel gluteo della gamba incrociata"
+                "Senti l'allungamento nel gluteo della gamba incrociata"
             ],
             tips: [
                 "Mantieni la schiena dritta mentre ti pieghi",
@@ -5502,14 +5502,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Lying Side Stretch": {
+    "Allungamento laterale da sdraiato": {
         gifUrl: null,
         execution: {
             steps: [
                 "Sdraiato supino, braccia distese sopra la testa",
                 "Inclina il corpo lateralmente formando una C",
                 "Incrocia la caviglia esterna sopra l'altra",
-                "Senti lo stretch lungo tutto il fianco"
+                "Senti l'allungamento lungo tutto il fianco"
             ],
             tips: [
                 "Mantieni le spalle e i fianchi a terra",
@@ -5517,14 +5517,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Figure-4": {
+    "Figura 4": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Lying-glute-stretch.gif",
         execution: {
             steps: [
                 "Sdraiato supino, piedi a terra",
                 "Appoggia una caviglia sulla coscia opposta",
                 "Tira la coscia verso il petto",
-                "Senti lo stretch nel gluteo e nel piriforme"
+                "Senti l'allungamento nel gluteo e nel piriforme"
             ],
             tips: [
                 "Mantieni la testa e le spalle a terra",
@@ -5532,13 +5532,13 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Wrist Flexor Stretch": {
+    "Allungamento dei flessori del polso": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/03/Wrist-Stretch.gif",
         execution: {
             steps: [
                 "Distendi un braccio davanti a te, palmo verso l'alto",
                 "Con l'altra mano, tira le dita verso il basso e indietro",
-                "Senti lo stretch nella parte interna dell'avambraccio",
+                "Senti l'allungamento nella parte interna dell'avambraccio",
                 "Mantieni 20 secondi per mano"
             ],
             tips: [
@@ -5547,13 +5547,13 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Wrist Extensor Stretch": {
+    "Allungamento degli estensori del polso": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/03/reverse-Wrist-Stretch.gif",
         execution: {
             steps: [
                 "Distendi un braccio davanti a te, palmo verso il basso",
                 "Con l'altra mano, spingi le dita verso il basso",
-                "Senti lo stretch nella parte esterna dell'avambraccio",
+                "Senti l'allungamento nella parte esterna dell'avambraccio",
                 "Mantieni 20 secondi per mano"
             ],
             tips: [
@@ -5562,14 +5562,14 @@ const COOLDOWN_DETAILS = {
             ]
         }
     },
-    "Hip Flexor Stretch": {
+    "Allungamento dei flessori dell'anca": {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/Kneeling-Hip-Flexor-Stretch.gif",
         execution: {
             steps: [
                 "Posizionati in affondo, ginocchio posteriore a terra",
                 "Il ginocchio anteriore a 90°, sopra la caviglia",
                 "Spingi il bacino in avanti e in basso",
-                "Senti lo stretch nel flessore dell'anca posteriore"
+                "Senti l'allungamento nel flessore dell'anca posteriore"
             ],
             tips: [
                 "Contrai il gluteo della gamba posteriore",
@@ -5817,6 +5817,144 @@ Object.assign(SVG_ANIMATIONS, (() => {
     };
 })());
 
+// Nomi della v1.25 (quasi tutti inglesi) → nomi italiani della v2.0. Riscaldamento e defaticamento si
+// cercano per nome visualizzato: chi passa ancora il vecchio nome (codice vecchio, una pagina rimasta
+// aperta, un link) trova gli stessi dettagli. Due tabelle perché i dizionari dei dettagli sono due.
+const WARMUP_NAME_ALIASES = {
+    "Arm Circles": "Circonduzioni delle braccia",
+    "Arm Circles Progressivi": "Circonduzioni progressive delle braccia",
+    "Shoulder Rolls": "Rotazioni delle spalle",
+    "Band Pull-Apart": "Aperture con elastico",
+    "Wall Slides": "Scivolamenti al muro",
+    "Push-Up Plus": "Piegamenti con protrazione",
+    "Scapular Push-Ups": "Piegamenti scapolari",
+    "Cat-Cow Stretch": "Allungamento gatto-cammello",
+    "Cat-Cow": "Gatto-cammello",
+    "Thoracic Rotations": "Rotazioni toraciche",
+    "Dynamic Chest Stretch": "Apertura dinamica del petto",
+    "Incline Push-Up": "Piegamenti su rialzo",
+    "Scapular Retraction": "Retrazioni scapolari",
+    "Arm Swings Orizzontali": "Slanci orizzontali delle braccia",
+    "Scapular Pull-Ups": "Trazioni scapolari",
+    "Band Face Pull": "Face pull con elastico",
+    "Thoracic Extension": "Estensioni toraciche sul rullo",
+    "Superman Hold": "Superman",
+    "Lat Stretch Dinamico": "Allungamento dinamico dei dorsali",
+    "Shoulder Dislocates": "Passaggi sopra la testa",
+    "External Rotation": "Extrarotazioni con elastico",
+    "Y-T-W Raises": "Alzate Y-T-W",
+    "Empty Can Exercise": "Alzate a pollici in giù",
+    "Wrist Circles": "Rotazioni dei polsi",
+    "Light Band Curls": "Curl leggeri con elastico",
+    "Dynamic Bicep Stretch": "Allungamento dinamico del bicipite",
+    "Tricep Stretch Dinamico": "Allungamento dinamico del tricipite",
+    "Light Band Pushdowns": "Pushdown leggeri con elastico",
+    "Diamond Push-Ups (ginocchia)": "Piegamenti a diamante sulle ginocchia",
+    "Camminata sul Posto": "Camminata sul posto",
+    "Leg Swings Frontali": "Slanci frontali della gamba",
+    "Leg Swings Laterali": "Slanci laterali della gamba",
+    "Leg Swings": "Slanci delle gambe",
+    "Hip Circles": "Circonduzioni dell'anca",
+    "Hip Circles (in piedi)": "Rotazioni del bacino",
+    "Bodyweight Squats": "Squat a corpo libero",
+    "Walking Lunges": "Affondi camminati",
+    "Glute Bridges": "Ponte glutei",
+    "Inchworms": "Bruco",
+    "World's Greatest Stretch": "Affondo con rotazione",
+    "Camminata/Corsa Leggera": "Camminata o corsa leggera",
+    "High Knees": "Skip alto",
+    "Quad Stretch Dinamico": "Allungamento dinamico del quadricipite",
+    "Goblet Squat Paused": "Goblet squat con pausa",
+    "Camminata Leggera": "Camminata leggera",
+    "Good Mornings a Corpo Libero": "Good morning a corpo libero",
+    "Single Leg RDL Senza Peso": "Stacco rumeno su una gamba",
+    "Hamstring Walkouts": "Ponte camminato",
+    "Clamshells": "Apertura a conchiglia",
+    "Fire Hydrants": "Slanci laterali a quattro zampe",
+    "Donkey Kicks": "Slanci indietro a quattro zampe",
+    "Monster Walks": "Passi laterali con elastico",
+    "Ankle Circles": "Circonduzioni delle caviglie",
+    "Calf Raises Leggeri": "Sollevamenti sulle punte",
+    "Toe Walks": "Camminata sulle punte",
+    "Heel Walks": "Camminata sui talloni",
+    "Dynamic Calf Stretch": "Allungamento dinamico del polpaccio",
+    "Dead Bug": "Dead bug",
+    "Bird Dog": "Bird dog",
+    "Plank Hold": "Plank",
+    "Torso Rotations": "Rotazioni del busto",
+    "Jumping Jacks": "Jumping jack",
+    "Push-Ups (ginocchia se necessario)": "Piegamenti (anche sulle ginocchia)",
+    "Mountain Climbers": "Mountain climber"
+};
+
+const COOLDOWN_NAME_ALIASES = {
+    "Chest Doorway Stretch": "Allungamento del petto allo stipite",
+    "Doorway Chest Stretch": "Allungamento del petto alla porta",
+    "Cross-Body Shoulder Stretch": "Allungamento spalla a braccio incrociato",
+    "Cross-Body Stretch": "Braccio incrociato al petto",
+    "Shoulder Stretch": "Allungamento della spalla",
+    "Tricep Stretch": "Allungamento del tricipite",
+    "Overhead Tricep Stretch": "Allungamento del tricipite sopra la testa",
+    "Overhead Tricep/Shoulder Stretch": "Allungamento di tricipite e spalla",
+    "Bicep Wall Stretch": "Allungamento del braccio al muro",
+    "Wall Bicep Stretch": "Allungamento del bicipite al muro",
+    "Seated Bicep Stretch": "Allungamento del bicipite da seduto",
+    "Lat Stretch": "Allungamento dei dorsali",
+    "Neck Stretches": "Allungamento del collo",
+    "Neck Rolls": "Rotazioni del collo",
+    "Upper Back Stretch": "Allungamento della schiena alta",
+    "Child's Pose": "Posizione del bambino",
+    "Standing Quad Stretch": "Allungamento del quadricipite in piedi",
+    "Quad Stretch": "Allungamento del quadricipite",
+    "Kneeling Quad Stretch": "Allungamento del quadricipite in ginocchio",
+    "Lying Quad Stretch": "Allungamento del quadricipite sul fianco",
+    "Couch Stretch": "Allungamento del quadricipite al muro",
+    "Standing Hamstring Stretch": "Allungamento dei femorali in piedi",
+    "Hamstring Stretch": "Allungamento dei femorali",
+    "Lying Hamstring Stretch": "Allungamento dei femorali da sdraiato",
+    "Hip Flexor Stretch (Lunge)": "Affondo per i flessori dell'anca",
+    "Hip Flexor Stretch": "Allungamento dei flessori dell'anca",
+    "Pigeon Pose": "Posizione del piccione",
+    "Butterfly Stretch": "Allungamento a farfalla",
+    "Seated Forward Fold": "Flessione del busto da seduto",
+    "Single Leg Forward Fold": "Flessione del busto su una gamba",
+    "Standing Toe Touch": "Tocco delle punte in piedi",
+    "Figure-4 Stretch": "Allungamento a figura 4",
+    "Figure-4": "Figura 4",
+    "Calf Stretch": "Allungamento del polpaccio",
+    "Lying Spinal Twist": "Torsione da sdraiato",
+    "Seated Spinal Twist": "Torsione da seduto",
+    "Chest Opener": "Apertura del petto",
+    "Floor Chest Stretch": "Allungamento del petto a terra",
+    "Corner Stretch": "Allungamento del petto all'angolo",
+    "Cat-Cow Stretch": "Allungamento gatto-cammello",
+    "Cat-Cow": "Gatto-cammello",
+    "Knee-to-Chest Stretch": "Allungamento ginocchio al petto",
+    "Knee-to-Chest": "Ginocchio al petto",
+    "Cobra Stretch": "Posizione del cobra",
+    "Eagle Arms": "Braccia dell'aquila",
+    "Thread the Needle": "Infila l'ago",
+    "Wall Shoulder Stretch": "Allungamento della spalla al muro",
+    "Wrist Flexor Stretch": "Allungamento dei flessori del polso",
+    "Wrist Extensor Stretch": "Allungamento degli estensori del polso",
+    "Seated Glute Stretch": "Allungamento dei glutei da seduto",
+    "Lying Side Stretch": "Allungamento laterale da sdraiato",
+    "Deep Breathing": "Respirazione profonda"
+};
+
+// Dettagli per nome: nome esatto, poi vecchio nome, poi senza badare a maiuscole e spazi
+function _routineDetailsByName(table, aliases, exerciseName) {
+    if (typeof exerciseName !== 'string' || !exerciseName) return null;
+    const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    if (own(table, exerciseName)) return table[exerciseName];
+    if (own(aliases, exerciseName) && own(table, aliases[exerciseName])) return table[aliases[exerciseName]];
+    const norm = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const wanted = norm(exerciseName);
+    for (const k of Object.keys(table)) if (norm(k) === wanted) return table[k];
+    for (const k of Object.keys(aliases)) if (norm(k) === wanted && own(table, aliases[k])) return table[aliases[k]];
+    return null;
+}
+
 // Animazione per gli esercizi della scheda che non hanno una GIF giusta (vedi getExerciseMediaInfo)
 const EXERCISE_SVG_FALLBACK = {
     "dead-hang": "dead-hang"
@@ -5846,7 +5984,7 @@ function getExerciseDetails(exerciseId) {
  * @returns {Object|null} - The warmup details or null
  */
 function getWarmupDetails(exerciseName) {
-    return WARMUP_DETAILS[exerciseName] || null;
+    return _routineDetailsByName(WARMUP_DETAILS, WARMUP_NAME_ALIASES, exerciseName);
 }
 
 /**
@@ -5855,7 +5993,7 @@ function getWarmupDetails(exerciseName) {
  * @returns {Object|null} - The cooldown details or null
  */
 function getCooldownDetails(exerciseName) {
-    return COOLDOWN_DETAILS[exerciseName] || null;
+    return _routineDetailsByName(COOLDOWN_DETAILS, COOLDOWN_NAME_ALIASES, exerciseName);
 }
 
 /**

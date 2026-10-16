@@ -1,6 +1,11 @@
 /**
  * GymTracker Pro - Conditioning Exercises Database
  * Database esercizi HIIT e attività LISS con configurazioni protocolli
+ *
+ * Nomi: stessa regola di js/data/warmups.js (italiano da palestra; in inglese solo burpee, squat,
+ * plank, jumping jack, mountain climber, crunch, russian twist, dead bug, kettlebell, battle rope,
+ * Tabata, EMOM). Le sedute salvate hanno gli id (chiavi qui sotto), mai i nomi: le chiavi non si
+ * cambiano, i nomi sì.
  */
 
 // ========================================
@@ -10,8 +15,8 @@
 const HIIT_EXERCISES = {
     // === FULL BODY ===
     "burpees": {
-        name: "Burpees",
-        description: "Parti in piedi, scendi in squat, mani a terra, salta indietro in plank, fai un push-up, torna in squat e salta in alto con braccia sopra la testa.",
+        name: "Burpee",
+        description: "Parti in piedi, scendi in squat, mani a terra, salta indietro in plank, fai un piegamento, torna in squat e salta in alto con le braccia sopra la testa.",
         muscles: ["full-body", "petto", "quadricipiti", "core"],
         difficulty: "advanced",
         equipment: [],
@@ -19,8 +24,8 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2025/08/Burpee-with-Push-Up.gif"
     },
     "half-burpees": {
-        name: "Half Burpees",
-        description: "Come i burpees ma senza push-up. Scendi in squat, salta in plank, torna in squat e salta su.",
+        name: "Mezzo burpee",
+        description: "Come il burpee ma senza piegamento. Scendi in squat, salta in plank, torna in squat e salta su.",
         muscles: ["full-body", "quadricipiti", "core"],
         difficulty: "intermediate",
         equipment: [],
@@ -28,7 +33,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/burpees.gif"
     },
     "mountain-climbers": {
-        name: "Mountain Climbers",
+        name: "Mountain climber",
         description: "In posizione plank, porta le ginocchia al petto alternandole velocemente mantenendo il core attivo.",
         muscles: ["core", "spalle", "quadricipiti"],
         difficulty: "intermediate",
@@ -37,7 +42,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-climber.gif"
     },
     "jumping-jacks": {
-        name: "Jumping Jacks",
+        name: "Jumping jack",
         description: "Parti con piedi uniti e braccia lungo i fianchi. Salta aprendo gambe e braccia, poi torna in posizione.",
         muscles: ["full-body", "polpacci", "spalle"],
         difficulty: "beginner",
@@ -46,7 +51,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/05/Jumping-jack.gif"
     },
     "star-jumps": {
-        name: "Star Jumps",
+        name: "Salti a stella",
         description: "Da posizione accovacciata, salta esplosivamente aprendo braccia e gambe a stella, atterra morbido.",
         muscles: ["full-body", "quadricipiti", "spalle"],
         difficulty: "intermediate",
@@ -57,7 +62,7 @@ const HIIT_EXERCISES = {
 
     // === LOWER BODY ===
     "jump-squat": {
-        name: "Jump Squat",
+        name: "Squat con salto",
         description: "Esegui uno squat profondo, poi esplodi verso l'alto saltando. Atterra morbido e ripeti.",
         muscles: ["quadricipiti", "glutei", "polpacci"],
         difficulty: "intermediate",
@@ -66,7 +71,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Squat.gif"
     },
     "jumping-lunges": {
-        name: "Jumping Lunges",
+        name: "Affondi saltati",
         description: "Da posizione di affondo, salta e scambia le gambe in aria, atterra nell'affondo opposto.",
         muscles: ["quadricipiti", "glutei", "femorali"],
         difficulty: "advanced",
@@ -75,7 +80,7 @@ const HIIT_EXERCISES = {
         gifUrl: null
     },
     "high-knees": {
-        name: "High Knees",
+        name: "Skip alto",
         description: "Corri sul posto portando le ginocchia il più in alto possibile, alternando velocemente.",
         muscles: ["quadricipiti", "core", "polpacci"],
         difficulty: "beginner",
@@ -84,7 +89,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/08/High-Knee-Run.gif"
     },
     "butt-kicks": {
-        name: "Butt Kicks",
+        name: "Corsa calciata",
         description: "Corri sul posto portando i talloni verso i glutei, alternando velocemente.",
         muscles: ["femorali", "polpacci"],
         difficulty: "beginner",
@@ -93,7 +98,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/10/Butt-Kicks.gif"
     },
     "squat-pulse": {
-        name: "Squat Pulse",
+        name: "Molleggi in squat",
         description: "Mantieni la posizione bassa dello squat e fai piccoli movimenti su e giù senza tornare in piedi.",
         muscles: ["quadricipiti", "glutei"],
         difficulty: "intermediate",
@@ -102,7 +107,7 @@ const HIIT_EXERCISES = {
         gifUrl: null
     },
     "skater-jumps": {
-        name: "Skater Jumps",
+        name: "Salti del pattinatore",
         description: "Salta lateralmente da un piede all'altro come un pattinatore, portando la gamba libera dietro.",
         muscles: ["quadricipiti", "glutei", "polpacci"],
         difficulty: "intermediate",
@@ -111,7 +116,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Skater.gif"
     },
     "box-jump": {
-        name: "Box Jump",
+        name: "Salti sul box",
         description: "Salta esplosivamente su un box o step, atterra con entrambi i piedi, scendi controllato.",
         muscles: ["quadricipiti", "glutei", "polpacci"],
         difficulty: "intermediate",
@@ -120,7 +125,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/07/The-Box-Jump.gif"
     },
     "lateral-shuffle": {
-        name: "Lateral Shuffle",
+        name: "Passi laterali rapidi",
         description: "Muoviti lateralmente a passi veloci mantenendo le ginocchia piegate, cambia direzione.",
         muscles: ["quadricipiti", "glutei", "polpacci"],
         difficulty: "beginner",
@@ -131,8 +136,8 @@ const HIIT_EXERCISES = {
 
     // === UPPER BODY ===
     "plyo-push-up": {
-        name: "Push-up Esplosivo",
-        description: "Esegui un push-up e spingi esplosivamente in modo che le mani stacchino da terra.",
+        name: "Piegamenti esplosivi",
+        description: "Fai un piegamento e spingi forte, così che le mani si stacchino da terra.",
         muscles: ["petto", "tricipiti", "spalle"],
         difficulty: "advanced",
         equipment: [],
@@ -140,7 +145,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/06/Clap-Push-Up.gif"
     },
     "plank-shoulder-tap": {
-        name: "Plank Shoulder Tap",
+        name: "Plank con tocco delle spalle",
         description: "In posizione plank alta, tocca la spalla opposta con una mano alternando, mantieni il core stabile.",
         muscles: ["core", "spalle"],
         difficulty: "intermediate",
@@ -149,8 +154,8 @@ const HIIT_EXERCISES = {
         gifUrl: "https://static.exercisedb.dev/media/yRpV5TC.gif"
     },
     "push-up-to-t": {
-        name: "Push-up to T",
-        description: "Fai un push-up, poi ruota il corpo lateralmente sollevando un braccio verso il soffitto.",
+        name: "Piegamenti con rotazione a T",
+        description: "Fai un piegamento, poi ruota il corpo di lato sollevando un braccio verso il soffitto.",
         muscles: ["petto", "core", "spalle"],
         difficulty: "intermediate",
         equipment: [],
@@ -158,8 +163,8 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2023/01/push-up-with-rotation.gif"
     },
     "diamond-push-up": {
-        name: "Diamond Push-up",
-        description: "Push-up con mani unite a forma di diamante sotto il petto, enfatizza i tricipiti.",
+        name: "Piegamenti a diamante",
+        description: "Piegamento con le mani unite a diamante sotto il petto: lavora soprattutto sui tricipiti.",
         muscles: ["tricipiti", "petto"],
         difficulty: "intermediate",
         equipment: [],
@@ -169,7 +174,7 @@ const HIIT_EXERCISES = {
 
     // === CORE ===
     "v-ups": {
-        name: "V-Ups",
+        name: "Chiusure a libro",
         description: "Sdraiato, solleva contemporaneamente gambe e busto formando una V, tocca le punte dei piedi.",
         muscles: ["addome"],
         difficulty: "intermediate",
@@ -178,7 +183,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Jackknife-Sit-ups.gif"
     },
     "bicycle-crunch": {
-        name: "Bicycle Crunch",
+        name: "Crunch a bicicletta",
         description: "Sdraiato, porta il gomito verso il ginocchio opposto alternando in movimento di pedalata.",
         muscles: ["addome", "obliqui"],
         difficulty: "beginner",
@@ -187,7 +192,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif"
     },
     "plank-jack": {
-        name: "Plank Jack",
+        name: "Plank con apertura delle gambe",
         description: "In posizione plank, salta aprendo e chiudendo le gambe come un jumping jack.",
         muscles: ["core", "spalle", "quadricipiti"],
         difficulty: "intermediate",
@@ -196,7 +201,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/06/Plank-Jacks-Extended-Leg.gif"
     },
     "russian-twist-fast": {
-        name: "Russian Twist Veloce",
+        name: "Russian twist veloce",
         description: "Seduto con piedi sollevati, ruota velocemente il busto a destra e sinistra.",
         muscles: ["addome", "obliqui"],
         difficulty: "intermediate",
@@ -205,7 +210,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Russian-Twist.gif"
     },
     "dead-bug": {
-        name: "Dead Bug",
+        name: "Dead bug",
         description: "Sdraiato, estendi braccio e gamba opposti alternando, mantieni la schiena a terra.",
         muscles: ["core", "addome"],
         difficulty: "beginner",
@@ -214,7 +219,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dead-Bug.gif"
     },
     "toe-touch": {
-        name: "Toe Touch",
+        name: "Crunch con tocco delle punte",
         description: "Sdraiato con gambe verticali, solleva le spalle per toccare le punte dei piedi.",
         muscles: ["addome"],
         difficulty: "beginner",
@@ -225,7 +230,7 @@ const HIIT_EXERCISES = {
 
     // === CON ATTREZZATURA ===
     "kettlebell-swing": {
-        name: "Kettlebell Swing",
+        name: "Swing con kettlebell",
         description: "Oscillazione del kettlebell tra le gambe e sopra la testa usando la spinta dei fianchi.",
         muscles: ["glutei", "femorali", "schiena", "core"],
         difficulty: "intermediate",
@@ -234,7 +239,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2021/09/Kettlebell-Swings.gif"
     },
     "battle-ropes": {
-        name: "Battle Ropes",
+        name: "Battle rope",
         description: "Crea onde alternate con le corde, mantieni il core attivo e le ginocchia leggermente piegate.",
         muscles: ["spalle", "braccia", "core"],
         difficulty: "intermediate",
@@ -243,7 +248,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2015/07/Battle-Rope.gif"
     },
     "sled-push": {
-        name: "Sled Push",
+        name: "Spinta della slitta",
         description: "Spingi la slitta mantenendo il corpo inclinato in avanti e le braccia tese.",
         muscles: ["quadricipiti", "glutei", "core"],
         difficulty: "intermediate",
@@ -252,7 +257,7 @@ const HIIT_EXERCISES = {
         gifUrl: null
     },
     "med-ball-slam": {
-        name: "Med Ball Slam",
+        name: "Lanci a terra con palla medica",
         description: "Solleva la palla medica sopra la testa e sbattila a terra con forza, raccoglila e ripeti.",
         muscles: ["full-body", "core", "spalle"],
         difficulty: "intermediate",
@@ -261,7 +266,7 @@ const HIIT_EXERCISES = {
         gifUrl: "https://fitnessprogramer.com/wp-content/uploads/2022/06/Medicine-ball-Overhead-Slam-exercise.gif"
     },
     "dumbbell-thruster": {
-        name: "Dumbbell Thruster",
+        name: "Squat e spinta con manubri",
         description: "Squat con manubri alle spalle, esplodi verso l'alto spingendo i manubri sopra la testa.",
         muscles: ["quadricipiti", "spalle", "core"],
         difficulty: "intermediate",
@@ -277,14 +282,14 @@ const HIIT_EXERCISES = {
 
 const LISS_ACTIVITIES = {
     "walking-incline": {
-        name: "Camminata Inclinata",
-        description: "Treadmill con inclinazione 10-15%, velocità 5-6 km/h. Mantieni postura eretta.",
+        name: "Camminata in salita",
+        description: "Tapis roulant con pendenza 10-15%, velocità 5-6 km/h. Mantieni la postura eretta.",
         metValue: 4.5,
         equipment: ["treadmill"]
     },
     "cycling-steady": {
         name: "Cyclette",
-        description: "Pedalata costante in Zone 2 (60-70% della frequenza cardiaca massima). Ritmo sostenibile.",
+        description: "Pedalata costante in zona 2 (60-70% della frequenza cardiaca massima). Ritmo sostenibile.",
         metValue: 5,
         equipment: ["cyclette"]
     },
@@ -295,7 +300,7 @@ const LISS_ACTIVITIES = {
         equipment: ["ellittica"]
     },
     "rowing-steady": {
-        name: "Rowing",
+        name: "Vogatore",
         description: "Vogata costante a ritmo moderato. Mantieni la schiena dritta e usa le gambe.",
         metValue: 6,
         equipment: ["rower"]
@@ -307,13 +312,13 @@ const LISS_ACTIVITIES = {
         equipment: []
     },
     "outdoor-walk": {
-        name: "Camminata all'Aperto",
+        name: "Camminata all'aperto",
         description: "Camminata veloce all'aperto, 5-6 km/h. Ideale per recupero attivo.",
         metValue: 4,
         equipment: []
     },
     "stair-climber": {
-        name: "Stair Climber",
+        name: "Macchina delle scale",
         description: "Salita gradini a ritmo moderato. Ottimo per glutei e cardio.",
         metValue: 6,
         equipment: ["stair-climber"]
@@ -390,7 +395,7 @@ const CONDITIONING_BY_GOAL = {
         duration: 20,
         protocol: "circuit30",
         preferredDays: ["post-upper", "off-day"],
-        note: "LISS preferito post-upper body. HIIT solo nei giorni di riposo."
+        note: "LISS preferito dopo la seduta Upper. HIIT solo nei giorni di riposo."
     },
     recomp: {
         frequency: 2,
