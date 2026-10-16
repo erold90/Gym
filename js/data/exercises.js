@@ -1,6 +1,6 @@
 /**
  * GymTracker Pro - Exercise Database
- * Comprehensive database of 200+ exercises organized by category
+ * Database degli esercizi (139). Un esercizio non si cancella mai (lo storico lo usa): si marca `hidden: true`.
  */
 
 const EXERCISES_DB = {
@@ -639,8 +639,10 @@ const EXERCISES_DB = {
         instructions: "Piegato in avanti, solleva i manubri lateralmente.",
         tips: ["Deltoide posteriore", "Gomiti leggermente flessi"]
     },
+    // Doppione di "dumbbell-shrug": resta per lo storico, nascosto da elenchi e schede
     "dumbbell-shrug-shoulders": {
         id: "dumbbell-shrug-shoulders",
+        hidden: true,
         name: "Scrollate Manubri",
         category: "manubri",
         primaryMuscles: ["trapezio"],
@@ -1299,9 +1301,10 @@ const EXERCISES_DB = {
         secondaryMuscles: ["glutei"],
         type: "compound",
         difficulty: "intermediate",
-        equipment: ["manubri"],
-        instructions: "Stacco rumeno su una gamba sola.",
-        tips: ["Ottimo per equilibrio e unilateralità"]
+        // si fa anche a corpo libero: il manubrio (o un peso qualsiasi) è facoltativo
+        equipment: [],
+        instructions: "Stacco rumeno su una gamba sola, a corpo libero o con un manubrio nella mano opposta.",
+        tips: ["Ottimo per equilibrio e unilateralità", "Senza pesi: scendi lento e tieni l'anca in linea"]
     },
 
     // Macchine
@@ -1801,8 +1804,13 @@ const EXERCISES_DB = {
 };
 
 // Export functions to get exercises
+// Esercizi visibili (quelli con hidden: true restano nel database solo per lo storico)
+function getVisibleExercises() {
+    return Object.values(EXERCISES_DB).filter(ex => !ex.hidden);
+}
+
 function getAllExercises() {
-    return Object.values(EXERCISES_DB);
+    return getVisibleExercises();
 }
 
 function getExerciseById(id) {
@@ -1810,34 +1818,34 @@ function getExerciseById(id) {
 }
 
 function getExercisesByCategory(category) {
-    return Object.values(EXERCISES_DB).filter(ex => ex.category === category);
+    return getVisibleExercises().filter(ex => ex.category === category);
 }
 
 function getExercisesByMuscle(muscle) {
-    return Object.values(EXERCISES_DB).filter(ex =>
+    return getVisibleExercises().filter(ex =>
         ex.primaryMuscles.includes(muscle) || ex.secondaryMuscles.includes(muscle)
     );
 }
 
 function getExercisesByPrimaryMuscle(muscle) {
-    return Object.values(EXERCISES_DB).filter(ex => ex.primaryMuscles.includes(muscle));
+    return getVisibleExercises().filter(ex => ex.primaryMuscles.includes(muscle));
 }
 
 function getExercisesByType(type) {
-    return Object.values(EXERCISES_DB).filter(ex => ex.type === type);
+    return getVisibleExercises().filter(ex => ex.type === type);
 }
 
 function getCompoundExercises() {
-    return Object.values(EXERCISES_DB).filter(ex => ex.type === "compound");
+    return getVisibleExercises().filter(ex => ex.type === "compound");
 }
 
 function getIsolationExercises() {
-    return Object.values(EXERCISES_DB).filter(ex => ex.type === "isolation");
+    return getVisibleExercises().filter(ex => ex.type === "isolation");
 }
 
 function searchExercises(query) {
-    const q = query.toLowerCase();
-    return Object.values(EXERCISES_DB).filter(ex =>
+    const q = String(query || '').toLowerCase();
+    return getVisibleExercises().filter(ex =>
         ex.name.toLowerCase().includes(q) ||
         ex.primaryMuscles.some(m => m.includes(q)) ||
         ex.category.includes(q)
