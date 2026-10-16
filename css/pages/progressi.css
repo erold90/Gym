@@ -1,0 +1,11 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/progressi.css: calendario, mappa del corpo, grafici, storico (i componenti grafici stanno in components.css 5.24).
+   Fonte: proto.css sezione 6. File dell'area Progressi (js/app/progressi.js).
+   ===================================================================== */
+
+#page-progressi .card { display: flex; flex-direction: column; gap: var(--s-3); }
+
+/* Chart.js (finché i grafici non diventano SVG disegnati): con maintainAspectRatio:false
+   il contenitore DEVE avere un'altezza, altrimenti la tela cresce senza fine */
+.chart-container { position: relative; height: 160px; }
+.weight-chart-container { position: relative; height: 140px; }

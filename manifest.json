@@ -1,13 +1,13 @@
 {
     "id": "./",
-    "name": "GymTracker Pro",
+    "name": "GymTracker",
     "short_name": "GymTracker",
     "description": "Schede, serie, recuperi e progressi. Funziona offline, i dati restano sul telefono.",
     "start_url": "./",
     "scope": "./",
     "display": "standalone",
-    "background_color": "#0f0f1a",
-    "theme_color": "#1a1a2e",
+    "background_color": "#0F0E0B",
+    "theme_color": "#0F0E0B",
     "orientation": "portrait",
     "icons": [
         {
@@ -41,6 +41,10 @@
             "purpose": "any"
         }
     ],
-    "categories": ["fitness", "health", "lifestyle"],
+    "categories": [
+        "fitness",
+        "health",
+        "lifestyle"
+    ],
     "lang": "it"
 }

@@ -1,0 +1,25 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/esercizi.css: libreria (sottopagina) e scheda dell'esercizio.
+   Fonte: proto.css sezione 6. File dell'area Esercizi (js/app/esercizi.js).
+   ===================================================================== */
+
+/* Esercizi */
+.lib { display: flex; flex-direction: column; }
+.libr { color: inherit; text-decoration: none; display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; min-height: 80px; width: 100%; text-align: left; position: relative; }
+.libr + .libr::before { content: ""; position: absolute; top: 0; left: 76px; right: 0; height: 1px; background: var(--line); }
+.libr .thumb { width: 64px; height: 64px; }
+.libr__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.libr__name { font-weight: 650; line-height: 1.25; }
+.libr__sub { font-size: var(--fs-sm); color: var(--text-2); }
+.libr__eq { color: var(--text-3); display: flex; gap: 4px; }
+.count { font-size: var(--fs-sm); color: var(--text-3); font-weight: 560; }
+.steps-list { counter-reset: s; display: flex; flex-direction: column; gap: var(--s-3); }
+.steps-list li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: var(--s-3); align-items: start; line-height: 1.4; }
+.steps-list li::before { content: counter(s); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); font-weight: 760; font-stretch: var(--narrow); font-size: var(--fs-sm); }
+.errs { display: flex; flex-direction: column; gap: var(--s-3); }
+.errs li { display: grid; grid-template-columns: 24px 1fr; gap: var(--s-3); line-height: 1.4; }
+.errs .ico { color: var(--warn-text); width: 22px; height: 22px; }
+
+/* "Come si fa": la GIF (o l'animazione SVG di ripiego) riempie la lastra chiara */
+.exercise-gif-container { height: 100%; display: grid; place-items: center; }
+.exercise-gif-container > svg { max-width: 100%; max-height: 100%; }

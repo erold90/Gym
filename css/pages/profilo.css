@@ -1,0 +1,20 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/profilo.css: profilo e impostazioni (una pagina), backup.
+   Fonte: proto.css sezione 6. File dell'area Profilo (js/app/profilo.js).
+   ===================================================================== */
+
+/* Profilo */
+.me { display: flex; align-items: center; gap: var(--s-4); }
+.avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font-size: 1.75rem; font-weight: 800; font-stretch: 80%; flex: none; }
+.me__name { font-size: var(--fs-xl); font-weight: var(--w-title); line-height: 1.1; }
+.me__sub { color: var(--text-2); font-size: var(--fs-sm); }
+.backup { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }
+.backup__state { display: flex; align-items: center; gap: var(--s-3); }
+.backup__btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.backup__btns .btn { flex-direction: column; gap: 2px; min-height: 64px; padding: 0 var(--s-2); font-size: var(--fs-sm); }
+.foot { text-align: center; font-size: var(--fs-sm); color: var(--text-3); display: flex; flex-direction: column; align-items: center; gap: var(--s-1); }
+
+/* righe delle impostazioni con un campo a destra */
+.row > .input { flex: none; min-height: 44px; }
+.storage-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.storage-used { height: 100%; width: 2%; background: var(--accent-mark); border-radius: 3px; }

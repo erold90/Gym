@@ -1,0 +1,114 @@
+/* =====================================================================
+   GymTracker 2.0 — layout.css: guscio dell'app. Pagine, intestazioni, topbar, sezioni,
+   dock (azione principale in basso), tab bar, desktop (tab bar a colonna).
+   Fonte: proto.css sezioni 4, 5.8, 5.9, 6 (comuni) e 7.
+
+   Classi del guscio (le mette il router, js/app/core.js):
+     .app.app--tabs     pagina con la tab bar (Oggi, Scheda, Progressi, Profilo)
+     .app.app--sub      sottopagina con .topbar e Indietro (Esercizi)
+     .app.app--session  seduta a tutto schermo (anche body.session), niente tab bar
+     .app.app--full     a tutto schermo senza barre (Riepilogo, Primo avvio)
+     .app.app--dock     la pagina attiva ha un .dock visibile; --dock-space = sua altezza (misurata)
+   ===================================================================== */
+
+/* ---------- 4. LAYOUT ---------- */
+.app { min-height: 100dvh; display: flex; flex-direction: column; }
+.main { flex: 1; min-width: 0; padding: calc(var(--safe-t) + var(--s-4)) var(--gutter) var(--s-8); display: flex; flex-direction: column; gap: var(--s-8); }
+.main:focus { outline: none; }
+
+/* pagine: una sola visibile (.page.active); dentro, il ritmo verticale lo fanno i gap */
+.page { display: none; }
+.page.active { display: flex; flex-direction: column; gap: var(--s-8); min-width: 0; }
+
+/* spazio in fondo: tab bar, dock, o entrambi (il dock sta sopra la tab bar) */
+.app--tabs .main { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-8)); }
+.app--dock .main { padding-bottom: calc(var(--dock-space, 104px) + var(--s-6)); }
+.app--tabs.app--dock .main { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--dock-space, 96px) + var(--s-4)); }
+
+/* sottopagine e seduta: la .topbar della pagina sta in cima e porta lei il margine di sicurezza */
+.app--sub .main, .app--session .main { padding-top: 0; }
+.app--sub .page.active { gap: var(--s-4); }
+.app--sub .page.active > .topbar { margin-bottom: calc(var(--s-2) * -1); }
+
+/* intestazione di schermata (non fissa: la schermata scorre tutta) */
+.head { display: flex; align-items: center; gap: var(--s-3); min-height: var(--tap-min); }
+.head h1 { font-size: var(--fs-xl); flex: 1; min-width: 0; }
+.head__actions { display: flex; gap: var(--s-1); margin-right: calc(var(--s-2) * -1); }
+
+/* barra superiore fissa (seduta, esercizi): a tutta larghezza anche dentro .main */
+.topbar { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; align-items: center; gap: var(--s-2); min-height: calc(var(--topbar-h) + var(--safe-t)); padding: var(--safe-t) calc(var(--gutter) - var(--s-2)) 0; background: var(--bg); }
+.main .topbar { margin-left: calc(var(--gutter) * -1); margin-right: calc(var(--gutter) * -1); }
+.topbar__title { flex: 1; min-width: 0; text-align: center; line-height: 1.2; }
+.topbar__title b { display: block; font-size: var(--fs-sm); font-weight: var(--w-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar__title span { font-size: var(--fs-cap); color: var(--text-3); }
+.topbar__title h1 { font-size: var(--fs-body); font-weight: 700; }
+.topbar__spacer { width: var(--tap); flex: none; }
+.session .seg button { min-height: var(--tap); }
+
+/* sezioni: titolo + contenuto */
+.section { display: flex; flex-direction: column; gap: var(--s-3); }
+.section__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.section__head h2 { font-size: var(--fs-lg); }
+.section__head h2.cap { font-size: var(--fs-cap); }
+.section__head .link { font-size: var(--fs-sm); font-weight: var(--w-label); color: var(--accent-text); min-height: var(--tap-min); display: inline-flex; align-items: center; gap: var(--s-1); text-decoration: none; }
+
+/* due colonne da 960 px; sotto, una colonna */
+.wide, .wide > .col { display: flex; flex-direction: column; gap: var(--s-8); }
+.desk-only { display: none !important; }
+
+/* ---------- 5.8 Dock: "il pollice ha un posto solo". Contiene sempre l'azione principale. ---------- */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-dock);
+  padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b));
+  background: var(--bg); box-shadow: 0 -1px 0 var(--line), var(--shadow-2);
+  display: flex; flex-direction: column; gap: var(--s-3);
+}
+.app--tabs .dock { bottom: calc(var(--tabbar-h) + var(--safe-b)); padding-bottom: var(--s-3); box-shadow: none; background: linear-gradient(to bottom, transparent, var(--bg) 18px); padding-top: var(--s-6); }
+/* un dock senza niente di visibile non occupa spazio */
+.dock:not(:has(> :not([hidden]):not(.hidden))) { display: none; }
+.dock__row { display: flex; gap: var(--s-2); align-items: stretch; }
+.dock__row > .btn { flex: 1; }
+.dock__row > .btn--icon { flex: none; }
+
+/* ---------- 5.9 Tab bar: 4 voci, la attiva ha aria-current="page" ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  height: calc(var(--tabbar-h) + var(--safe-b)); padding-bottom: var(--safe-b);
+  background: var(--surface-1); box-shadow: 0 -1px 0 var(--line);
+}
+.app:not(.app--tabs) .tabbar { display: none; }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: var(--tap); color: var(--text-3); font-size: 0.75rem; font-weight: 620; letter-spacing: 0.01em; text-decoration: none; -webkit-user-select: none; user-select: none; }
+.tab__pill { display: grid; place-items: center; width: 56px; height: 30px; border-radius: var(--r-pill); transition: background-color var(--dur-2) var(--ease-out); }
+.tab:active .tab__pill { background: var(--surface-2); }
+.tab[aria-current="page"] { color: var(--text); }
+.tab[aria-current="page"] .tab__pill { background: var(--accent-soft); color: var(--accent-text); }
+.tab[aria-current="page"] .ico { stroke-width: 2.25; }
+.tab:focus-visible { outline-offset: -3px; border-radius: var(--r-md); }
+.rail-brand { display: none; }
+
+/* ---------- 7. DESKTOP (>= 960 px): la tab bar diventa una colonna a sinistra ---------- */
+@media (min-width: 960px) {
+  :root { --gutter: 2rem; }
+  .app--tabs { padding-left: var(--rail-w); }
+  .tabbar { top: 0; right: auto; width: var(--rail-w); height: auto; grid-template-columns: 1fr; grid-auto-rows: 80px; align-content: start; padding: var(--s-6) 0; gap: var(--s-2); box-shadow: 1px 0 0 var(--line); }
+  .rail-brand { display: grid; place-items: center; height: 56px; margin-bottom: var(--s-4); font-weight: 820; font-stretch: 75%; font-size: 1.25rem; letter-spacing: -0.01em; }
+  .app--tabs .main { padding-bottom: var(--s-12); }
+  .main { width: 100%; max-width: 1120px; margin: 0 auto; padding-top: var(--s-8); }
+  .wide { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: var(--s-8) var(--s-12); align-items: start; }
+  .wide > .col { display: flex; flex-direction: column; gap: var(--s-8); }
+  .app--tabs .dock, .dock--inline { position: static; padding: 0; background: none; box-shadow: none; }
+  .app--dock .main { padding-bottom: var(--s-12); }
+  .app--tabs.app--dock .main { padding-bottom: var(--s-12); }
+  /* senza barra delle schede il dock diventa un pannello che galleggia in basso al centro */
+  .app--dock:not(.app--tabs) .dock { left: 50%; right: auto; width: 560px; transform: translateX(-50%); bottom: var(--s-6); border-radius: var(--r-lg); padding: var(--s-3); background: var(--surface-1); box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgb(0 0 0 / 0.2); }
+  .app--dock:not(.app--tabs) .main { padding-bottom: calc(var(--dock-space, 96px) + var(--s-12)); }
+  /* seduta: dock dentro la colonna delle serie */
+  .session .main { max-width: 1120px; }
+  .session .app--dock:not(.app--tabs) .dock { transform: none; left: auto; right: max(var(--gutter), calc((100vw - 1120px) / 2 + var(--gutter))); width: min(520px, calc(50vw - 3rem)); bottom: var(--s-6); }
+  .session .topbar { padding-left: var(--gutter); padding-right: var(--gutter); }
+  .desk-only { display: block !important; }
+}
+@media (min-width: 960px) and (hover: hover) {
+  .tab:hover { color: var(--text); }
+}

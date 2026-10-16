@@ -1,0 +1,16 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/conditioning.css: foglio del cardio (HIIT/LISS).
+   File dell'area Cardio (js/app/conditioning.js).
+   ===================================================================== */
+
+/* i passi li mostra showConditioningStep() con style.display: il ritmo lo fanno i margini */
+.conditioning-step > * + * { margin-top: var(--s-4); }
+.conditioning-header.head { margin-left: calc(var(--s-2) * -1); }
+.conditioning-header h3 { font-size: var(--fs-lg); }
+
+/* intervallo HIIT: visibile solo durante il lavoro o il recupero (classi messe da _renderHiitInterval) */
+.conditioning-interval:not(.is-work):not(.is-rest) { display: none; }
+.conditioning-interval { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-lg); background: var(--surface-2); }
+.conditioning-interval.is-work { background: var(--accent); color: var(--on-accent); }
+.conditioning-interval .interval-time { font-size: var(--fn-xl); line-height: 1; font-weight: 800; font-stretch: 72%; }
+.conditioning-timer-display .timer-value { font-size: var(--fn-lg); line-height: 1; }

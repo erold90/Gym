@@ -1,0 +1,24 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/scheda.css: scheda attiva, giorni espandibili, superset.
+   Fonte: proto.css sezione 6. File dell'area Scheda (js/app/scheda.js).
+   ===================================================================== */
+
+/* Scheda */
+.dayc { border-radius: var(--r-lg); background: var(--surface-1); box-shadow: var(--shadow-1); overflow: hidden; }
+.dayc__head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-1) var(--s-3); padding: var(--s-4); width: 100%; text-align: left; min-height: 76px; }
+.dayc__name { font-size: var(--fs-lg); font-weight: var(--w-title); display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.dayc__sub { font-size: var(--fs-sm); color: var(--text-2); }
+.dayc__chev { grid-row: 1 / 3; grid-column: 2; color: var(--text-3); transition: transform var(--dur-2) var(--ease-out); }
+.dayc[open] .dayc__chev, .dayc.is-open .dayc__chev { transform: rotate(180deg); }
+.dayc__list { padding: 0 var(--s-4) var(--s-3); }
+.dayc:not(.is-open) .dayc__list { display: none; }
+.exr { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) 0; min-height: 60px; }
+.exr + .exr { border-top: 1px solid var(--line); }
+.exr__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.exr__name { font-weight: 600; line-height: 1.25; }
+.exr__plan { font-size: var(--fs-sm); color: var(--text-2); }
+.exr__plan .num { font-size: 1rem; color: var(--text); }
+.ssgroup { border-radius: var(--r-sm); background: var(--surface-2); padding: 2px var(--s-3); margin: var(--s-1) calc(var(--s-3) * -1); }
+.ssgroup__label { display: flex; align-items: center; gap: 6px; padding-top: var(--s-2); font-size: var(--fs-cap); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent-text); }
+.ssgroup__label .ico { width: 16px; height: 16px; }
+.ssgroup .exr + .exr { border-top-color: var(--line-strong); border-top-style: dashed; }

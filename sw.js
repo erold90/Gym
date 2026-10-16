@@ -1,6 +1,6 @@
-// GymTracker Pro - Service Worker
+// GymTracker 2.0 - Service Worker
 // Cambia questa versione ad ogni deploy per forzare l'aggiornamento
-const CACHE_VERSION = 'v1.26.0';
+const CACHE_VERSION = 'v2.0.0';
 const CACHE_NAME = `gymtracker-${CACHE_VERSION}`;
 
 // GIF degli esercizi: cache a parte che sopravvive agli aggiornamenti, con un tetto.
@@ -16,7 +16,25 @@ const GIF_MAX = 80;
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
-    './css/style.css',
+    // stile: token, base, guscio, componenti, pagine
+    './css/tokens.css',
+    './css/tokens-colors.css',
+    './css/base.css',
+    './css/layout.css',
+    './css/components.css',
+    './css/pages/oggi.css',
+    './css/pages/onboarding.css',
+    './css/pages/seduta.css',
+    './css/pages/riepilogo.css',
+    './css/pages/scheda.css',
+    './css/pages/progressi.css',
+    './css/pages/profilo.css',
+    './css/pages/esercizi.css',
+    './css/pages/conditioning.css',
+    // font (Archivo, OFL) e licenza
+    './fonts/Archivo-var-latin.woff2',
+    './fonts/OFL.txt',
+    // dati e moduli
     './js/modules/utils.js',
     './js/vendor/chart.umd.min.js',
     './js/data/exercises.js',
@@ -26,7 +44,17 @@ const ASSETS_TO_CACHE = [
     './js/modules/timer.js',
     './js/modules/exerciseMedia.js',
     './js/modules/conditioningExercises.js',
-    './js/app.js',
+    // app: core, aree, avvio
+    './js/app/core.js',
+    './js/app/oggi.js',
+    './js/app/seduta.js',
+    './js/app/scheda.js',
+    './js/app/progressi.js',
+    './js/app/profilo.js',
+    './js/app/esercizi.js',
+    './js/app/conditioning.js',
+    './js/app/main.js',
+    // installazione
     './manifest.json',
     './icons/icon.svg',
     './icons/icon-192.png',

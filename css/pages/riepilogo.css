@@ -1,0 +1,25 @@
+/* =====================================================================
+   GymTracker 2.0 — pages/riepilogo.css: fine seduta (pagina #riepilogo).
+   Fonte: proto.css sezione 6. File dell'area Seduta (js/app/seduta.js).
+   ===================================================================== */
+
+/* Riepilogo */
+.done-hero { display: flex; flex-direction: column; gap: var(--s-2); }
+.done-hero__kicker { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--ok-text); font-weight: 700; }
+.done-hero h1 { font-size: var(--fs-2xl); font-weight: 820; font-stretch: 80%; letter-spacing: -0.02em; line-height: 0.95; }
+.records { display: flex; flex-direction: column; gap: 0; border-radius: var(--r-lg); background: var(--surface-1); box-shadow: var(--shadow-1); overflow: hidden; }
+.records__head { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-4) var(--s-4) var(--s-2); }
+.records__head .ico { color: var(--accent-text); }
+.records__head h2 { font-size: var(--fs-lg); }
+.record { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px var(--s-3); padding: var(--s-3) var(--s-4); position: relative; }
+.record + .record::before { content: ""; position: absolute; top: 0; left: var(--s-4); right: 0; height: 1px; background: var(--line); }
+.record__name { font-weight: 650; }
+.record__what { font-size: var(--fs-sm); color: var(--text-2); }
+.record__v { grid-row: span 2; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.record__v .num { font-size: var(--fn-md); line-height: 1; }
+.cmp { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 2px var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--line); }
+.cmp:first-child { border-top: 0; }
+.cmp__name { font-weight: 600; min-width: 0; }
+.cmp__now { font-size: var(--fn-sm); text-align: right; line-height: 1; }
+.cmp__was { grid-column: 1 / 3; font-size: var(--fs-sm); color: var(--text-3); }
+.cmp .delta { grid-column: 3; grid-row: 1 / 3; justify-content: flex-end; min-width: 76px; }

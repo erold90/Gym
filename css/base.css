@@ -1,0 +1,63 @@
+/* =====================================================================
+   GymTracker 2.0 — base.css: reset, corpo, icone, numeri, utilità, focus, movimento ridotto.
+   Fonte: proto.css sezione 3. Regole: solo variabili per i colori; numeri sempre in .num.
+   ===================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--bg);
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  font-weight: var(--w-body);
+  line-height: var(--lh-body);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+/* foglio aperto: la pagina sotto non scorre */
+body.has-sheet { overflow: hidden; }
+
+h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+h1, h2, h3 { font-weight: var(--w-title); line-height: var(--lh-tight); text-wrap: balance; letter-spacing: -0.01em; }
+h4 { font-size: var(--fs-body); font-weight: 700; line-height: 1.25; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+a { color: var(--accent-text); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+img { display: block; max-width: 100%; }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+:focus { outline: none; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--r-xs); }
+::selection { background: var(--accent); color: var(--on-accent); }
+
+/* icone dello sprite (index.html): colore e spessore dal contesto */
+.ico { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
+.ico--sm { width: 20px; height: 20px; }
+.ico--lg { width: 28px; height: 28px; }
+.ico--xl { width: 40px; height: 40px; stroke-width: 1.75; }
+
+.num { font-stretch: var(--narrow); font-variant-numeric: tabular-nums lining-nums; font-weight: var(--w-num); letter-spacing: -0.005em; }
+.cap { font-size: var(--fs-cap); font-weight: 650; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.nowrap { white-space: nowrap; }
+.ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* Visibilità dei sotto-elementi: attributo [hidden] (e la classe .hidden che il codice usa ancora).
+   Le pagine usano invece .page / .page.active (layout.css). Non mescolare con style.display. */
+[hidden], .hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

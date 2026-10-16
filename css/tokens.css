@@ -1,0 +1,105 @@
+/* =====================================================================
+   GymTracker 2.0 — tokens.css: font, token non colore, ombre del tema chiaro.
+   I colori stanno in tokens-colors.css (generato). Ordine dei file CSS:
+   tokens · tokens-colors · base · layout · components · pages/*.
+   Fonte: .analisi-2026-10/design/proto.css (sezioni 1-2) e DESIGN.md.
+   ===================================================================== */
+
+/* ---------- 1. FONT (Archivo variabile, OFL, sottoinsieme latino; licenza in fonts/OFL.txt) ---------- */
+@font-face {
+  font-family: "Archivo";
+  src: url("../fonts/Archivo-var-latin.woff2") format("woff2");
+  font-weight: 400 850;
+  font-stretch: 62% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+/* Ripiego metrico: riduce lo spostamento quando il font arriva dopo (Arial/Helvetica tarati su Archivo) */
+@font-face {
+  font-family: "Archivo Fallback";
+  src: local("Arial"), local("Helvetica Neue"), local("Helvetica");
+  size-adjust: 102%;
+  ascent-override: 88%;
+  descent-override: 21%;
+  line-gap-override: 0%;
+}
+
+/* ---------- 2. TOKEN (non colore) ---------- */
+:root {
+  /* tipografia */
+  --font: "Archivo", "Archivo Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-cap: 0.8125rem;   /* 13 — etichette maiuscole, assi dei grafici */
+  --fs-sm: 0.9375rem;    /* 15 — secondario */
+  --fs-body: 1.0625rem;  /* 17 — corpo (come iOS) */
+  --fs-lg: 1.3125rem;    /* 21 — titoli di sezione, nome esercizio */
+  --fs-xl: 1.75rem;      /* 28 — titoli di schermata */
+  --fs-2xl: 2.5rem;      /* 40 — nome del giorno, titolo del riepilogo */
+  --fn-sm: 1.25rem;      /* 20 — numeri nelle righe */
+  --fn-md: 2.125rem;     /* 34 — stepper (si riduce da solo fino a stare intero) */
+  --fn-lg: 2.75rem;      /* 44 — cifre di sezione */
+  --fn-xl: 3.75rem;      /* 60 — recupero */
+  --fn-2xl: 5rem;        /* 80 — recupero, ultimi 10 s */
+  --w-body: 430;
+  --w-label: 600;
+  --w-title: 760;
+  --w-num: 760;
+  --narrow: 76%;         /* larghezza delle cifre condensate */
+  --lh-tight: 1.1;
+  --lh-body: 1.45;
+
+  /* spazio: scala 4 px */
+  --s-1: 0.25rem; --s-2: 0.5rem; --s-3: 0.75rem; --s-4: 1rem; --s-5: 1.25rem;
+  --s-6: 1.5rem; --s-8: 2rem; --s-10: 2.5rem; --s-12: 3rem; --s-16: 4rem;
+  --gutter: 1rem;
+
+  /* raggi */
+  --r-xs: 6px; --r-sm: 12px; --r-md: 16px; --r-lg: 22px; --r-pill: 999px;
+
+  /* misure */
+  --tap: 48px;          /* bersaglio in seduta */
+  --tap-min: 44px;      /* bersaglio altrove */
+  --tabbar-h: 64px;
+  --topbar-h: 56px;
+  --rail-w: 104px;      /* tab bar a colonna da 960 px */
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+
+  /* movimento */
+  --dur-1: 120ms;   /* pressione, colore */
+  --dur-2: 200ms;   /* stato */
+  --dur-3: 320ms;   /* foglio, fisarmonica */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);      /* quart */
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);     /* expo, ingressi */
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);       /* uscite */
+
+  /* livelli */
+  --z-sticky: 10; --z-dock: 20; --z-tabbar: 30; --z-scrim: 40; --z-sheet: 50; --z-toast: 60;
+
+  /* ombre: solo nel tema chiaro (nello scuro la profondità è la luminosità) */
+  --shadow-1: none;
+  --shadow-2: none;
+  --scrim: rgb(5 5 3 / 0.62);
+  --media-plate: #ECEAE3;     /* lastra chiara sotto le GIF (hanno fondo bianco) */
+  --media-dim: brightness(0.9) contrast(1.02);
+}
+@media (min-width: 380px) { :root { --gutter: 1.25rem; } }
+
+/* ---------- ombre e lastre del tema chiaro ---------- */
+:root[data-theme="light"] {
+  --shadow-1: 0 1px 2px rgb(40 36 20 / 0.06), 0 2px 8px rgb(40 36 20 / 0.05);
+  --shadow-2: 0 -1px 0 rgb(40 36 20 / 0.06), 0 -8px 24px rgb(40 36 20 / 0.07);
+  --scrim: rgb(30 28 20 / 0.42);
+  --media-plate: #F4F2EC;
+  --media-dim: none;
+  --w-body: 440;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --shadow-1: 0 1px 2px rgb(40 36 20 / 0.06), 0 2px 8px rgb(40 36 20 / 0.05);
+    --shadow-2: 0 -1px 0 rgb(40 36 20 / 0.06), 0 -8px 24px rgb(40 36 20 / 0.07);
+    --scrim: rgb(30 28 20 / 0.42);
+    --media-plate: #F4F2EC;
+    --media-dim: none;
+    --w-body: 440;
+  }
+}
