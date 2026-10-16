@@ -42,7 +42,7 @@ Object.assign(App, {
                         <p class="seduta__phase" id="seduta-phase" hidden></p>
                     </div>
 
-                    <!-- Riscaldamento generale: apri/chiudi, si chiude da solo alla prima serie -->
+                    <!-- Riscaldamento generale: apri/chiudi; "Riscaldamento fatto" è nel dock (R2-11); si chiude da solo alla prima serie -->
                     <section class="warm" id="warmup-section" aria-labelledby="warmup-title" hidden>
                         <h2 class="warm__h">
                             <button type="button" class="warm__head" id="warmup-header" aria-expanded="true" aria-controls="warmup-content">
@@ -53,7 +53,6 @@ Object.assign(App, {
                         </h2>
                         <div class="warm__body" id="warmup-content">
                             <ol class="warm__list" id="warmup-exercises"></ol>
-                            <button type="button" class="btn btn--secondary btn--block" id="skip-warmup">${this.ico('check')}Riscaldamento fatto</button>
                         </div>
                     </section>
 
@@ -185,6 +184,13 @@ Object.assign(App, {
                     <div id="plates-body" class="plates"></div>
                 </section>
             </div>
+
+            <div class="modal" id="ex-history-modal">
+                <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="ex-history-title">
+                    ${head('ex-history-title', 'Ultime sedute', 'ex-history-close', 'Chiudi le ultime sedute')}
+                    <div id="ex-history-body" class="hist"></div>
+                </section>
+            </div>
         `;
     },
 
@@ -212,20 +218,13 @@ Object.assign(App, {
             this._goToExercise(parseInt(row.dataset.goto, 10));
         });
 
-        // Riscaldamento: fatto = nascosto; intestazione = apri/chiudi
-        on('skip-warmup', 'click', () => {
-            const section = document.getElementById('warmup-section');
-            if (section) section.hidden = true;
-            if (this.activeWorkout) {
-                this.activeWorkout.warmupHidden = true;
-                this._persistSession();
-            }
-        });
+        // Riscaldamento: intestazione = apri/chiudi (il dock segue: R2-11)
         on('warmup-header', 'click', () => {
             const section = document.getElementById('warmup-section');
             if (!section) return;
             this._setWarmupCollapsed(!section.classList.contains('collapsed'));
             this._persistSession();
+            if (this.activeWorkout) this._renderDock();
         });
         on('warmup-exercises', 'click', (e) => {
             const btn = e.target.closest('[data-info-name]');
@@ -237,9 +236,10 @@ Object.assign(App, {
         on('rest-bar-plus', 'click', () => this._adjustRest(15));
         on('rest-bar-skip', 'click', () => this._skipRest());
 
-        // Dock: azione principale e "segna da fare" (correzione)
-        on('dock-main', 'click', () => this._dockMain());
-        on('dock-undo', 'click', () => this._uncompleteOpen());
+        // Dock: azione principale e "segna da fare" (correzione). Subito dopo un cambio di serie o di
+        // esercizio il dock non risponde (~500 ms): il doppio tocco non registra la serie dopo (R1-08)
+        on('dock-main', 'click', () => { if (!this._dockLocked()) this._dockMain(); });
+        on('dock-undo', 'click', () => { if (!this._dockLocked()) this._uncompleteOpen(); });
 
         // Pagina: righe serie, stepper, RIR, strumenti, miniatura, "Poi", "Trova il peso"
         const page = document.getElementById('page-seduta');
@@ -293,10 +293,21 @@ Object.assign(App, {
         on('swap-close', 'click', () => this._closeModal('swap-modal'));
         backdrop('swap-modal');
         on('swap-body', 'click', (e) => this._onSwapClick(e));
-        on('note-close', 'click', () => this._closeModal('note-modal'));
-        backdrop('note-modal');
+        // Nota: × scarta; il velo non chiude se il testo è cambiato (R2-06); Esc tiene la bozza
+        on('note-close', 'click', () => { this._noteDraft = null; this._closeModal('note-modal'); });
+        this._closeOnBackdrop('note-modal', () => {
+            if (this._noteChanged()) {
+                document.getElementById('note-save')?.focus({ preventScroll: true });
+                return;
+            }
+            this._closeModal('note-modal');
+        });
+        on('note-text', 'input', (e) => { if (this._noteFor) this._noteDraft = { id: this._noteFor, text: e.target.value }; });
         on('note-save', 'click', () => this._saveNote(document.getElementById('note-text')?.value || ''));
         on('note-clear', 'click', () => this._saveNote(''));
+        // Ultime sedute dell'esercizio (tocco sul nome)
+        on('ex-history-close', 'click', () => this._closeModal('ex-history-modal'));
+        backdrop('ex-history-modal');
         on('plates-close', 'click', () => this._closeModal('plates-modal'));
         backdrop('plates-modal');
         on('plates-body', 'click', (e) => {
@@ -309,6 +320,19 @@ Object.assign(App, {
         // Riepilogo
         on('riep-done', 'click', () => this.closeWorkoutCompletionSummary());
         on('riep-share', 'click', () => this._shareSummary());
+
+        // App rimasta in background ore (la PWA non si è ricaricata): si chiede, come all'avvio (R1-06)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                this._hiddenAt = Date.now();
+                return;
+            }
+            const since = this._hiddenAt;
+            this._hiddenAt = null;
+            const w = this.activeWorkout;
+            if (!w || !since || !this._isStale(since)) return;
+            this._askAboutOldSession(w, null, since, { live: true });
+        });
     },
 
     // La seduta si apre solo se ce n'è una in corso
@@ -486,6 +510,7 @@ Object.assign(App, {
                 ok: 'Riprendi', cancel: 'Termina la seduta', icon: 'play'
             });
             if (resume) {
+                this._closeDynamicSheets();   // R1-07: niente fogli di Oggi sopra la seduta
                 this.navigateTo('seduta');
                 return;
             }
@@ -519,7 +544,8 @@ Object.assign(App, {
             this._promptActiveSession();
             return;
         }
-        this.freeWorkoutExercises = [];
+        // La lista scelta resta se il foglio si è chiuso col velo (R2-10): si svuota solo all'avvio
+        if (!Array.isArray(this.freeWorkoutExercises)) this.freeWorkoutExercises = [];
         const search = document.getElementById('free-workout-search');
         if (search) search.value = '';
         this.freeWorkoutRenderSelected();
@@ -602,7 +628,7 @@ Object.assign(App, {
                 </div>
                 <div class="free-sel__params">
                     <label class="field"><span class="label">Serie</span><input class="input" type="number" inputmode="numeric" min="1" max="10" value="${GT.esc(ex.sets)}" data-index="${i}" data-field="sets"></label>
-                    <label class="field"><span class="label">Ripetizioni</span><input class="input" type="text" inputmode="numeric" maxlength="9" value="${GT.esc(ex.reps)}" data-index="${i}" data-field="reps"></label>
+                    <label class="field"><span class="label">Ripetizioni</span><input class="input" type="text" inputmode="text" autocomplete="off" maxlength="9" value="${GT.esc(ex.reps)}" data-index="${i}" data-field="reps"></label>
                     <label class="field"><span class="label">Recupero s</span><input class="input" type="number" inputmode="numeric" min="15" max="600" step="15" value="${GT.esc(ex.rest)}" data-index="${i}" data-field="rest"></label>
                 </div>
             </div>
@@ -636,6 +662,7 @@ Object.assign(App, {
             }))
         };
         this._closeModal('free-workout-modal');
+        this.freeWorkoutExercises = [];
         this.startWorkout(workout);
     },
 
@@ -783,9 +810,21 @@ Object.assign(App, {
         });
         this._assignRoles(exercises);
 
-        // Rampa di riscaldamento sul primo fondamentale (§11): il main, fuori dai superset
-        const rampAt = exercises.findIndex(ex => ex.role === 'main' && !ex.supersetGroup);
-        if (rampAt >= 0) exercises[rampAt].wantsRamp = true;
+        // Rampa di riscaldamento (§11, R3-09): il fondamentale con la rampa intera; il primo
+        // multiarticolare di un'altra regione con una sola serie d'avvicinamento (getRampPlan di G5)
+        let plan = null;
+        if (this._algoFn('getRampPlan')) {
+            try { plan = TrainingAlgorithm.getRampPlan(exercises); } catch (e) { plan = null; }
+        }
+        if (Array.isArray(plan)) {
+            plan.forEach(p => {
+                const ex = exercises[p?.index];
+                if (ex && (!p.exerciseId || p.exerciseId === ex.exerciseId)) ex.wantsRamp = p.kind === 'single' ? 'single' : 'full';
+            });
+        } else {
+            const rampAt = exercises.findIndex(ex => ex.role === 'main' && !ex.supersetGroup);
+            if (rampAt >= 0) exercises[rampAt].wantsRamp = 'full';
+        }
 
         const activeWorkout = {
             name,
@@ -825,6 +864,8 @@ Object.assign(App, {
 
     // Entra nella sessione (nuova o ripresa): interfaccia, orologio, schermo acceso
     _enterWorkout(workout, session) {
+        // Fogli al volo di altre pagine (es. "Ciclo 1 fatto") non restano sopra la seduta (R1-07)
+        this._closeDynamicSheets();
         this.activeWorkout = workout;
         const max = workout.exercises.length - 1;
         this.currentExerciseIndex = Math.max(0, Math.min(max, parseInt(session?.currentExerciseIndex) || 0));
@@ -832,7 +873,9 @@ Object.assign(App, {
         this._restMeta = null;
         this._mediaOpen = false;
         this._renderedHeadFor = null;
+        this._dockLockUntil = 0;
         this._buildSupersetMap();
+        if (!Array.isArray(workout.calibPlan)) this._planCalibration(workout);
 
         document.getElementById('workout-active').style.display = 'block';
         this._hideCooldown();
@@ -929,8 +972,7 @@ Object.assign(App, {
         this._normalizeSession(w);
 
         const lastTouch = Number(session.touchedAt) || Date.parse(session.savedAt) || w.startTime;
-        const ageHours = (Date.now() - lastTouch) / 3600000;
-        if (ageHours > 12) {
+        if (this._isStale(lastTouch)) {
             setTimeout(() => this._askAboutOldSession(w, session, lastTouch), 0);
             return false;
         }
@@ -940,8 +982,22 @@ Object.assign(App, {
         return true;
     },
 
-    async _askAboutOldSession(w, session, lastTouch) {
-        if (this.activeWorkout) return;
+    // Seduta "vecchia" (R1-06): toccata ieri (o prima) o ferma da più di 2 ore → si chiede cosa farne
+    _isStale(lastTouch) {
+        const t = Number(lastTouch);
+        if (!(t > 0)) return false;
+        const now = Date.now();
+        return now - t > 2 * 3600000 || new Date(t).toDateString() !== new Date(now).toDateString();
+    },
+
+    /**
+     * Seduta rimasta aperta: Riprendi (il tempo fermo non conta nella durata) o Chiudi (si salva com'era,
+     * con la data e l'ora dell'ultimo tocco). opts.live: la seduta è già in memoria (app tornata in primo piano).
+     */
+    async _askAboutOldSession(w, session, lastTouch, opts = {}) {
+        const live = !!opts.live;
+        if (live ? this.activeWorkout !== w : this.activeWorkout) return;
+        const still = () => (live ? this.activeWorkout === w : !this.activeWorkout);
         const done = this._completedSetsCount(w);
         const when = String(GT.formatRelativeDay(new Date(lastTouch)) || '').toLowerCase();
         const resume = await this.confirmSheet({
@@ -949,9 +1005,17 @@ Object.assign(App, {
             text: `${done} ${done === 1 ? 'serie fatta' : 'serie fatte'}`,
             ok: 'Riprendi', cancel: 'Chiudi la seduta', icon: 'play'
         });
-        if (this.activeWorkout) return;
+        if (!still()) return;
         if (resume) {
-            this._enterWorkout(w, session);
+            // le ore ferme non sono seduta: l'orologio riparte da dove era
+            const gap = Date.now() - Number(lastTouch);
+            if (gap > 0) w.startTime = Math.min(Date.now(), (Number(w.startTime) || Number(lastTouch)) + gap);
+            if (live) {
+                this._startWorkoutClock();
+                this._persistSession();
+            } else {
+                this._enterWorkout(w, session);
+            }
             return;
         }
         if (done > 0) {
@@ -960,15 +1024,80 @@ Object.assign(App, {
                 text: `${done} ${done === 1 ? 'serie fatta' : 'serie fatte'}`,
                 ok: 'Salva', cancel: 'Scarta'
             });
-            if (this.activeWorkout) return;
+            if (!still()) return;
             if (save) {
-                this._enterWorkout(w, session);
+                if (!live) this._enterWorkout(w, session);
                 this.finishWorkout({ date: new Date(lastTouch), endTime: lastTouch });
                 return;
             }
         }
-        Storage.clearActiveSession();
+        if (live) this._teardownWorkout();
+        else Storage.clearActiveSession();
         this.showNotification('Seduta scartata', 'info');
+    },
+
+    // Fogli creati al volo da altre pagine (fine ciclo, conferme): chiusi quando si entra in seduta
+    _closeDynamicSheets() {
+        if (this._confirmResolve) this._safe(() => this._confirmResolve(false));
+        document.querySelectorAll('.modal--dyn').forEach(m => {
+            if (m.id) this._removeDynamicModal(m.id);
+            else m.remove();
+        });
+        this._syncSheets?.();
+    },
+
+    // ---------- dock: niente doppio tocco (R1-08) ----------
+
+    _lockDock(ms = 500) {
+        this._dockLockUntil = Date.now() + ms;
+    },
+
+    _dockLocked() {
+        return Number(this._dockLockUntil) > Date.now();
+    },
+
+    // ---------- "Trova il peso" distribuito (R3-06): al massimo 2-3 esercizi per seduta ----------
+
+    /**
+     * Quali esercizi calibrare in questa seduta: Storage.planCalibration di G5 se c'è; altrimenti i
+     * primi 2 multiarticolari senza storico che lo chiedono. Gli altri partono dalla stima.
+     */
+    _planCalibration(workout) {
+        const exs = workout?.exercises || [];
+        let ids = null;
+        let extra = null;
+        if (this._storeFn('planCalibration')) {
+            try {
+                const res = Storage.planCalibration({ ...workout, exercises: exs }, {
+                    goal: workout.goal, minutes: workout.sessionMinutes, compressed: !!workout.compressed
+                });
+                const list = Array.isArray(res) ? res : (res?.exerciseIds || res?.ids || res?.calibrate || res?.exercises);
+                if (Array.isArray(list)) {
+                    ids = list.map(x => (typeof x === 'string' ? x : (Number.isInteger(x) ? exs[x]?.exerciseId : (x?.exerciseId ?? exs[x?.index]?.exerciseId)))).filter(Boolean);
+                    extra = Number(res?.extraMinutes ?? res?.extraMin ?? res?.minutes);
+                }
+            } catch (e) {
+                console.warn('planCalibration', e);
+                ids = null;
+            }
+        }
+        if (!ids) {
+            ids = [];
+            exs.forEach(ex => {
+                if (ids.length >= 2 || ids.includes(ex.exerciseId)) return;
+                if ((ex.type || EXERCISES_DB[ex.exerciseId]?.type) !== 'compound') return;
+                const sug = this._exerciseContext(ex).suggestion;
+                if (sug?.status === 'new' && sug.calibrate) ids.push(ex.exerciseId);
+            });
+        }
+        workout.calibPlan = [...new Set(ids)];
+        if (Number.isFinite(extra) && extra > 0) workout.calibExtraMin = extra;
+        return workout.calibPlan;
+    },
+
+    _calibPlanned(exercise) {
+        const plan = this.activeWorkout?.calibPlan;
+        return !Array.isArray(plan) || plan.includes(exercise.exerciseId);
     },
 
     _bindBeforeUnload() {
@@ -1033,7 +1162,9 @@ Object.assign(App, {
 
         document.getElementById('workout-active').style.display = 'none';
         this._hideCooldown();
-        ['session-more-modal', 'swap-modal', 'note-modal', 'plates-modal'].forEach(id => this._closeModal(id));
+        ['session-more-modal', 'swap-modal', 'note-modal', 'plates-modal', 'ex-history-modal'].forEach(id => this._closeModal(id));
+        this._dismissToast('_rirToast');
+        this._noteDraft = null;
         ['ex-head', 'ex-sets'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
         if (typeof this.updateQuickAction === 'function') this._safe(() => this.updateQuickAction());
         // La seduta è a tutto schermo: chiusa, non resta una pagina vuota
@@ -1102,6 +1233,28 @@ Object.assign(App, {
         this._setText('warmup-sub', `${minutes > 0 ? `${Math.round(minutes)} min · ` : ''}${n} ${n === 1 ? 'esercizio' : 'esercizi'}`);
         section.hidden = !!w?.warmupHidden;
         this._setWarmupCollapsed(!!w?.warmupCollapsed);
+    },
+
+    // Il riscaldamento generale è la cosa da fare adesso: aperto, nessuna serie ancora fatta e nessuna
+    // serie aperta a mano (chi tocca una serie vuole registrare quella)
+    _warmupPending() {
+        const w = this.activeWorkout;
+        const section = document.getElementById('warmup-section');
+        if (!w || !section || section.hidden || w.warmupHidden || w.warmupCollapsed) return false;
+        if (w.exercises.some(ex => (ex.setsData || []).some(s => s.completed))) return false;
+        return !Number.isInteger(this._currentExercise()?.openSet);
+    },
+
+    // "Riscaldamento fatto" nel dock: il riquadro sparisce, il dock passa alla prima serie
+    _warmupDone() {
+        const section = document.getElementById('warmup-section');
+        if (section) section.hidden = true;
+        if (!this.activeWorkout) return;
+        this.activeWorkout.warmupHidden = true;
+        this._lockDock();
+        this._persistSession();
+        this._renderDock();
+        this._announce('Riscaldamento fatto');
     },
 
     _setWarmupCollapsed(collapsed) {
@@ -1210,7 +1363,8 @@ Object.assign(App, {
         }
         const sug = this._exerciseContext(exercise).suggestion;
         const anyDone = exercise.setsData.some(s => s.completed);
-        if (!anyDone && sug?.status === 'new' && sug.calibrate && !exercise.calib && !Number.isFinite(Number(exercise.presetKg))) {
+        // "Trova il peso" solo sugli esercizi scelti per questa seduta (R3-06); gli altri partono dalla stima
+        if (!anyDone && sug?.status === 'new' && sug.calibrate && !exercise.calib && !Number.isFinite(Number(exercise.presetKg)) && this._calibPlanned(exercise)) {
             if (this._startCalibration(exercise, { seedKg: w0, testReps: sug.testReps })) return;
         }
         if (!anyDone && exercise.wantsRamp && !exercise.rampBuilt && !exercise.calib) this._buildRamp(exercise);
@@ -1220,24 +1374,34 @@ Object.assign(App, {
     // RAMPA DI RISCALDAMENTO (§11): serie grigie isWarmup, recupero 60 s
     // ========================================
 
+    // Rampa per il peso di lavoro W con le ripetizioni proposte oggi (non il minimo del range, R3-09):
+    // al massimo 4 serie (il bilanciere e le 3 più vicine), 2 nella seduta corta, 1 per "single"
     _rampSets(exercise, workingKg) {
         const W = Number(workingKg);
         if (!(W > 0)) return [];
         const goal = this.activeWorkout?.goal || 'hypertrophy';
+        const single = exercise.wantsRamp === 'single';
+        const reps = this._suggestedReps(exercise, 0);
+        const target = Number.isFinite(reps) && reps > 0 ? reps : exercise.targetReps;
+        let ramp = [];
         try {
-            if (this._storeFn('getWarmupSets')) return Storage.getWarmupSets(exercise.exerciseId, W, exercise.targetReps, goal) || [];
-            if (this._algoFn('buildWarmupSets')) return TrainingAlgorithm.buildWarmupSets(exercise.exerciseId, W, exercise.targetReps, goal, this._gym()) || [];
+            if (this._storeFn('getWarmupSets')) ramp = Storage.getWarmupSets(exercise.exerciseId, W, target, goal, { single }) || [];
+            else if (this._algoFn('buildWarmupSets')) ramp = TrainingAlgorithm.buildWarmupSets(exercise.exerciseId, W, target, goal, this._gym(), { single }) || [];
         } catch (e) {
             console.warn('rampa', e);
+            ramp = [];
         }
-        return [];
+        if (!Array.isArray(ramp)) return [];
+        if (single && ramp.length > 1) ramp = ramp.slice(-1);
+        if (this.activeWorkout?.compressed && ramp.length > 2) ramp = ramp.slice(-2);
+        if (ramp.length > 4) ramp = [ramp[0], ...ramp.slice(-3)];
+        return ramp;
     },
 
     _buildRamp(exercise) {
         exercise.rampBuilt = true;
         const first = exercise.setsData.find(s => this._isWork(s));
-        let ramp = this._rampSets(exercise, GT.num(first?.weight));
-        if (this.activeWorkout?.compressed && ramp.length > 2) ramp = ramp.slice(-2);
+        const ramp = this._rampSets(exercise, GT.num(first?.weight));
         if (!ramp.length) return;
         const sets = ramp.map(r => ({ weight: Number(r.kg), reps: parseInt(r.reps, 10) || 5, completed: false, isWarmup: true, pct: r.pct }));
         const at = exercise.setsData.findIndex(s => this._isWork(s));
@@ -1251,8 +1415,7 @@ Object.assign(App, {
         if (idx !== firstWork) return false;
         const warm = exercise.setsData.filter(s => s.isWarmup && !s.touched);
         if (!warm.length) return false;
-        let ramp = this._rampSets(exercise, GT.num(exercise.setsData[idx].weight));
-        if (this.activeWorkout?.compressed && ramp.length > 2) ramp = ramp.slice(-2);
+        const ramp = this._rampSets(exercise, GT.num(exercise.setsData[idx].weight));
         if (ramp.length !== warm.length) return false;
         warm.forEach((s, k) => { s.weight = Number(ramp[k].kg); s.reps = parseInt(ramp[k].reps, 10) || s.reps; s.pct = ramp[k].pct; });
         return true;
@@ -1319,8 +1482,14 @@ Object.assign(App, {
             if (lastTodo != null && lastTodo >= 0) exercise.setsData.splice(lastTodo, 1);
         }
         exercise.setsData = exercise.setsData.filter(x => !(x.isCalibration && !x.completed));
+        // il peso è quello giusto per le ripetizioni della prova: si propongono quelle (R3-15)
+        const testReps = parseInt(c.testReps, 10) > 0 ? parseInt(c.testReps, 10) : null;
         exercise.setsData.forEach(x => {
-            if (this._isWork(x) && !x.completed) { x.weight = wk; x.touched = false; }
+            if (this._isWork(x) && !x.completed) {
+                x.weight = wk;
+                if (testReps) x.reps = testReps;
+                x.touched = false;
+            }
         });
         this.showNotification(`Peso di lavoro: ${this.fmt(wk)} kg`, 'success', { icon: 'target' });
     },
@@ -1491,8 +1660,17 @@ Object.assign(App, {
             b.setAttribute('aria-checked', String(Number(b.dataset.rir) === s.rir));
         });
         this._persistSession();
+        // RIR scelto: l'avviso "Scegli il RIR" non serve più (R2-17)
+        this._dismissToast('_rirToast');
         if (s.rir === 0 && this._isWork(s)) this.showNotification('RIR 0: cedimento', 'warning');
-        else if (s.rir === 4 && this._isWork(s)) this.showNotification('RIR 4+: puoi caricare di più', 'info');
+        else if (s.rir === 4 && this._isWork(s)) this.showNotification('RIR 4+: carica di più', 'info');
+    },
+
+    // Chiude subito un avviso tenuto da parte (il tocco sull'avviso lo chiude: stessa strada)
+    _dismissToast(key) {
+        const t = this[key];
+        this[key] = null;
+        if (t && t.isConnected && !t.classList.contains('is-leaving')) t.click();
     },
 
     // Valori ancora nel campo (tastiera iOS aperta) prima di chiudere la serie
@@ -1544,6 +1722,11 @@ Object.assign(App, {
     _dockMain() {
         const ex = this._currentExercise();
         if (!ex) return;
+        // Riscaldamento generale aperto a inizio seduta: il dock lo chiude, non registra 20 kg (R2-11)
+        if (this._warmupPending()) {
+            this._warmupDone();
+            return;
+        }
         const idx = this._openIndex(ex);
         if (idx == null) {
             const next = this._nextWithWork(this.currentExerciseIndex);
@@ -1566,6 +1749,7 @@ Object.assign(App, {
         if (s.completed) {
             this._checkPR(ex, exIdx, idx);
             ex.openSet = null;
+            this._lockDock();
             this._renderSets();
             this._renderTrack();
             this._renderDock();
@@ -1574,8 +1758,9 @@ Object.assign(App, {
             return;
         }
 
-        if (s.isCalibration && !Number.isFinite(Number(s.rir))) {
-            this.showNotification('Scegli il RIR della prova', 'warning', { icon: 'help' });
+        if (s.isCalibration && (s.rir === undefined || s.rir === null || s.rir === '' || !Number.isFinite(Number(s.rir)))) {
+            this._dismissToast('_rirToast');
+            this._rirToast = this.showNotification('Scegli il RIR della prova', 'warning', { icon: 'help' });
             document.querySelector(`#rir-opts-${idx} .rir__opt`)?.focus();
             return;
         }
@@ -1591,11 +1776,15 @@ Object.assign(App, {
         this._checkPR(ex, exIdx, idx);
         if (wasCalib) this._calibrationStep(ex, idx);
 
-        // La serie dopo (non toccata, dello stesso tipo) si apre già con peso e ripetizioni appena fatti
+        // La serie dopo (non toccata, dello stesso tipo) prende il peso appena usato; le ripetizioni
+        // restano quelle proposte per lei (9/10/11/12 non diventa 9/9/9/9: R1-16)
         if (this._isWork(s) && !wasCalib) {
             const nextIdx = ex.setsData.findIndex((t, j) => j > idx && !t.completed && this._isWork(t));
             const t = ex.setsData[nextIdx];
-            if (t && !t.touched) { t.weight = s.weight; t.reps = s.reps; }
+            if (t && !t.touched) {
+                t.weight = s.weight;
+                if (t.reps === '' || t.reps == null) t.reps = s.reps;
+            }
         }
 
         // Tutte le serie fatte e al massimo del range: la prossima volta si sale
@@ -1613,6 +1802,8 @@ Object.assign(App, {
         if (warmupSection && !warmupSection.classList.contains('collapsed')) this._setWarmupCollapsed(true);
 
         ex.openSet = null;
+        this._lockDock();
+        this._dismissToast('_rirToast');
         this._announce(`${name} fatta`);
         this._startRestAfterSet(exIdx, idx);
         if (this.currentExerciseIndex === exIdx) {
@@ -1630,9 +1821,11 @@ Object.assign(App, {
         const el = document.querySelector('#ex-sets .set--active');
         if (!el) return;
         const r = el.getBoundingClientRect();
-        const dockH = document.getElementById('seduta-dock')?.getBoundingClientRect().height || 0;
+        // il bordo alto vero del dock (su desktop galleggia sopra il fondo della finestra)
+        const dr = document.getElementById('seduta-dock')?.getBoundingClientRect();
+        const dockTop = dr && dr.height > 0 ? dr.top : window.innerHeight;
         const topH = document.getElementById('workout-header-bar')?.getBoundingClientRect().bottom || 56;
-        const bottomLimit = window.innerHeight - dockH - 12;
+        const bottomLimit = dockTop - 12;
         let delta = 0;
         if (r.bottom > bottomLimit) delta = r.bottom - bottomLimit;
         if (r.top - delta < topH + 8) delta = r.top - (topH + 8);
@@ -1651,6 +1844,7 @@ Object.assign(App, {
         const src = this._restMeta?.source;
         if (src && src.ex === this.currentExerciseIndex && src.set === idx) this._stopRest();
         ex.openSet = idx;
+        this._lockDock();
         this._renderSets();
         this._renderTrack();
         this._renderDock();
@@ -1708,7 +1902,10 @@ Object.assign(App, {
         if (!w || !Number.isInteger(index) || index < 0 || index >= w.exercises.length) return;
         const changed = index !== this.currentExerciseIndex;
         this.currentExerciseIndex = index;
-        if (changed) this._mediaOpen = false;
+        if (changed) {
+            this._mediaOpen = false;
+            this._lockDock();
+        }
         this._renderAll();
         this._persistSession();
         if (changed && !opts.keepScroll) window.scrollTo?.({ top: 0, behavior: this._reduceMotion() ? 'auto' : 'smooth' });
@@ -1860,6 +2057,8 @@ Object.assign(App, {
 
         let steps = [];
         try { steps = (typeof getExerciseDetails === 'function' ? getExerciseDetails(ex.exerciseId)?.execution?.steps : null) || []; } catch (e) { steps = []; }
+        // Nome toccabile → ultime 3 sedute di questo esercizio (solo se ce ne sono)
+        const hasHistory = !!this._exerciseContext(ex).last;
 
         const top = this._mediaOpen && gif ? `
             <div class="ex__media">
@@ -1875,7 +2074,10 @@ Object.assign(App, {
                 ${thumb}
                 <div class="ex__title">
                     ${ssBadge}
-                    <h1 id="ex-name">${letter ? `<span class="ex-letter">${GT.esc(letter)}</span>` : ''}${name}</h1>
+                    <h1 id="ex-name">${letter ? `<span class="ex-letter">${GT.esc(letter)}</span>` : ''}${hasHistory
+                        ? `<button type="button" class="ex__name" data-history aria-haspopup="dialog" aria-describedby="ex-name-hint">${name}${this.ico('clock', 'ico--sm ex__name-ico')}</button>`
+                        : name}</h1>
+                    ${hasHistory ? '<span class="sr-only" id="ex-name-hint">Ultime sedute</span>' : ''}
                     ${muscles ? `<p class="ex__muscles">${muscles}</p>` : ''}
                 </div>
             </div>
@@ -1886,6 +2088,9 @@ Object.assign(App, {
         let hint = '';
         if (ex.calib && !ex.calib.done) {
             hint = `<p class="ex__hint">${this.ico('target', 'ico--sm')}<span class="ell">Trova il peso: al massimo 3 prove con il RIR</span></p>`;
+        } else if (ex.calib?.done && Number.isFinite(Number(ex.calib.workingKg))) {
+            // calibrazione chiusa: il risultato, non più la proposta di prova (R2-07)
+            hint = `<p class="ex__hint">${this.ico('target', 'ico--sm')}<span class="ell">Peso di lavoro <span class="num">${GT.esc(this.fmt(Number(ex.calib.workingKg)))}</span> kg</span></p>`;
         } else if (ex.substitutedFrom && !ex.setsData.some(s => s.completed)) {
             hint = `<p class="ex__hint">${this.ico('swap', 'ico--sm')}<span class="ell">Al posto di ${GT.esc(EXERCISES_DB[ex.substitutedFrom]?.name || ex.substitutedFrom)}</span></p>`;
         } else if (sug?.message) {
@@ -1896,8 +2101,16 @@ Object.assign(App, {
                 // tutte le serie oltre il range con RIR 4+: la stima era troppo prudente
                 hint = `<p class="ex__hint">${this.ico('target', 'ico--sm')}<span class="ell">Troppo facile?</span><button type="button" class="ex__find" data-calib>Trova il peso</button></p>`;
             } else {
-                const canFind = free && sug.status === 'new' && !sug.calibrate;
-                hint = `<p class="ex__hint">${this.ico(icon, 'ico--sm')}<span class="ell">${GT.esc(sug.message)}</span>${canFind ? `<button type="button" class="ex__find" data-calib>Trova il peso</button>` : ''}</p>`;
+                // "Trova il peso" non previsto oggi per questo esercizio (R3-06): parte dalla stima, la
+                // prova resta a richiesta
+                const deferred = sug.status === 'new' && sug.calibrate && !this._calibPlanned(ex);
+                const canFind = free && sug.status === 'new' && (!sug.calibrate || deferred);
+                let msg = sug.message;
+                if (deferred) {
+                    const kg = GT.num(ex.setsData.find(s => this._isWork(s))?.weight);
+                    msg = kg > 0 ? `Prima volta: ${this.fmt(kg)} kg, ${ex.targetReps} ${timed ? 's' : 'rip.'}` : 'Prima volta: peso stimato';
+                }
+                hint = `<p class="ex__hint">${this.ico(icon, 'ico--sm')}<span class="ell">${GT.esc(msg)}</span>${canFind ? `<button type="button" class="ex__find" data-calib>Trova il peso</button>` : ''}</p>`;
             }
         } else if (sug?.recalibrate && !ex.calib && !ex.setsData.some(s => s.completed && !s.isWarmup) && this._calibrationAvailable()) {
             hint = `<p class="ex__hint">${this.ico('target', 'ico--sm')}<span class="ell">Troppo facile?</span><button type="button" class="ex__find" data-calib>Trova il peso</button></p>`;
@@ -2193,12 +2406,18 @@ Object.assign(App, {
             ssEl.hidden = !ss;
             if (ss) document.getElementById('rest-ss-label').innerHTML = `Subito <b>${GT.esc(ss.letter)}</b> · ${GT.esc(ss.after)}`;
         }
-        if (row) row.hidden = running && !correcting;
+        // Il bottone resta anche durante il recupero (R2-15): chi riparte prima fa un tocco solo,
+        // la serie si registra e il recupero riparte da capo. Durante il recupero è secondario.
+        if (row) row.hidden = false;
+        const resting = running && !correcting;
+        document.getElementById('seduta-dock')?.classList.toggle('is-resting', resting);
+        const warm = !correcting && this._warmupPending();
 
         // Azione principale
         let label;
         let icon = 'check';
-        if (s && correcting) label = `Salva ${this._setName(ex, idx, true)}`;
+        if (warm) label = 'Riscaldamento fatto';
+        else if (s && correcting) label = `Salva ${this._setName(ex, idx, true)}`;
         else if (s) {
             const kind = this._setKind(s);
             const base = this._setName(ex, idx);
@@ -2213,7 +2432,9 @@ Object.assign(App, {
         const main = document.getElementById('dock-main');
         if (main) {
             main.innerHTML = `${this.ico(icon)}<span id="dock-main-label">${GT.esc(label)}</span>`;
-            main.dataset.action = s ? (correcting ? 'save' : 'done') : (icon === 'next' ? 'next' : 'finish');
+            main.dataset.action = warm ? 'warmup' : (s ? (correcting ? 'save' : 'done') : (icon === 'next' ? 'next' : 'finish'));
+            main.classList.toggle('btn--primary', !resting);
+            main.classList.toggle('btn--secondary', resting);
         }
         const undo = document.getElementById('dock-undo');
         if (undo) {
@@ -2252,6 +2473,10 @@ Object.assign(App, {
             else if (k === 'note') this._openNote();
             else if (k === 'plates') this._openPlates();
             else if (k === 'info') this.showCurrentExerciseInfo();
+            return;
+        }
+        if (t.closest('[data-history]')) {
+            this._openHistory();
             return;
         }
         if (t.closest('[data-expand]')) {
@@ -2356,7 +2581,8 @@ Object.assign(App, {
                 const nextName = ex && this._openIndex(ex) == null && this._nextWithWork(this.currentExerciseIndex) != null
                     ? `Poi ${this.activeWorkout.exercises[this._nextWithWork(this.currentExerciseIndex)].name}` : 'Recupero';
                 this._setText('rest-bar-label', st === 'last' ? 'Pronto' : nextName);
-                this._setText('rest-bar-time', this._clock(remaining));
+                // ultimi 10 s: solo i secondi ("6", non "0:06"): a 80 px stanno fra −15 e +15 anche a 360 px
+                this._setText('rest-bar-time', st === 'last' ? String(Math.max(0, remaining)) : this._clock(remaining));
                 const fill = document.getElementById('rest-bar-fill');
                 if (fill) fill.style.setProperty('--p', `${Math.max(0, Math.min(100, (remaining / total) * 100))}%`);
                 // aria-label del timer al massimo ogni 15 s (niente annunci ogni secondo)
@@ -2469,8 +2695,8 @@ Object.assign(App, {
 
     _swapAlternatives(ex) {
         const w = this.activeWorkout;
-        const idx = this._openIndex(ex);
-        const kg = GT.num(ex.setsData[idx ?? 0]?.weight) || GT.num(ex.setsData.find(s => this._isWork(s))?.weight);
+        // Si converte sempre dal peso di lavoro, mai da un avvicinamento o da una prova (R2-01)
+        const kg = this._workKg(ex);
         const opts = { reason: 'busy', sessionExerciseIds: w.exercises.map(e => e.exerciseId), kg, targetReps: ex.targetReps, limit: 5 };
         try {
             if (this._storeFn('getAlternatives')) return Storage.getAlternatives(ex.exerciseId, opts) || [];
@@ -2479,6 +2705,16 @@ Object.assign(App, {
             console.warn('getAlternatives', e);
         }
         return [];
+    },
+
+    // Peso di lavoro dell'esercizio: la serie aperta se è di lavoro, altrimenti la prima di lavoro
+    // (fatta o da fare); 0 se non c'è
+    _workKg(ex) {
+        const idx = this._openIndex(ex);
+        const open = idx != null ? ex.setsData[idx] : null;
+        if (open && this._isWork(open) && GT.num(open.weight) > 0) return GT.num(open.weight);
+        const first = ex.setsData.find(s => this._isWork(s) && GT.num(s.weight) > 0);
+        return first ? GT.num(first.weight) : 0;
     },
 
     _weightHint(alt) {
@@ -2527,7 +2763,7 @@ Object.assign(App, {
             this._closeModal('swap-modal');
             if (!ex || typeof this.pickExercise !== 'function') return;
             const fromId = ex.exerciseId;
-            const kg = GT.num(ex.setsData.find(s => this._isWork(s))?.weight);
+            const kg = this._workKg(ex);
             this.pickExercise({
                 title: `Al posto di ${ex.name}`,
                 filter: { exclude: this.activeWorkout.exercises.map(x => x.exerciseId) },
@@ -2562,8 +2798,9 @@ Object.assign(App, {
         const data = EXERCISES_DB[newId];
         if (!ex || !data || newId === ex.exerciseId) return;
         const snapshot = JSON.parse(JSON.stringify({ exercises: w.exercises, idx: exIdx }));
-        const oldName = ex.name;
-        const done = ex.setsData.filter(s => s.completed);
+        // Restano all'esercizio di prima solo se c'è almeno una serie di lavoro fatta: avvicinamenti e
+        // prove di un esercizio lasciato a metà non sono una seduta di quell'esercizio
+        const done = ex.setsData.some(s => s.completed && this._isWork(s)) ? ex.setsData.filter(s => s.completed) : [];
         const remaining = Math.max(1, ex.setsData.filter(s => this._isWork(s) && !s.completed).length);
         const metaNew = this._exMeta(newId);
         const rirAdj = Number(weight.rirAdjust) > 0 ? Number(weight.rirAdjust) : 0;
@@ -2583,7 +2820,8 @@ Object.assign(App, {
             metric: metaNew?.metric || 'reps',
             substitutedFrom: ex.substitutedFrom || ex.exerciseId,
             openSet: null,
-            wantsRamp: !!ex.wantsRamp && !done.length,
+            // rampa solo se non c'è lavoro fatto; già scaldato su quello di prima: un solo avvicinamento
+            wantsRamp: !done.length && ex.wantsRamp ? (ex.setsData.some(s => s.isWarmup && s.completed) ? 'single' : ex.wantsRamp) : false,
             setsData: Array.from({ length: remaining }, () => ({ weight: '', reps: '', completed: false }))
         };
         ['supersetGroup', 'supersetOrder', 'supersetRest', 'transitionTime', 'isGiantSet'].forEach(k => { if (ex[k] !== undefined) fresh[k] = ex[k]; });
@@ -2608,10 +2846,13 @@ Object.assign(App, {
         this._renderAll();
         this._persistSession();
         this._swapUndo = snapshot;
-        this.showNotification(`${oldName} → ${data.name}`, 'info', {
+        // una riga: il nome nuovo basta, l'icona dice "scambiato"; i nomi lunghi finiscono coi puntini
+        // (il nome intero è nel titolo appena sotto) — R2-17
+        const toast = this.showNotification(`Ora ${data.name}`, 'info', {
             icon: 'swap',
             action: { label: 'Annulla', onClick: () => this._undoSwap(snapshot) }
         });
+        toast?.classList?.add('toast--one');
     },
 
     _undoSwap(snapshot) {
@@ -2634,16 +2875,26 @@ Object.assign(App, {
         const note = this._exerciseNote(ex.exerciseId);
         this._setText('note-title', `Nota · ${ex.name}`);
         const ta = document.getElementById('note-text');
-        if (ta) ta.value = note;
+        // bozza rimasta da una chiusura con Esc: si ritrova (R2-06)
+        const draft = this._noteDraft?.id === ex.exerciseId ? this._noteDraft.text : null;
+        if (ta) ta.value = draft != null ? draft : note;
         const clear = document.getElementById('note-clear');
         if (clear) clear.hidden = !note;
         this._noteFor = ex.exerciseId;
         this._openModal('note-modal', '#note-text');
     },
 
+    // Testo nel campo diverso dalla nota salvata (spazi a parte)
+    _noteChanged() {
+        const ta = document.getElementById('note-text');
+        if (!ta || !this._noteFor) return false;
+        return ta.value.trim() !== this._exerciseNote(this._noteFor).trim();
+    },
+
     _saveNote(text) {
         const id = this._noteFor;
         if (!id) return;
+        this._noteDraft = null;
         const t = String(text || '').trim().slice(0, 140);
         const p = Storage.getProfile();
         const notes = { ...(p.exerciseNotes && typeof p.exerciseNotes === 'object' ? p.exerciseNotes : {}) };
@@ -2657,6 +2908,69 @@ Object.assign(App, {
         }
         if (this.activeWorkout) this._renderHead();
         this.showNotification(t ? 'Nota salvata' : 'Nota cancellata', 'success', { icon: 'note' });
+    },
+
+    // ========================================
+    // ULTIME SEDUTE DELL'ESERCIZIO (tocco sul nome): data, serie peso × ripetizioni, RIR
+    // ========================================
+
+    _historySessions(exerciseId, limit = 3) {
+        let list = [];
+        try {
+            if (this._storeFn('getExerciseSessions')) list = Storage.getExerciseSessions(exerciseId, { limit, excludeDeload: false }) || [];
+        } catch (e) { list = []; }
+        if (!list.length) {
+            try {
+                for (const w of Storage.getWorkouts()) {
+                    if (list.length >= limit) break;
+                    if (!Array.isArray(w?.exercises)) continue;
+                    const sets = w.exercises.filter(e => e?.exerciseId === exerciseId && Array.isArray(e.sets)).flatMap(e => e.sets);
+                    if (sets.length) list.push({ date: w.date, phase: w.cyclePhase || null, sets });
+                }
+            } catch (e) { list = []; }
+        }
+        return list.map(s => ({
+            date: s.date,
+            phase: s.phase || null,
+            sets: (s.sets || []).filter(x => x && x.completed && !x.isWarmup && !x.isCalibration && GT.num(x.reps) > 0).map(x => ({
+                weight: x.isBodyweight ? 0 : Math.max(0, GT.num(x.weight)),
+                reps: Math.round(GT.num(x.reps)),
+                rir: x.rir === undefined || x.rir === null || x.rir === '' || !Number.isFinite(Number(x.rir)) ? null : Number(x.rir)
+            }))
+        })).filter(s => s.sets.length).slice(0, limit);
+    },
+
+    _openHistory() {
+        const ex = this._currentExercise();
+        const body = document.getElementById('ex-history-body');
+        if (!ex || !body) return;
+        const sessions = this._historySessions(ex.exerciseId, 3);
+        this._setText('ex-history-title', ex.name);
+        if (!sessions.length) {
+            body.innerHTML = `<div class="empty"><span class="empty__icon">${this.ico('clock', 'ico--xl')}</span><p>Nessuna seduta salvata</p></div>`;
+        } else {
+            body.innerHTML = `<p class="muted">${sessions.length === 1 ? 'Ultima seduta' : `Ultime <span class="num">${sessions.length}</span> sedute`}</p>
+                <ol class="hist__list">${sessions.map(s => {
+                    const d = new Date(s.date);
+                    const day = Number.isNaN(d.getTime()) ? '' : this._capFirst(d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }));
+                    const rel = Number.isNaN(d.getTime()) ? '' : String(GT.formatRelativeDay(d) || '');
+                    const relHTML = /^(oggi|ieri)$|giorni fa$/i.test(rel) ? `<span class="faint">${GT.esc(rel)}</span>` : '';
+                    const deload = /^(deload|scarico)/i.test(String(s.phase || '')) ? '<span class="phase" data-ph="del">Scarico</span>' : '';
+                    const rows = s.sets.map((x, k) => {
+                        const rirTxt = x.rir === 4 ? '4+' : x.rir;
+                        return `<li class="hist__set">
+                            <span class="hist__n num">${k + 1}</span>
+                            <span class="set__val">${this._valHTML(ex, x, false)}</span>
+                            ${x.rir != null ? `<span class="rir-dot" data-rir="${x.rir}">RIR ${rirTxt}</span>` : '<span></span>'}
+                        </li>`;
+                    }).join('');
+                    return `<li class="hist__s">
+                        <h3 class="hist__head"><span>${GT.esc(day)}</span>${relHTML}${deload}</h3>
+                        <ol class="hist__sets">${rows}</ol>
+                    </li>`;
+                }).join('')}</ol>`;
+        }
+        this._openModal('ex-history-modal', '#ex-history-close');
     },
 
     // ========================================
@@ -2818,21 +3132,28 @@ Object.assign(App, {
                 role: ex.role || null,
                 metric: ex.metric || 'reps',
                 substitutedFrom: ex.substitutedFrom || null,
-                // rampa e prove lasciate da fare non si salvano
-                sets: ex.setsData.filter(s => s.completed || this._isWork(s)).map(s => this._cleanSet(s))
+                // rampa e prove lasciate da fare non si salvano; le serie di lavoro non fatte restano
+                // vuote (i valori proposti non sono serie vere: R1-02)
+                sets: ex.setsData.filter(s => s.completed || this._isWork(s))
+                    .map(s => (s.completed ? this._cleanSet(s) : { weight: '', reps: '', completed: false }))
             };
             if (ex.targetRir !== null && ex.targetRir !== undefined && Number.isFinite(Number(ex.targetRir))) out.targetRir = Number(ex.targetRir);
             return out;
         });
 
+        // Volume = kg × ripetizioni: non per gli esercizi a tempo (secondi) né per le assistite
+        // (il peso è un aiuto, non un carico: R1-14)
         let totalVolume = 0;
         let totalSets = 0;
-        exercises.forEach(ex => ex.sets.forEach(s => {
-            if (s.completed && s.reps > 0 && !s.isWarmup && !s.isCalibration) {
-                totalSets++;
-                totalVolume += GT.num(s.weight) * s.reps;
-            }
-        }));
+        exercises.forEach(ex => {
+            const noVolume = ex.metric === 'time' || this._isTimed(ex.exerciseId) || this._loadType(ex.exerciseId) === 'assisted';
+            ex.sets.forEach(s => {
+                if (s.completed && s.reps > 0 && !s.isWarmup && !s.isCalibration) {
+                    totalSets++;
+                    if (!noVolume) totalVolume += GT.num(s.weight) * s.reps;
+                }
+            });
+        });
 
         // Nessuna serie: non si salva, la pagina torna allo stato iniziale (C1)
         if (totalSets === 0) {
