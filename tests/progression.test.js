@@ -130,7 +130,8 @@ JUMPS.forEach(([id, kg, next, pct, big, reps]) => {
 });
 check('assistite 40 → 35', TA.getProgressionJump('assisted-pull-up', 40, GYM).nextKg, 35);
 check('push-up 0 / dips 0 → null', [TA.getProgressionJump('push-up', 0, GYM), TA.getProgressionJump('dips', 0, GYM)], [null, null]);
-check('need laterali 6 kg 12-15', TA.needReps([12, 15], 6, 7), 19);
+// R3-07: il range esteso arriva al massimo a hi + 2 (con +5 le laterali da 2 kg arrivavano a 3×20)
+check('need laterali 6 kg 12-15 (tetto hi+2)', TA.needReps([12, 15], 6, 7), 17);
 check('need squat 100 kg 6-10', TA.needReps([6, 10], 100, 105), 10);
 
 // ==================================================================
@@ -194,7 +195,8 @@ const shape = next('bench-press', [8, 12], [sess([S(60, 12, 2), S(60, 12, 2)])],
 check('Suggestion: campi e messaggio', ['status', 'action', 'suggestedWeight', 'suggestedReps', 'targetRir', 'metric', 'variantId', 'bigJump', 'rirDelta', 'increment', 'message', 'lastPerformance'].every(k => k in shape) &&
     typeof shape.suggestedWeight === 'number' && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(shape.message) && !/\n/.test(shape.message), true);
 check('Suggestion: messaggio', shape.message, 'Aumenta a 62,5 kg');
-check('Scarico (prossima seduta): −10% per difetto, RIR 4', (() => { const s = next('bench-press', [8, 12], [sess([S(60, 10, 2)])], 'intermediate', 2, { phase: 'deload' }); return [s.status, s.suggestedWeight, s.targetRir]; })(), ['deload', 52.5, 4]);
+// R3-12: scarico al gradino più vicino (54 → 55, −8%; per difetto era 52,5, −12,5%)
+check('Scarico (prossima seduta): −10% al gradino più vicino, RIR 4', (() => { const s = next('bench-press', [8, 12], [sess([S(60, 10, 2)])], 'intermediate', 2, { phase: 'deload' }); return [s.status, s.suggestedWeight, s.targetRir]; })(), ['deload', 55, 4]);
 check('Pausa della persona ≥21 giorni → detraining', next('squat', [8, 12], [sess([S(40, 10)])], 'beginner', 2, { personPauseDays: 28 }).status, 'detraining');
 const corpoLegacy = next('glute-bridge', [12, 20], [sess([{ weight: 62, reps: 20, completed: true, isBodyweight: true }, { weight: 62, reps: 20, completed: true, isBodyweight: true }])], 'beginner', 2);
 // (il ponte su una gamba è "intermediate": per la principiante la variante ammessa è l'hip thrust col manubrio)
@@ -234,8 +236,11 @@ check('caso vero: lei, prima lat machine', fl.suggestedWeight, 10);
 section('§10.2 "Trova il peso"');
 // ==================================================================
 const cal = (id, tests, level, extra = {}) => TA.nextCalibrationStep(id, { tests, testReps: 10, targetReps: 10, targetRir: 3, level, ...extra }, GYM);
-check('C1', cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }], 'beginner'), { done: false, nextKg: 12, testReps: 10 });
-check('C2', cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 12, reps: 10, rir: 4 }], 'beginner').nextKg, 16);
+// R3-17: per i principianti ×1,3 poi ×1,25 (×1,5 portava al cedimento); gli altri livelli ×1,5 poi ×1,3
+check('C1 (principiante ×1,3)', cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }], 'beginner'), { done: false, nextKg: 10, testReps: 10 });
+check('C2 (principiante ×1,25)', cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 10, reps: 10, rir: 4 }], 'beginner').nextKg, 12);
+check('C1 intermedio ×1,5 poi ×1,3', [cal('dumbbell-hip-thrust', [{ kg: 16, reps: 10, rir: 4 }], 'intermediate').nextKg,
+    cal('dumbbell-hip-thrust', [{ kg: 16, reps: 10, rir: 4 }, { kg: 24, reps: 10, rir: 4 }], 'intermediate').nextKg], [24, 32]);
 const c3 = cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 12, reps: 10, rir: 4 }, { kg: 16, reps: 10, rir: 3 }], 'beginner');
 check('C3', [c3.done, c3.workingKg, c3.est], [true, 16, 23.5]);
 check('C4', cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 12, reps: 10, rir: 4 }, { kg: 16, reps: 10, rir: 4 }], 'beginner').workingKg, 18);
@@ -246,6 +251,49 @@ check('C6', [c6.done, c6.workingKg, c6.est], [true, 20, 31.7]);
 const c7 = cal('bench-press', [{ kg: 40, reps: 10, rir: 1 }], 'intermediate', { targetRir: 2 });
 check('C7', [c7.done, c7.workingKg, c7.est], [true, 37.5, 55.3]);
 check('prova vicina al peso giusto = prima serie di lavoro', cal('leg-press', [{ kg: 20, reps: 10, rir: 2 }], 'beginner', { lo: 8 }).lastIsWorkSet, true);
+
+// ==================================================================
+section('R3 — difetti trovati dal revisore-allenatore (REVISIONE-R3.md)');
+// ==================================================================
+// R3-01: "Trova il peso" sulle trazioni ASSISTITE va al contrario (più facile = MENO assistenza) e non
+// esce dalla scala della macchina (assistenza massima 70)
+const calA = (tests, extra = {}) => TA.nextCalibrationStep('assisted-pull-up', { tests, testReps: 10, targetReps: 10, targetRir: 3, level: 'beginner', bodyweight: 60, gender: 'female', ...extra }, GYM);
+check('R3-01 assistita "4+" → meno assistenza (45 → 40 → 35)', [calA([{ kg: 45, reps: 10, rir: 4 }]).nextKg, calA([{ kg: 45, reps: 10, rir: 4 }, { kg: 40, reps: 10, rir: 4 }]).nextKg], [40, 35]);
+check('R3-01 assistita dura (5 rep a RIR 0) → più assistenza', calA([{ kg: 45, reps: 5, rir: 0 }]).workingKg, 50);
+check('R3-01 mai oltre l\'assistenza massima (70)', [calA([{ kg: 70, reps: 2, rir: 0 }]).workingKg <= 70, TA.snapLoad('assisted-pull-up', 100, 'nearest', GYM), TA.stepLoad('assisted-pull-up', 70, 3, GYM)], [true, 70, 70]);
+check('R3-01 assistenza già al minimo e "4+": si lavora lì', calA([{ kg: 5, reps: 10, rir: 4 }]), { done: true, workingKg: 5 });
+// R3-17: principiante ×1,3 poi ×1,25 poi ×1,15 (non più ×1,5: arrivava al cedimento)
+check('R3-17 tre prove "4+" della principiante: 8 → 10 → 12 → lavoro 14', [cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }], 'beginner').nextKg,
+    cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 10, reps: 10, rir: 4 }], 'beginner').nextKg,
+    cal('dumbbell-hip-thrust', [{ kg: 8, reps: 10, rir: 4 }, { kg: 10, reps: 10, rir: 4 }, { kg: 12, reps: 10, rir: 4 }], 'beginner').workingKg], [10, 12, 14]);
+// R3-05: Trova il peso proposto a TUTTI i livelli sui multiarticolari mai fatti (con le rep della prova,
+// R3-15); "4+" su tutte le serie ⇒ ricalibrare; alla rotazione il peso arriva dalla stessa famiglia
+const LUIi = { ...PROF_FULL, gender: 'male', weight: 85, level: 'intermediate' };
+const nNew = (id, range, level, extra = {}) => TA.computeNextTarget({ exerciseId: id, range, sessions: [], level, gym: GYM, profile: { ...LUIi, level }, now: NOW, nextTargetRir: 2, ...extra });
+check('R3-05 intermedio, panca mai fatta: Trova il peso, rep della prova (10, non 8)', (() => { const r = nNew('bench-press', [8, 12], 'intermediate'); return [r.calibrate, r.testReps, r.suggestedReps]; })(), [true, 10, 10]);
+check('R3-05 intermedio, isolamento mai fatto: stima senza prova', nNew('lateral-raise', [12, 15], 'intermediate').calibrate, false);
+check('R3-05 "4+" su tutte le serie (RIR obiettivo 2) ⇒ ricalibrare', (() => { const r = next('bench-press', [8, 12], [sess([S(40, 10, 4), S(40, 10, 4), S(40, 9, 4)])], 'intermediate', 2); return [r.recalibrate, r.calibrate, r.testReps, /Trova il peso/.test(r.message)]; })(), [true, true, 10, true]);
+check('R3-05 un solo "4+" non basta', next('bench-press', [8, 12], [sess([S(60, 10, 4), S(60, 10, 2), S(60, 9, 2)])], 'intermediate', 2).recalibrate, undefined);
+check('R3-05 rotazione: panca 80 → manubri 32, RIR +1, niente prova', (() => { const r = nNew('dumbbell-bench-press', [8, 12], 'intermediate', { related: { exerciseId: 'bench-press', weight: 80 } }); return [r.status, r.suggestedWeight, r.convertedFrom, r.calibrate, r.targetRir]; })(), ['new', 32, 'bench-press', false, 3]);
+check('R3-05 rotazione fra macchine diverse: niente conversione, Trova il peso', (() => { const r = nNew('hack-squat', [8, 12], 'intermediate', { related: { exerciseId: 'leg-press', weight: 150 } }); return [r.convertedFrom || null, r.calibrate]; })(), [null, true]);
+// R3-07: manubri leggeri — tetto range + 2 rep; salto concesso al massimo del range con RIR ≥ obiettivo + 2
+check('R3-07 laterali 2 kg, 15 rep facili (RIR 4, obiettivo 2) → 3 kg', R(next('lateral-raise', [12, 15], [sess([S(2, 15, 4), S(2, 15, 4), S(2, 15, 4)])], 'intermediate', 2)).slice(0, 2), ['increase_weight', 3]);
+check('R3-07 laterali 2 kg, 15 rep a RIR 2 → +1 rep, mai oltre 17', [R(next('lateral-raise', [12, 15], [sess([S(2, 15, 2), S(2, 15, 2), S(2, 15, 1)])], 'intermediate', 2)),
+    R(next('lateral-raise', [12, 15], [sess([S(2, 17, 1), S(2, 17, 1), S(2, 17, 1)])], 'intermediate', 2)).slice(0, 2)], [['increase_reps', 2, 16], ['increase_weight', 3]]);
+check('R3-07 lento manubri 5 kg 8-12: al massimo 14 rep prima del salto', next('dumbbell-shoulder-press', [8, 12], [sess([S(5, 13, 1), S(5, 13, 1), S(5, 13, 1)])], 'intermediate', 2).suggestedReps <= 14, true);
+check('R3-15 range esteso detto nel messaggio', /oltre 12/.test(next('dumbbell-shoulder-press', [8, 12], [sess([S(5, 12, 1), S(5, 12, 1), S(5, 12, 1)])], 'intermediate', 2).message), true);
+// R3-11: fattori per famiglia; un fondamentale non si sostituisce con un accessorio
+check('R3-11 squat 140 → front squat 110 (×0,8); piana 80 → inclinata manubri 28 (×0,415×0,9); stacco 180 → rumeno 135',
+    [TA.convertLoad('squat', 'front-squat', 140).kg, TA.convertLoad('bench-press', 'dumbbell-incline-press', 80).kg, TA.convertLoad('deadlift', 'romanian-deadlift', 180).kg], [110, 28, 135]);
+check('R3-11 stacco occupato: prima alternativa uno stacco, non l\'hyperextension', (() => {
+    const a = TA.getAlternatives('deadlift', { level: 'advanced', equipment: PROF_FULL.equipment }, { reason: 'busy', limit: 3, kg: 180 });
+    return [DB[a[0].exerciseId].pattern, DB[a[0].exerciseId].tier < 3, a.slice(0, 3).some(x => x.exerciseId === 'hyperextension')];
+})(), ['hinge', true, false]);
+// R3-12: scarico al gradino più vicino; se il gradino sotto toglie più del 10% si tiene il peso
+const dl = (id, kg, range = [12, 15]) => next(id, range, [sess([S(kg, 12, 2)])], 'intermediate', 2, { phase: 'deload' }).suggestedWeight;
+check('R3-12 scarico: laterali 2 → 2 (non 1), pushdown 10 → 10 (non 7,5), panca 60 → 55, pressa 100 → 90',
+    [dl('lateral-raise', 2), dl('tricep-pushdown', 10), dl('bench-press', 60, [8, 12]), dl('leg-press', 100, [10, 15])], [2, 10, 55, 90]);
+check('R3-12 scarico assistita: un po\' più di assistenza (40 → 45)', dl('assisted-pull-up', 40, [8, 12]), 45);
 
 // ==================================================================
 section('§11 Rampa di riscaldamento');
@@ -578,6 +626,30 @@ SIM.forEach(person => {
     check(`${person.name}: settimana 6 di scarico (−10%) e ciclo chiuso con rotazione`, [all.some(e => e.phase === 'deload' && e.status === 'deload'), !!(r.completed && r.completed.completedCycle), r.S.getCycleInfo().cycleNumber], [true, true, 2]);
 });
 if (VERBOSE || process.argv.includes('--sim')) console.log(simOut.join('\n') + '\n');
+
+// R3-13: settimana 5 saltata (principiante, ciclo di 6) → la 6 NON è già scarico: si rifà la 5
+(() => {
+    const DAYMS = 86400000;
+    const monday = new Date(2026, 9, 19, 0, 0).getTime();
+    const env = simEnv(monday);
+    const { S, TA: T } = env;
+    S.saveProfile({ name: 'Lei', gender: 'female', weight: 60, level: 'beginner', equipment: ['manubri', 'macchine'] });
+    const prog = T.generateProgram(S.getProfile(), { goal: 'toning', daysPerWeek: 3, split: 'upper-lower', sessionDuration: 45 });
+    prog.metadata.cycle.startDate = new Date(monday).toISOString();
+    S.setActiveProgram(prog);
+    const phases = [];
+    for (let week = 0; week < 8; week++) {
+        for (const off of [0, 2, 4]) {
+            env.__setNow(monday + (week * 7 + off) * DAYMS + 18 * 3600000);
+            S.syncCycleWeek();
+            if (week === 4) continue;   // settimana 5 saltata
+            phases.push(`${week + 1}:${S.getCycleInfo().currentWeek}${S.getCurrentPhase().phase === 'deload' ? 'D' : ''}`);
+            S.saveWorkout({ name: 'x', type: prog.days[0].type, dayIndex: 0, exercises: [] });
+        }
+    }
+    const byWeek = (w) => phases.filter(p => p.startsWith(w + ':'))[0];
+    check('R3-13 settimana saltata ripetuta: sett. 6 del calendario = settimana 5 del ciclo, lo scarico arriva dopo', [byWeek(6), byWeek(7)], ['6:5', '7:6D']);
+})();
 
 // ------------------------------------------------------------------
 console.log(`GymTracker — progressione v2: ${passed}/${passed + failures.length} verifiche superate`);

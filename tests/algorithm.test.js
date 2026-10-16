@@ -108,10 +108,22 @@ function owned(list) {
     return eq;
 }
 
+// Difficoltà §6.1 (TA._difficultyOk); se per quel muscolo non c'è niente al livello giusto il generatore
+// sale di un livello (principiante coi soli manubri: rematore a due braccia "intermediate")
+const UP_LEVEL = { beginner: 'intermediate', intermediate: 'advanced' };
 function eligibleList(muscle, eqSet, level) {
-    return Object.values(DB).filter(x => !x.hidden && x.primaryMuscles.includes(muscle) &&
-        x.equipment.every(e => eqSet.has(e)) && !(level === 'beginner' && x.difficulty === 'advanced'));
+    const base = Object.values(DB).filter(x => !x.hidden && x.primaryMuscles.includes(muscle) && x.equipment.every(e => eqSet.has(e)));
+    const strict = base.filter(x => TA._difficultyOk(x, level));
+    return strict.length || !UP_LEVEL[level] ? strict : base.filter(x => TA._difficultyOk(x, UP_LEVEL[level]));
 }
+// Esercizi possibili per uno schema di movimento (stessa regola)
+function eligiblePattern(test, eqSet, level) {
+    const base = Object.values(DB).filter(x => !x.hidden && test(x) && x.equipment.every(e => eqSet.has(e)));
+    const strict = base.filter(x => TA._difficultyOk(x, level));
+    return strict.length || !UP_LEVEL[level] ? strict : base.filter(x => TA._difficultyOk(x, UP_LEVEL[level]));
+}
+const LEG_PAT = ['squat', 'lunge', 'hinge', 'bridge'];
+const ppOf = (id) => { const p = (DB[id] || {}).pattern || ''; return /^push-/.test(p) ? 'push' : (/^pull-/.test(p) ? 'pull' : null); };
 function eligibleFor(muscle, eqSet, level) {
     return eligibleList(muscle, eqSet, level).length > 0;
 }
@@ -131,7 +143,7 @@ function newMetrics() {
         programs: 0, days: 0, sets: [], exercises: [], estRatio: { 45: [], 60: [], 75: [], 90: [] },
         over: { 45: 0, 60: 0, 75: 0, 90: 0 }, daysByDur: { 45: 0, 60: 0, 75: 0, 90: 0 }, overMax: { 45: 0, 60: 0, 75: 0, 90: 0 },
         abs: [], calves: [], lowerShareToning: [], bigOut: 0, bigOutStrict: 0, compoundAfterIso: 0, dupDays: 0, eqMiss: 0,
-        advBeg: 0, lt4: 0, legsLt2: 0, absOver: 0, supersets: 0, idsUsed: new Set(), errors: 0, setsByDur: { 45: [], 60: [], 75: [], 90: [] },
+        advBeg: 0, lt4: 0, legsLt2: 0, absOver: 0, supersets: 0, idsUsed: new Set(), errors: 0, setsByDur: { 45: [], 60: [], 75: [], 90: [] }, pushPull: [],
         exByDur: { 45: [], 60: [], 75: [], 90: [] }
     };
 }
@@ -180,6 +192,8 @@ function checkProgram(p, cfg, stage) {
 
         const ids = ex.map(e => e.exerciseId);
         if (new Set(ids).size !== ids.length) { m.dupDays++; fail('doppioni nello stesso giorno', `${tag} ${d.type}: ${ids}`); }
+        const fams = ids.map(id => DB[id] && DB[id].family).filter(Boolean);
+        if (new Set(fams).size !== fams.length) fail('due esercizi della stessa famiglia nel giorno (§5.6)', `${tag} ${d.type}: ${ids}`);
 
         ex.forEach(e => {
             const x = DB[e.exerciseId];
@@ -188,6 +202,12 @@ function checkProgram(p, cfg, stage) {
             if (x.hidden) fail('esercizio hidden', `${tag} ${e.exerciseId}`);
             if (!x.equipment.every(q => eqSet.has(q))) { m.eqMiss++; fail('attrezzatura non posseduta', `${tag} ${e.exerciseId} richiede ${x.equipment}`); }
             if (cfg.level === 'beginner' && x.difficulty === 'advanced') { m.advBeg++; fail('principiante con esercizio advanced', `${tag} ${e.exerciseId}`); }
+            // §6.1 (R3-08): difficoltà del livello; un livello sopra solo se per quello schema non c'è altro
+            if (!TA._difficultyOk(x, cfg.level)) {
+                const alt = Object.values(DB).some(y => !y.hidden && y.pattern === x.pattern && y.type === x.type && y.equipment.every(q => eqSet.has(q)) && TA._difficultyOk(y, cfg.level));
+                if (alt || !UP_LEVEL[cfg.level] || !TA._difficultyOk(x, UP_LEVEL[cfg.level])) fail('difficoltà oltre §6.1', `${tag} ${e.exerciseId} (${x.difficulty})`);
+            }
+            if (e.exerciseId === 'sumo-deadlift') fail('stacco sumo nella scheda (slot hip thrust, R3-03)', `${tag} ${d.type}`);
             if (e.name !== x.name) fail('nome diverso dal database', `${tag} ${e.exerciseId}`);
             if (e.type !== x.type) fail('type mancante o diverso dal database', `${tag} ${e.exerciseId}: ${e.type}`);
             if (!Number.isInteger(e.sets) || e.sets < 1) fail('serie non intere o <1', `${tag} ${e.exerciseId}: ${e.sets}`);
@@ -223,6 +243,18 @@ function checkProgram(p, cfg, stage) {
             if (new Set(list.map(x => x.e.sets)).size > 1) fail('superset con serie diverse', `${tag} ${d.type} ${g}`);
             if (list.some((x, k) => x.e.supersetOrder !== k + 1)) fail('supersetOrder non 1..n', `${tag} ${d.type} ${g}`);
             if (list.some(x => !Number.isInteger(x.e.supersetRest) || !Number.isInteger(x.e.transitionTime))) fail('superset senza riposo/transizione', `${tag} ${d.type} ${g}`);
+            // R3-04: fra multiarticolari solo spinta↔tirata (mai gamba+gamba, spinta+spinta, alta+gamba);
+            // un multiarticolare di gambe mai con un altro esercizio di gambe; nella forza nessun multiarticolare
+            const comp = list.filter(x => DB[x.e.exerciseId].type === 'compound' && !x.e.isCore);
+            if (cfg.goal === 'strength' && comp.length) fail('forza: multiarticolare in superset', `${tag} ${d.type}: ${list.map(x => x.e.exerciseId)}`);
+            for (let i = 0; i < comp.length; i++) for (let j = i + 1; j < comp.length; j++) {
+                const a = ppOf(comp[i].e.exerciseId), b = ppOf(comp[j].e.exerciseId);
+                if (!a || !b || a === b) fail('superset di due multiarticolari non spinta↔tirata', `${tag} ${d.type}: ${comp[i].e.exerciseId}+${comp[j].e.exerciseId}`);
+            }
+            const legComp = list.filter(x => DB[x.e.exerciseId].type === 'compound' && LEG_PAT.includes(DB[x.e.exerciseId].pattern));
+            if (legComp.length && list.some(x => !legComp.includes(x) && DB[x.e.exerciseId].primaryMuscles.some(mu => LOWER.includes(mu)))) {
+                fail('superset multiarticolare di gambe + gambe', `${tag} ${d.type}: ${list.map(x => x.e.exerciseId)}`);
+            }
         });
 
         const est = TA.estimateWorkoutDuration(d);
@@ -262,7 +294,11 @@ function checkProgram(p, cfg, stage) {
         if (toningUpperOk) { m.toningUpperRelaxed = (m.toningUpperRelaxed || 0) + 1; return; }
         // Con 1-2 esercizi possibili per quel muscolo (es. schiena a corpo libero senza sbarra = solo
         // superman) il limite sono gli esercizi, non il tempo: bastano 6 serie frazionarie.
-        if (eligibleList(mu, eqSet, cfg.level).length <= 2 && frac >= Math.min(6, lo)) { m.exerciseLimited = (m.exerciseLimited || 0) + 1; return; }
+        // (si contano le famiglie: lo stesso gesto va una volta sola per seduta, §5.6)
+        if (new Set(eligibleList(mu, eqSet, cfg.level).map(x => x.family)).size <= 2 && frac >= Math.min(6, lo)) { m.exerciseLimited = (m.exerciseLimited || 0) + 1; return; }
+        // nei giorni con tempo gli esercizi di quel muscolo sono già a 4+ serie (tetto per esercizio)
+        const capped = pool.filter(i => estByDay[i] < cfg.dur * SATURATED).every(i => p.days[i].exercises.every(e => !DB[e.exerciseId]?.primaryMuscles.includes(mu) || e.sets >= 4));
+        if (!saturated && capped && trainDays.length) { m.exerciseCapped = (m.exerciseCapped || 0) + 1; return; }
         if (!saturated) { m.bigOut++; fail('volume muscolo grande < min−2 con tempo libero', `${tag} ${mu}=${val} (min ${lo}) stime ${pool.map(i => estByDay[i])}`); }
         else if (frac < 4 && val < 3) { m.bigOut++; fail('volume muscolo grande sotto la dose minima (tempo esaurito)', `${tag} ${mu}=${val}, frazionario ${frac}`); }
         else if (frac < 4) m.medBorderline = (m.medBorderline || 0) + 1;
@@ -290,6 +326,37 @@ function checkProgram(p, cfg, stage) {
     const calfMin = cfg.goal === 'strength' ? 0 : (cfg.goal === 'toning' ? 4 : 6);
     if (calves < calfMin && !full(lowerDays)) fail(`polpacci <${calfMin} serie/sett con tempo libero`, `${tag}: ${calves}`);
     if (calves < calfMin && full(lowerDays)) m.calvesTimeLimited = (m.calvesTimeLimited || 0) + 1;
+
+    // R3-02 (§5.5.7): fuori dalla tonificazione serie di tirata ≥ 0,9 × spinta, sulle serie intere
+    // (floor: 8 su 9, 16 su 18). Adattamenti motivati: una sola tirata possibile, schiena già a max+3,
+    // sedute della parte alta piene.
+    let push = 0, pull = 0, rows = 0, lat = 0;
+    p.days.forEach(d => d.exercises.forEach(e => {
+        const k = ppOf(e.exerciseId);
+        if (k === 'push') push += e.sets; else if (k === 'pull') pull += e.sets;
+        if (DB[e.exerciseId].pattern === 'pull-h') rows += e.sets;
+        if (DB[e.exerciseId].pattern === 'iso-shoulder-lat') lat += e.sets;
+    }));
+    m.pushPull.push(push ? pull / push : 1);
+    const pullFamilies = new Set(eligiblePattern(x => /^pull-/.test(x.pattern), eqSet, cfg.level).map(x => x.family)).size;
+    if (cfg.goal !== 'toning' && pullFamilies > 0 && pull < Math.floor(0.9 * push + 1e-9)) {
+        // (le tirate non entrano dove ci sono già: sedute con tirate piene, o tirate già a 4 serie)
+        const pullDays = daysWith(d => d.exercises.some(e => ppOf(e.exerciseId) === 'pull'));
+        const pullsMaxed = p.days.every(d => d.exercises.every(e => ppOf(e.exerciseId) !== 'pull' || e.sets >= 4));
+        // con una sola tirata possibile (soli manubri: il rematore a due braccia) il limite è l'esercizio
+        if (pullFamilies <= 1) m.ppExercises = (m.ppExercises || 0) + 1;
+        else if ((v.schiena || 0) >= L.max + 3 || full(pullDays) || pullsMaxed) m.ppLimited = (m.ppLimited || 0) + 1;
+        else fail('tirata < 0,9 × spinta', `${tag}: tirata ${pull} spinta ${push}`);
+    }
+    // almeno un rematore (pull-h) a settimana se l'attrezzatura lo permette (tutti gli obiettivi)
+    if (eligiblePattern(x => x.pattern === 'pull-h', eqSet, cfg.level).length && rows < 2) fail('nessun rematore nella settimana', `${tag}: ${rows}`);
+    // §4.2 (R3-10): alzate laterali dirette, fuori dalla forza 4 a settimana (principianti 2 in ipertrofia/ricomposizione/tonificazione)
+    const latMin = cfg.goal === 'strength' ? 0 : (cfg.level === 'beginner' ? (['hypertrophy', 'recomp', 'toning'].includes(cfg.goal) ? 2 : 0) : 4);
+    // (adattamento: con le sedute della parte alta già piene si accettano 2 serie, come per gli altri minimi)
+    if (latMin && eligiblePattern(x => x.pattern === 'iso-shoulder-lat', eqSet, cfg.level).length && lat < latMin) {
+        if (lat >= 2 && full(upperDays)) m.latTimeLimited = (m.latTimeLimited || 0) + 1;
+        else fail(`alzate laterali < ${latMin} serie/sett`, `${tag}: ${lat}`);
+    }
 
     // tonificazione: parte inferiore ≥55% del volume diretto (addome escluso)
     if (cfg.goal === 'toning') {
@@ -479,7 +546,8 @@ if (!LEGACY) {
         if (!(tot(w3) > tot(day))) return 'avanzato settimana 3: nessuna serie in più';
         // scheda salvata dalla v1.26 (fase senza rir/setsDelta/loadFactor): default
         const old = TA.applyPhaseToDay(day, { week: 2, phase: 'intensification', rirTarget: { min: 0, max: 2 }, volumeMultiplier: 0.9 });
-        if (tot(old) !== tot(day) || old.exercises.some(e => e.targetRir !== 0)) return 'fase v1.26: default';
+        // R1-03: fase v1.25 senza rir → multiarticolari max(1, min), isolamenti min
+        if (tot(old) !== tot(day) || old.exercises.some(e => e.targetRir !== (e.type === 'compound' && !e.isCore ? 1 : 0))) return 'fase v1.26: default';
         // zona dolente: RIR minimo 2 sugli esercizi che la sollecitano
         const pain = TA.applyPhaseToDay(day, TA.getPhaseForWeek(c, 5), { painAreas: ['shoulder'] });
         if (pain.exercises.some(e => (DB[e.exerciseId].joint.shoulder >= 1) && e.targetRir < 2)) return 'zona dolente: RIR < 2';
@@ -583,6 +651,93 @@ if (!LEGACY) {
         if (!out.added.length || !out.removed.length) return 'nessuna rotazione';
         return true;
     });
+    // ---------------- R3: invarianti del revisore-allenatore
+    const mainsOf = (p) => p.days.map(d => d.exercises[0].exerciseId).join('/');
+    const rot = (p, prof, n) => { let q = p; for (let i = 0; i < n; i++) q = TA.rotateProgram(q, prof).program; return q; };
+    unit('R3-03 rotazione: fondamentali uguali per 2 cicli (periodo 2), forza mai ruotati, accessori ogni ciclo', () => {
+        let changedAt3 = 0, n = 0;
+        for (const goal of ['hypertrophy', 'recomp', 'toning', 'endurance']) for (const days of [3, 4]) {
+            const prof = { level: 'intermediate', gender: 'male', equipment: EQUIP.palestra };
+            const p1 = TA.generateProgram(prof, { goal, daysPerWeek: days, split: 'upper-lower', sessionDuration: 60 });
+            const p2 = rot(p1, prof, 1), p3 = rot(p2, prof, 1);
+            if (mainsOf(p1) !== mainsOf(p2)) return `${goal} ${days}gg: main cambiati al ciclo 2 (${mainsOf(p1)} → ${mainsOf(p2)})`;
+            n++; if (mainsOf(p3) !== mainsOf(p2)) changedAt3++;
+        }
+        if (!changedAt3) return 'al ciclo 3 nessun fondamentale ruota';
+        for (const days of [3, 4, 5]) {
+            const prof = { level: 'advanced', gender: 'male', equipment: EQUIP.palestra };
+            const p1 = TA.generateProgram(prof, { goal: 'strength', daysPerWeek: days, split: 'upper-lower', sessionDuration: 75 });
+            const p4 = rot(p1, prof, 3);
+            if (mainsOf(p1) !== mainsOf(p4)) return `forza ${days}gg: fondamentali ruotati (${mainsOf(p1)} → ${mainsOf(p4)})`;
+        }
+        return true;
+    });
+    unit('R3-03 rotazione da una scheda v1.25: restano i fondamentali che la persona fa già', () => {
+        const old = { name: 'U/L', days: [
+            { name: 'G1', type: 'Upper A', exercises: ['bench-press', 'barbell-row', 'overhead-press', 'pull-up'].map(id => ({ exerciseId: id, sets: 3, reps: '8-12' })) },
+            { name: 'G2', type: 'Lower A', exercises: ['squat', 'leg-press', 'hip-thrust'].map(id => ({ exerciseId: id, sets: 3, reps: '8-12' })) },
+            { name: 'G3', type: 'Upper B', exercises: ['bench-press', 'barbell-row', 'lateral-raise'].map(id => ({ exerciseId: id, sets: 3, reps: '8-12' })) },
+            { name: 'G4', type: 'Lower B', exercises: ['romanian-deadlift', 'hip-thrust', 'squat'].map(id => ({ exerciseId: id, sets: 3, reps: '8-12' })) }],
+            metadata: { goal: 'hypertrophy', split: 'upper-lower', daysPerWeek: 4, sessionDuration: 60, level: 'intermediate' } };
+        const out = TA.rotateProgram(old, { level: 'intermediate', gender: 'male', equipment: EQUIP.palestra });
+        const ids = new Set(out.program.days.flatMap(d => d.exercises.map(e => e.exerciseId)));
+        const kept = ['bench-press', 'barbell-row', 'squat', 'romanian-deadlift'].filter(x => ids.has(x));
+        return kept.length >= 4 || `restano solo ${kept}`;
+    });
+    unit('R3-18 volume del ciclo dopo da adesione e progressi (non +1 a ogni ciclo)', () => {
+        const prof = { level: 'intermediate', gender: 'male', equipment: EQUIP.palestra };
+        const p1 = TA.generateProgram(prof, { goal: 'hypertrophy', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 75 });
+        const tot = (p) => p.days.reduce((a, d) => a + d.exercises.reduce((b, e) => b + e.sets, 0), 0);
+        const good = TA.rotateProgram(p1, prof, { adherence: 0.9, earlyDeloads: 0, progressedPct: 0.7 });
+        const none = TA.rotateProgram(p1, prof);
+        const bad = TA.rotateProgram(p1, prof, { adherence: 0.5, earlyDeloads: 1, progressedPct: 0.2 });
+        if ([good.volumeOffset, none.volumeOffset, bad.volumeOffset].join() !== '1,0,-1') return `offset ${good.volumeOffset},${none.volumeOffset},${bad.volumeOffset}`;
+        if (good.program.metadata.volumeOffset !== 1) return 'metadata.volumeOffset';
+        return tot(good.program) >= tot(bad.program) || `serie: buono ${tot(good.program)} < scarso ${tot(bad.program)}`;
+    });
+    unit('R3-08 esclusi per famiglia, ginocchio dolente con meno affondi e più cerniera/ponte', () => {
+        const prof = { level: 'intermediate', gender: 'female', equipment: EQUIP.palestra, avoidExercises: ['bulgarian-split-squat', 'leg-extension'] };
+        let p = TA.generateProgram(prof, { goal: 'toning', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 60 });
+        for (let i = 0; i < 4; i++) {
+            const bad = p.days.flatMap(d => d.exercises).filter(e => ['bulgarian', 'leg-ext'].includes(DB[e.exerciseId].family));
+            if (bad.length) return `ciclo ${i + 1}: ${bad.map(e => e.exerciseId)}`;
+            p = TA.rotateProgram(p, prof).program;
+        }
+        const sum = (q, pats) => q.days.reduce((a, d) => a + d.exercises.reduce((b, e) => b + (pats.includes(DB[e.exerciseId].pattern) ? e.sets : 0), 0), 0);
+        const base = TA.generateProgram({ ...prof, avoidExercises: [] }, { goal: 'toning', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 60 });
+        const knee = TA.generateProgram({ ...prof, avoidExercises: [], painAreas: ['knee'] }, { goal: 'toning', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 60 });
+        if (!(sum(knee, ['lunge']) < sum(base, ['lunge']))) return `affondi ${sum(knee, ['lunge'])} vs ${sum(base, ['lunge'])}`;
+        if (!(sum(knee, ['hinge', 'bridge']) > sum(base, ['hinge', 'bridge']))) return `cerniera+ponte ${sum(knee, ['hinge', 'bridge'])} vs ${sum(base, ['hinge', 'bridge'])}`;
+        return true;
+    });
+    unit('R3-09 rampa: range letto al centro ("6-10" = 8), serie singola per l\'altra regione, contata nella stima', () => {
+        const r = TA.buildWarmupSets('bench-press', 80, '6-10', 'hypertrophy');
+        if (r.some(x => x.reps === 1) || r.length > 3) return 'rampa da forza su 6-10: ' + JSON.stringify(r);
+        if (TA.buildWarmupSets('squat', 140, '3-5', 'strength').length < 4) return 'forza 3-5 senza rampa lunga';
+        if (TA.buildWarmupSets('squat', 100, '8-12', 'hypertrophy', null, { single: true }).length !== 1) return 'single';
+        const p = TA.generateProgram({ level: 'intermediate', gender: 'male', equipment: EQUIP.palestra }, { goal: 'recomp', daysPerWeek: 3, split: 'full-body', sessionDuration: 60 });
+        const d = p.days[0];
+        const plan = TA.getRampPlan(d.exercises);
+        if (!plan.length || plan[0].kind !== 'full' || plan[0].index !== 0) return 'piano rampa: ' + JSON.stringify(plan);
+        if (!plan.some(x => x.kind === 'single')) return 'full body senza avvicinamento per l\'altra regione';
+        if (!(d.exercises[0].rampSets > 0)) return 'rampSets mancante sul fondamentale';
+        const noRamp = { ...d, exercises: d.exercises.map(e => ({ ...e, rampSets: 0 })) };
+        if (!(TA.estimateWorkoutDuration(d) > TA.estimateWorkoutDuration(noRamp))) return 'stima senza rampa';
+        if (TA.estimateWorkoutDuration(noRamp, { rampSets: 4, calibExtraMin: 6 }) !== TA.estimateWorkoutDuration(noRamp) + 6 + 6) return 'ctx.rampSets / calibExtraMin';
+        return true;
+    });
+    unit('R3-16 seduta corta: l\'addome esce prima di togliere serie ai multiarticolari', () => {
+        const ex = (id, sets, reps, rest, role) => ({ exerciseId: id, name: DB[id].name, type: DB[id].type, sets, reps, rest, role });
+        const day = { type: 'Lower A', warmup: 'lower', warmupMin: 8, cooldownMin: 4, exercises: [
+            ex('squat', 4, '6-10', 150, 'main'), ex('romanian-deadlift', 3, '8-12', 120, 'secondary'), ex('bulgarian-split-squat', 3, '8-12', 90, 'secondary'),
+            ex('leg-curl-seated', 3, '10-15', 75, 'accessory'), ex('cable-woodchop', 3, '10-12', 45, 'core')] };
+        const r = TA.compressDay(day, 40, { goal: 'hypertrophy', coreDaysElsewhere: 0 });
+        const coreOut = r.changes.findIndex(c => c.removed === 'cable-woodchop');
+        const firstCompoundCut = r.changes.findIndex(c => (c.step === 'S6' || c.step === 'S8'));
+        if (coreOut < 0) return 'wood chop ancora dentro: ' + JSON.stringify(r.changes);
+        return firstCompoundCut < 0 || coreOut < firstCompoundCut || JSON.stringify(r.changes);
+    });
+
     unit('dumbbell-shrug-shoulders hidden ma ancora nel database', () => {
         return (DB['dumbbell-shrug-shoulders'] && DB['dumbbell-shrug-shoulders'].hidden === true) || 'manca hidden';
     });
@@ -614,8 +769,9 @@ for (const k of ['gen', 'rot']) {
     console.log(`   stima/durata media: ` + DURS.map(d => `${d}' ${(avg(m.estRatio[d]) * 100).toFixed(0)}% (oltre ${pct(m.over[d], m.daysByDur[d])}, max ${m.overMax[d]}')`).join(' | '));
     console.log(`   addome serie/sett ${avg(m.abs).toFixed(1)} (max ${Math.max(...m.abs)}), polpacci ${avg(m.calves).toFixed(1)} (min ${Math.min(...m.calves)}); toning parte inferiore ${(avg(m.lowerShareToning) * 100).toFixed(1)}% (min ${(Math.min(...m.lowerShareToning) * 100).toFixed(1)}%)`);
     console.log(`   muscoli grandi sotto min−2: ${m.bigOutStrict} casi (muscolo×scheda) — accettati perché il tempo è finito o gli esercizi possibili sono 1-2 (${m.exerciseLimited || 0}) o la tonificazione dà priorità alla parte inferiore (${m.toningUpperRelaxed || 0}); violazioni ${m.bigOut}`);
-    console.log(`   adattamenti per tempo esaurito: polpacci ${m.calvesTimeLimited || 0}, petto tonificazione ${m.chestTimeLimited || 0}, quota inferiore tonificazione ${m.shareTimeLimited || 0} schede, muscolo a 3 serie dirette ${m.medBorderline || 0}`);
+    console.log(`   adattamenti per tempo esaurito: polpacci ${m.calvesTimeLimited || 0}, petto tonificazione ${m.chestTimeLimited || 0}, quota inferiore tonificazione ${m.shareTimeLimited || 0} schede, muscolo a 3 serie dirette ${m.medBorderline || 0}, laterali a 2-3 serie ${m.latTimeLimited || 0}`);
     console.log(`   superset ${m.supersets}, esercizi distinti usati ${m.idsUsed.size}/${Object.values(DB).filter(x => !x.hidden).length}`);
+    console.log(`   tirata/spinta media ${avg(m.pushPull).toFixed(2)} (min ${Math.min(...m.pushPull).toFixed(2)}); sotto 0,9 accettati: una sola tirata possibile ${m.ppExercises || 0}, schiena piena, sedute con tirate piene o tirate a 4 serie ${m.ppLimited || 0}`);
 }
 console.log(`\nDurata: 75' identica a 90' in ${pairs75vs90.same}/${pairs75vs90.total}; serie che calano allungando la durata: ${pairs75vs90.setsDown}`);
 

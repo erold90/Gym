@@ -163,7 +163,8 @@ const TrainingAlgorithm = {
         hinge2: { m: 'femorali', ids: ['dumbbell-rdl', 'stiff-leg-deadlift', 'single-leg-rdl', 'good-morning', 'romanian-deadlift'] },
         deadlift: { m: 'schiena', ids: ['deadlift', 'romanian-deadlift', 'dumbbell-rdl', 'single-leg-rdl'] },
         hamCurl: { m: 'femorali', ids: ['leg-curl-seated', 'leg-curl-lying', 'nordic-curl', 'glute-ham-raise'], alt: 'hinge2' },
-        hipThrust: { m: 'glutei', ids: ['hip-thrust', 'dumbbell-hip-thrust', 'sumo-deadlift', 'glute-bridge', 'single-leg-glute-bridge'] },
+        // niente stacco sumo qui (R3-03): è una cerniera, non un ponte, e finirebbe accanto a RDL e nordic
+        hipThrust: { m: 'glutei', ids: ['hip-thrust', 'dumbbell-hip-thrust', 'glute-bridge', 'single-leg-glute-bridge'] },
         gluteIso: { m: 'glutei', ids: ['hip-abduction', 'cable-kickback', 'glute-kickback-machine', 'fire-hydrant', 'donkey-kick'] },
         calves: { m: 'polpacci', ids: ['standing-calf-raise', 'seated-calf-raise', 'leg-press-calf-raise', 'single-leg-calf-raise', 'bodyweight-calf-raise'] },
         hPush: { m: 'petto', ids: ['bench-press', 'dumbbell-bench-press', 'chest-press-machine', 'smith-bench-press', 'dips', 'push-up', 'decline-push-up'] },
@@ -307,11 +308,18 @@ const TrainingAlgorithm = {
         try {
             const specs = this._splitDays(ctx);
             const days = specs.map((spec, i) => this._buildDayState(ctx, spec, i));
+            ctx._days = days;
             this._planCore(ctx, days);
             this._allocate(ctx, days);
             this._spareVolume(ctx, days);
             if (ctx.goal === 'toning' && ctx.emphasis === 'lower') this._enforceLowerShare(ctx, days);
             this._rescueMinimums(ctx, days);
+            // invarianti da allenatore (R3): alzate laterali minime, tirata ≥ spinta e almeno un
+            // rematore, un minimo di addome
+            this._ensureLaterals(ctx, days);
+            this._balancePushPull(ctx, days);
+            this._ensureCoreMinimum(ctx, days);
+            this._rescueMinimums(ctx, days);   // il tempo liberato dall'equilibrio torna ai minimi
             this._spareRest(ctx, days);
 
             const program = {
@@ -327,6 +335,8 @@ const TrainingAlgorithm = {
                     split: ctx.split,
                     sessionDuration: ctx.sessionDuration
                 },
+                // serie in più (o in meno) per muscolo grande decise a fine ciclo da adesione e progressi (§12.5)
+                volumeOffset: ctx.volumeOffset,
                 cycleNumber: ctx.cycleNumber,
                 goal: ctx.goal,
                 split: ctx.split,
@@ -379,14 +389,19 @@ const TrainingAlgorithm = {
         sessionDuration = Math.max(30, Math.min(150, sessionDuration));
         let cycleNumber = parseInt(options.cycleNumber, 10);
         if (!Number.isFinite(cycleNumber) || cycleNumber < 1) cycleNumber = 1;
+        // §12.5 / R3-18: il volume cresce solo se adesione e progressi lo giustificano (non +1 a ogni ciclo)
+        let volumeOffset = parseInt(options.volumeOffset, 10);
+        if (!Number.isFinite(volumeOffset)) volumeOffset = 0;
+        volumeOffset = Math.max(-3, Math.min(6, volumeOffset));
 
         const female = this._isFemale(profile.gender);
         const eq = this._normalizeEquipment(profile.equipment);
         const loadEquip = ['bilanciere', 'manubri', 'macchine', 'cavi'].some(e => eq.has(e));
 
         const list = (v) => Array.isArray(v) ? v.filter(x => typeof x === 'string' && x) : [];
+        const avoid = new Set(list(profile.avoidExercises));
         const ctx = {
-            goal, level, daysPerWeek, split, sessionDuration, cycleNumber,
+            goal, level, daysPerWeek, split, sessionDuration, cycleNumber, volumeOffset,
             gender: profile.gender || '',
             female, eq, loadEquip,
             strength: goal === 'strength',
@@ -394,13 +409,17 @@ const TrainingAlgorithm = {
             minExercises: loadEquip ? 4 : 3,
             usage: {},  // quante volte uno schema è già stato usato nella settimana (varietà)
             // preferenze della persona (§6.5): mai proposti, sempre primi, zone dolenti, enfasi
-            avoid: new Set(list(profile.avoidExercises)),
+            avoid,
+            // "Non propormelo più" vale per il gesto: anche le varianti della stessa famiglia (R3-08)
+            avoidFamilies: new Set([...avoid].map(id => (this._db(id) || {}).family).filter(Boolean)),
             prefer: list(profile.preferExercises),
             pain: this._painAreas(profile),
             emphasis: ['lower', 'upper', 'balanced'].includes(profile.emphasis) ? profile.emphasis : (goal === 'toning' ? 'lower' : 'balanced'),
             // riscaldamento e defaticamento generali VERI per questa durata
             warmCool: {}
         };
+        // scheda precedente (rotazione): i fondamentali restano quando il periodo di 2 cicli non è finito
+        ctx.keep = this._keepMap(options.previousProgram);
         ctx.restFactor = this._durationRestFactor(sessionDuration) * (female ? 0.85 : 1);
         ctx.targets = this._weeklyTargets(ctx);
         ctx.floors = this._weeklyFloors(ctx);
@@ -429,12 +448,12 @@ const TrainingAlgorithm = {
 
     /**
      * Serie DIRETTE a settimana per muscolo. Muscoli grandi dentro [min−2, max+4] del livello.
-     * Ogni ciclo completato aggiunge +1 serie (fino al massimo del livello).
+     * volumeOffset (deciso a fine ciclo da adesione, scarichi anticipati e progressi, §12.5) sposta il
+     * punto del range, mai oltre il massimo del livello né sotto il minimo (R3-18: non più +1 a ogni ciclo).
      */
     _weeklyTargets(ctx) {
         const V = this.VOLUME_CONFIG[ctx.level];
-        const boost = Math.max(0, ctx.cycleNumber - 1);
-        const P = Math.min(V.max, this._volumePoint(V, ctx.sessionDuration) + boost);
+        const P = Math.max(V.min, Math.min(V.max, this._volumePoint(V, ctx.sessionDuration) + (ctx.volumeOffset || 0)));
         const floor = V.min - 2;
         const ceil = V.max + 4;
         const big = (x) => Math.max(floor, Math.min(V.max, Math.round(x)));
@@ -520,6 +539,26 @@ const TrainingAlgorithm = {
         return F;
     },
 
+    // Serie dirette minime di alzate laterali a settimana (§4.2): fuori dalla forza 4, principianti 2
+    _lateralMin(ctx) {
+        if (ctx.strength) return 0;
+        if (ctx.level === 'beginner') return ['hypertrophy', 'recomp', 'toning'].includes(ctx.goal) ? 2 : 0;
+        return 4;
+    },
+
+    // Serie che non si possono togliere: le alzate laterali minime e il rematore della settimana (R3)
+    _isFloorProtected(ctx, x, drop) {
+        const days = ctx._days || [];
+        const p = this._patternOf(x.id);
+        const sum = (test) => days.reduce((a, d) => a + d.slots.filter(y => y.active && test(y)).reduce((b, y) => b + y.sets, 0), 0);
+        if (p === 'iso-shoulder-lat') {
+            const min = this._lateralMin(ctx);
+            return min > 0 && sum(y => this._patternOf(y.id) === 'iso-shoulder-lat' && y.prio < 5) - drop < min;
+        }
+        if (p === 'pull-h') return sum(y => this._patternOf(y.id) === 'pull-h') - drop < 2;
+        return false;
+    },
+
     // Dose minima per muscolo: grandi 4 serie dirette (glutei 6 nella tonificazione); in ipertrofia,
     // ricomposizione e resistenza anche 2 serie dirette per bicipiti e tricipiti
     _miniDose(ctx, m) {
@@ -550,7 +589,7 @@ const TrainingAlgorithm = {
                         ctx.toning && x.m === 'petto' ? Math.min(6, ctx.targets.petto) : 0);
                     const donors = d.slots.filter(x => x.active && x.m !== m && x.role !== 'main' && !x.group && x.prio < 5)
                         .map(x => ({ x, drop: x.sets > 2 ? 1 : x.sets }))
-                        .filter(({ x, drop }) => (drop === 1 || nActive > ctx.minExercises) && (vol[x.m] || 0) - drop >= keep(x))
+                        .filter(({ x, drop }) => (drop === 1 || nActive > ctx.minExercises) && (vol[x.m] || 0) - drop >= keep(x) && !this._isFloorProtected(ctx, x, drop))
                         .sort((a, b) => ((vol[b.x.m] || 0) - this._miniDose(ctx, b.x.m)) - ((vol[a.x.m] || 0) - this._miniDose(ctx, a.x.m)));
                     // si tocca qualcosa solo se le serie tolte bastano davvero
                     let freeable = d.budget - d.spent;
@@ -740,7 +779,8 @@ const TrainingAlgorithm = {
             lowerA: [['squat', 1], ['hinge2', 2], ['lunge', 2], ['hamCurl', 3], ['quadIso', 3], ['calves', 3], ['hipThrust', 3], ['gluteIso', 4]],
             lowerB: [[s && adv ? 'deadlift' : 'hinge', 1], ['hipThrust', 2], ['quad2', 2], ['hamCurl', 3], ['calves', 3], ['lunge', 4], ['gluteIso', 4], ['quadIso', 4]],
             lowerC: [['quad2', 1], ['hinge2', 2], ['hipThrust', 2], ['lunge', 3], ['hamCurl', 3], ['calves', 3], ['quadIso', 4], ['gluteIso', 4]],
-            arms: [['vPush', 1], [s ? 'tricepsC' : 'triceps', 2], ['biceps', 2], ['lateral', 2], ['triceps', 3], ['biceps', 3], ['rearDelt', 3], ['chestIso', 4], ['lateral', 4]],
+            // (una tirata anche nel giorno delle braccia: il lento da solo sbilancia la settimana verso la spinta)
+            arms: [['vPush', 1], [s ? 'tricepsC' : 'triceps', 2], ['biceps', 2], ['lateral', 2], ['hPull', 3], ['triceps', 3], ['biceps', 3], ['rearDelt', 3], ['chestIso', 4], ['lateral', 4]],
             pushA: [['hPush', 1], ['vPush', 2], ['inclPush', 2], ['lateral', 3], ['triceps', 3], ['chestIso', 3], ['triceps', 4], ['lateral', 4]],
             pullA: [['vPull', 1], ['hPull', 1], ['hPull', 3], ['rearDelt', 3], ['biceps', 3], ['latIso', 4], ['biceps', 4]],
             legsA: [['squat', 1], ['hinge2', 2], ['lunge', 2], ['hamCurl', 3], ['quadIso', 3], ['calves', 3], ['hipThrust', 3], ['gluteIso', 4]],
@@ -758,7 +798,7 @@ const TrainingAlgorithm = {
             tLowerGQ: [['hipThrust', 1], ['squat', 1], ['lunge', 2], ['gluteIso', 3], ['quadIso', 3], ['calves', 3], ['hamCurl', 4], ['gluteIso', 4]],
             tLowerGH: [['hinge', 1], ['hipThrust', 1], ['hamCurl', 2], ['lunge', 3], ['gluteIso', 3], ['calves', 3], ['quad2', 4], ['gluteIso', 4]],
             tLowerGQ3: [['hipThrust', 1], ['squat', 1], ['lunge', 2], ['gluteIso', 3], ['quadIso', 3], ['calves', 3], ['hPush', 4], ['hamCurl', 4]],
-            tLowerGH3: [['hinge', 1], ['hipThrust', 1], ['hamCurl', 2], ['lunge', 3], ['gluteIso', 3], ['calves', 3], ['vPull', 4], ['quad2', 4]],
+            tLowerGH3: [['hinge', 1], ['hipThrust', 1], ['hamCurl', 2], ['lunge', 3], ['gluteIso', 3], ['calves', 3], ['hPull', 4], ['quad2', 4]],
             tGlute: [['hipThrust', 1], ['lunge', 2], ['hinge2', 2], ['gluteIso', 3], ['gluteIso', 3], ['quad2', 4], ['calves', 4]],
             tUpper: [['vPull', 1], ['hPush', 2], ['vPush', 2], ['hipThrust', 2], ['hPull', 3], ['lateral', 3], ['gluteIso', 3], ['triceps', 3], ['biceps', 4], ['rearDelt', 4], ['chestIso', 4]],
             tUpperA: [['vPull', 1], ['hPull', 2], ['vPush', 2], ['gluteIso', 3], ['inclPush', 3], ['lateral', 3], ['rearDelt', 3], ['triceps', 4], ['biceps', 4]],
@@ -785,50 +825,130 @@ const TrainingAlgorithm = {
         return need.every(e => e === 'corpo-libero' || eq.has(e));
     },
 
-    _isEligible(id, ctx) {
+    /**
+     * Esercizio ammesso nel generatore: esiste, attrezzatura, difficoltà §6.1 (_difficultyOk: il
+     * principiante solo "beginner" + accessori facili alle macchine, l'intermedio niente "advanced"),
+     * esclusi del profilo per id E per famiglia (R3-08), zone dolenti (joint 2).
+     * opts.known: l'esercizio è già nella scheda precedente → la persona lo fa, la difficoltà non conta.
+     */
+    _isEligible(id, ctx, opts = {}) {
         const ex = this._db(id);
         if (!ex || ex.hidden) return false;
         if (!this._hasEquipment(ex, ctx.eq)) return false;
-        if (ctx.level === 'beginner' && ex.difficulty === 'advanced') return false;
+        // relaxed: nessun esercizio dello schema (e dei ripieghi) al livello giusto → un livello sopra
+        const lvl = opts.relaxed ? ({ beginner: 'intermediate', intermediate: 'advanced' }[ctx.level] || ctx.level) : ctx.level;
+        if (!opts.known && !this._difficultyOk(ex, lvl)) return false;
         if (ctx.avoid && ctx.avoid.has(id)) return false;
+        if (ctx.avoidFamilies && ex.family && ctx.avoidFamilies.has(ex.family)) return false;
         if (ctx.pain && ctx.pain.length && ctx.pain.some(a => ((ex.joint || {})[a] || 0) === 2)) return false;
         return true;
     },
 
     /**
-     * Sceglie l'esercizio per uno schema. Ruota fra i migliori candidati in base al ciclo
-     * (i fondamentali fra i primi 2, gli altri fra i primi 3) e a quante volte lo schema è già
-     * comparso nella settimana, così i giorni non si ripetono identici.
+     * Esercizi della scheda precedente, per giorno e per slot (slotKey, scritto nelle schede v2):
+     * alla rotazione i fondamentali restano finché il loro periodo di 2 cicli non è finito (§6.4),
+     * anche se la scheda viene dalla v1.25 (lì si riconoscono per giorno).
      */
-    _pick(ctx, key, prio, used, depth = 0) {
+    _keepMap(prev) {
+        if (!prev || !Array.isArray(prev.days)) return null;
+        const bySlot = new Map();
+        const byDay = [];
+        prev.days.forEach((d, di) => {
+            const ids = new Set();
+            (d && Array.isArray(d.exercises) ? d.exercises : []).forEach(e => {
+                if (!e || !e.exerciseId) return;
+                ids.add(e.exerciseId);
+                if (e.slotKey && !bySlot.has(`${di}|${e.slotKey}`)) bySlot.set(`${di}|${e.slotKey}`, e.exerciseId);
+            });
+            byDay.push(ids);
+        });
+        return { bySlot, byDay, prevCycle: parseInt(prev.metadata && prev.metadata.cycleNumber, 10) || 1 };
+    },
+
+    /**
+     * Sceglie l'esercizio per uno schema. Varietà fra cicli (§6.4): i fondamentali e i complementari
+     * (slot di priorità 1-2) cambiano ogni 2 cicli, gli accessori a ogni ciclo; nella forza i
+     * fondamentali non cambiano mai (R3-03). Dentro la settimana lo stesso schema in due giorni dà
+     * esercizi diversi.
+     */
+    _pick(ctx, key, prio, used, depth = 0, relaxed = false) {
         const pat = this.PATTERNS[key];
         if (!pat || depth > 3) return null;
-        let elig = pat.ids.filter(id => !used.has(id) && this._isEligible(id, ctx));
-        if (!elig.length) return pat.alt ? this._pick(ctx, pat.alt, prio, used, depth + 1) : null;
+        // ginocchio dolente: l'affondo non arriva nemmeno come ripiego (es. della leg extension, R3-08)
+        if (depth > 0 && key === 'lunge' && (ctx.pain || []).includes('knee')) return null;
+        // stesso gesto una volta sola nel giorno: niente due esercizi della stessa famiglia (§5.6 inv. 1)
+        const fams = new Set([...used].map(id => (this._db(id) || {}).family).filter(Boolean));
+        const free = (id) => !used.has(id) && !fams.has((this._db(id) || {}).family);
+        let elig = pat.ids.filter(id => free(id) && this._isEligible(id, ctx, { relaxed }));
+        // rotazione: resta l'esercizio della scheda precedente se il periodo non è finito
+        const period = prio <= 2 ? 2 : 1;
+        const fixed = ctx.strength && prio === 1;
+        const rot = fixed ? 0 : Math.floor((ctx.cycleNumber - 1) / period);
+        const occ0 = ctx.usage[key] || 0;
+        if (ctx.keep && prio <= 2 && depth === 0) {
+            const prevRot = fixed ? 0 : Math.floor((Math.max(1, ctx.cycleNumber - 1) - 1) / period);
+            if (prevRot === rot) {
+                const di = ctx._dayIdx;
+                const slotId = ctx.keep.bySlot.get(`${di}|${key}`);
+                const known = (id) => free(id) && this._isEligible(id, ctx, { known: true });
+                const kept = (slotId && pat.ids.includes(slotId) && known(slotId)) ? slotId
+                    : pat.ids.find(id => ctx.keep.byDay[di] && ctx.keep.byDay[di].has(id) && known(id));
+                if (kept && !(ctx.prefer || []).some(p => elig.includes(p) && p !== kept)) {
+                    ctx.usage[key] = occ0 + 1;
+                    return { id: kept, key, m: pat.m };
+                }
+            }
+        }
+        if (!elig.length) {
+            const alt = pat.alt ? this._pick(ctx, pat.alt, prio, used, depth + 1, relaxed) : null;
+            // niente al livello giusto nemmeno coi ripieghi (es. principiante coi soli manubri: nessun
+            // rematore "beginner"): meglio un esercizio un livello sopra che uno schema vuoto
+            // (solo se lo schema è vuoto per il livello in sé, non perché gli esercizi sono già nel giorno)
+            const canRelax = depth === 0 && !relaxed && ctx.level !== 'advanced' && ctx.level !== 'expert' && !this._patternHasStrict(ctx, key, prio);
+            if (canRelax && (!alt || (prio <= 2 && ((this._db(alt.id) || {}).tier || 3) > 2))) {
+                const usage = ctx.usage[key];
+                const up = this._pick(ctx, key, prio, used, 0, true);
+                // solo per i multiarticolari: un accessorio che manca si salta e basta
+                if (up && ((this._db(up.id) || {}).tier || 3) <= 2) return up;
+                ctx.usage[key] = usage;
+            }
+            return alt;
+        }
         // Principianti: trazioni e dip solo se non c'è una regressione (es. rematore inverso)
         if (ctx.level === 'beginner' && elig.every(id => this.BEGINNER_AVOID.includes(id)) && pat.alt) {
-            const alt = this._pick(ctx, pat.alt, prio, used, depth + 1);
+            const alt = this._pick(ctx, pat.alt, prio, used, depth + 1, relaxed);
             if (alt && !this.BEGINNER_AVOID.includes(alt.id)) return alt;
         }
-        // zone dolenti: chi sollecita quell'articolazione (joint 1) scende in fondo alla lista
+        // zone dolenti: chi sollecita quell'articolazione (joint 1) scende in fondo alla lista, ma non
+        // dietro a un corpo libero "leggero" per chi ha i pesi (ginocchio dolente: niente squat a corpo
+        // libero 5×20 al posto della pressa, R3-08)
         if (ctx.pain && ctx.pain.length) {
-            const hurts = (id) => ctx.pain.some(a => ((this._db(id).joint || {})[a] || 0) >= 1) ? 1 : 0;
+            const hurts = (id) => (ctx.pain.some(a => ((this._db(id).joint || {})[a] || 0) >= 1) ? 1 : 0) + (ctx.loadEquip && this._isLightBodyweight(id) ? 2 : 0);
             elig = elig.map((id, i) => ({ id, i, h: hurts(id) })).sort((a, b) => (a.h - b.h) || (a.i - b.i)).map(x => x.id);
         }
         // "Tienilo fisso": l'esercizio preferito vince e non ruota (§6.5)
         const preferred = (ctx.prefer || []).find(id => elig.includes(id));
         if (preferred) {
-            ctx.usage[key] = (ctx.usage[key] || 0) + 1;
+            ctx.usage[key] = occ0 + 1;
             return { id: preferred, key, m: pat.m };
         }
         // non ruotare da un esercizio con carico a uno a corpo libero "leggero"
         if (!this._isLightBodyweight(elig[0])) elig = elig.filter(id => !this._isLightBodyweight(id));
-        const occ = ctx.usage[key] || 0;
-        ctx.usage[key] = occ + 1;
+        ctx.usage[key] = occ0 + 1;
         // fondamentali stabili (2 varianti), complementari 3, accessori 4: più varietà dove conta meno
         const k = Math.min(prio === 1 ? 2 : (prio === 2 ? 3 : 4), elig.length);
-        const idx = ((ctx.cycleNumber - 1) + occ) % k;
+        const idx = (rot + occ0) % k;
         return { id: elig[idx], key, m: pat.m };
+    },
+
+    // Lo schema (o i suoi ripieghi, fino a un multiarticolare per gli slot principali) ha almeno un
+    // esercizio ammesso al livello della persona, contando anche quelli già scelti nel giorno?
+    _patternHasStrict(ctx, key, prio, depth = 0) {
+        const pat = this.PATTERNS[key];
+        if (!pat || depth > 3) return false;
+        const ok = pat.ids.filter(id => this._isEligible(id, ctx));
+        if (ok.length && (prio > 2 || ok.some(id => (this._db(id) || {}).type === 'compound') || depth === 0)) return true;
+        return pat.alt ? this._patternHasStrict(ctx, pat.alt, prio, depth + 1) : false;
     },
 
     _avgReps(reps) {
@@ -931,9 +1051,39 @@ const TrainingAlgorithm = {
         return this.COOLDOWN_FALLBACK;
     },
 
+    // Ginocchio dolente (R3-08): meno affondi, più cerniera e ponte. Ogni slot "lunge" diventa una
+    // cerniera se il giorno non ne ha, poi un ponte; se ci sono già entrambi resta come extra (prio 4).
+    _kneeSafeSlots(ctx, slots) {
+        if (!(ctx.pain || []).includes('knee')) return slots;
+        const keys = new Set(slots.map(([k]) => k));
+        return slots.map(([k, p]) => {
+            if (k !== 'lunge') return [k, p];
+            if (!keys.has('hinge') && !keys.has('hinge2')) { keys.add('hinge2'); return ['hinge2', p]; }
+            if (!keys.has('hipThrust')) { keys.add('hipThrust'); return ['hipThrust', p]; }
+            return ['lunge', Math.max(p, 4)];
+        });
+    },
+
+    // Serie di rampa attese (§11) per il fondamentale e per il primo multiarticolare di un'altra regione:
+    // la stima e il budget del giorno le contano (R3-09). Niente rampa per corpo libero e assistite.
+    _rampCount(id, reps) {
+        const ex = this._db(id);
+        if (!ex || ex.type !== 'compound' || ['bodyweight', 'bodyweight-loadable', 'assisted'].includes(ex.loadType)) return 0;
+        if (/^core-|^iso-|^carry/.test(ex.pattern || '')) return 0;
+        const r = this._avgReps(reps);
+        const barbell = ex.loadType === 'barbell';
+        return r <= 6 ? (barbell ? 5 : 4) : (barbell ? 3 : 2);
+    },
+
+    _region(id) {
+        const ex = this._db(id);
+        return ex && this.LEG_PATTERNS.includes(ex.pattern) ? 'lower' : 'upper';
+    },
+
     _buildDayState(ctx, spec, index) {
         const used = new Set();
         const slots = [];
+        ctx._dayIdx = index;
         const addSlot = ([key, prio], order) => {
             const pick = this._pick(ctx, key, prio, used);
             if (!pick) return;
@@ -941,11 +1091,11 @@ const TrainingAlgorithm = {
             const ex = this._db(pick.id);
             // Muscolo servito: quello dello schema se è primario dell'esercizio, altrimenti il primo
             const m = ex.primaryMuscles.includes(pick.m) ? pick.m : ex.primaryMuscles[0];
-            const slot = { id: pick.id, key: pick.key, prio, order, m, sets: 0, active: false, partner: null, group: null };
+            const slot = { id: pick.id, key: pick.key, tkey: key, prio, order, m, sets: 0, active: false, partner: null, group: null };
             this._prescribe(ctx, slot);
             slots.push(slot);
         };
-        spec.slots.forEach(addSlot);
+        this._kneeSafeSlots(ctx, spec.slots).forEach(addSlot);
         // pochi esercizi possibili con questa attrezzatura: aggiungi schemi affini al giorno
         const want = ctx.loadEquip ? ctx.minExercises + 1 : ctx.minExercises + 3;
         const fillers = /Pull/.test(spec.type) ? ['hinge2', 'hipThrust', 'backBw', 'gluteIso', 'calves']
@@ -957,7 +1107,8 @@ const TrainingAlgorithm = {
         if (!ctx.loadEquip) {
             const extras = /Push/.test(spec.type) ? ['vPush', 'chestBw', 'tricepsC']
                 : /Pull/.test(spec.type) ? ['vPull', 'hPull', 'backBw', 'hinge2']
-                : /Lower|Legs|Glute/.test(spec.type) ? (ctx.toning ? ['hinge2', 'lunge', 'hipThrust', 'gluteIso'] : ['hinge2', 'lunge', 'hipThrust', 'backBw', 'vPush'])
+                // (nei giorni di gambe a corpo libero una tirata, non un'altra spinta: R3-02)
+                : /Lower|Legs|Glute/.test(spec.type) ? (ctx.toning ? ['hinge2', 'lunge', 'hipThrust', 'gluteIso'] : ['hinge2', 'lunge', 'hipThrust', 'backBw', 'hPull'])
                 : /Upper|Arms/.test(spec.type) ? ['vPush', 'vPull', 'hPull', 'backBw', 'chestBw']
                 : ['vPush', 'hinge2', 'vPull', 'hPull', 'backBw', 'lunge', 'hipThrust'];
             extras.forEach((k, f) => addSlot([k, 4], 70 + f));
@@ -965,9 +1116,18 @@ const TrainingAlgorithm = {
         // Tempo per il lavoro = durata − riscaldamento e defaticamento generali RIDOTTI per questa durata
         const warmupMin = this._routineMinutes('warmup', spec.warmup, ctx.sessionDuration);
         const cooldownMin = this._routineMinutes('cooldown', spec.warmup, ctx.sessionDuration);
+        // − la rampa del fondamentale (e 1 serie d'avvicinamento per il primo multiarticolare dell'altra
+        // regione): 90 s a serie, come nella stima (§13.1)
+        const main = slots.filter(x => x.prio === 1 && x.compound).sort((a, b) => a.order - b.order)[0];
+        let rampSec = 0;
+        if (main) {
+            rampSec += 90 * this._rampCount(main.id, main.reps);
+            const other = slots.find(x => x !== main && x.compound && x.prio <= 2 && this._rampCount(x.id, x.reps) > 0 && this._region(x.id) !== this._region(main.id));
+            if (other && rampSec > 0) rampSec += 90;
+        }
         // + PLAN_SLACK: il piano conta 30 s di cambio per ogni esercizio e il riposo dopo l'ultima serie,
         // la stima (§13.1) no; senza questo margine il piano lascerebbe ~2' inutilizzati
-        const budget = (ctx.sessionDuration - warmupMin - cooldownMin) * 60 + this.PLAN_SLACK;
+        const budget = (ctx.sessionDuration - warmupMin - cooldownMin) * 60 + this.PLAN_SLACK - rampSec;
         return {
             index, type: spec.type, focus: spec.focus, warmup: spec.warmup, warmupMin, cooldownMin,
             slots, used, budget, spent: 0, vol: {},
@@ -1079,6 +1239,12 @@ const TrainingAlgorithm = {
             const f = this._miniDose(ctx, m);
             if (f <= 0 || v >= f) return 0;
             need = (f - v) / f;
+        } else if (floorMode === 'big') {
+            // precedenza ai muscoli grandi verso i loro obiettivi (R3-10: il riempimento sceglieva le
+            // serie più economiche e lasciava il petto a 8 su 14)
+            if (!this.BIG_MUSCLES.includes(m)) return 0;
+            need = (t - v) / t;
+            if (need <= 0) return 0;
         } else if (floorMode) {
             if (floorMode !== true && this._floorTier(ctx, m) !== floorMode) return 0;
             const f = ctx.floors[m] || 0;
@@ -1115,6 +1281,10 @@ const TrainingAlgorithm = {
 
         // 2) Struttura: almeno N esercizi al giorno con 2 serie, in ordine di priorità ma prima
         // i muscoli non ancora coperti nel giorno (equilibrio: niente due tirate prima di una spinta)
+        // R3-02: una tirata non è "già coperta" se nel giorno ci sono più spinte che tirate (prima la
+        // trazione copriva la schiena e il rematore restava fuori, mentre entrava una seconda spinta)
+        const ppOf = (x) => this._pushPullOf(x.id);
+        const dayPP = (d) => d.slots.reduce((a, x) => { if (x.active) { const k = ppOf(x); if (k) a[k] += x.sets; } return a; }, { push: 0, pull: 0 });
         days.forEach(d => {
             let count = d.slots.filter(s => s.active && s.prio < 5).length;
             const covered = () => new Set(d.slots.filter(s => s.active).map(s => s.m));
@@ -1122,7 +1292,9 @@ const TrainingAlgorithm = {
                 for (const s of d.slots.filter(x => !x.active && x.prio < 5).sort(byPrio)) {
                     if (count >= ctx.minExercises) break;
                     if ((ctx.targets[s.m] || 0) <= 0) continue;
-                    if (pass === 0 && (s.prio > 3 || covered().has(s.m))) continue;
+                    const pp = dayPP(d);
+                    const unbalanced = !ctx.toning && ((ppOf(s) === 'pull' && pp.push > pp.pull) || (ppOf(s) === 'push' && pp.push > pp.pull));
+                    if (pass === 0 && (s.prio > 3 || (covered().has(s.m) && !(unbalanced && ppOf(s) === 'pull')) || (unbalanced && ppOf(s) === 'push'))) continue;
                     if (activate(d, s, 2)) count++;
                 }
             }
@@ -1146,6 +1318,35 @@ const TrainingAlgorithm = {
                 activate(c.d, c.s, c.s.active ? 1 : 2);
             }
         };
+        // 2b) I fondamentali arrivano a 3 serie prima di tutto il resto (nella forza sono il programma;
+        //     negli altri obiettivi aprire la seduta con 2 serie mentre i curl ne hanno 4 non va)
+        days.forEach(d => {
+            d.slots.filter(s => s.active && s.role === 'main').forEach(s => {
+                if (s.sets < 3 && this._canAddVolume(ctx, vol, d, s, 1, false) &&
+                    (ctx.strength || (vol[s.m] || 0) + 1 <= Math.min((ctx.targets[s.m] || 0) + 2, this.VOLUME_CONFIG[ctx.level].max + 3))) activate(d, s, 1);
+            });
+        });
+
+        // 2c) Alzate laterali minime (§4.2, R3-10) e almeno un rematore a settimana (R3-02), prima del
+        //     riempimento: dopo il tempo non c'è più
+        const patternFloor = (test, floor) => {
+            const cand = [];
+            days.forEach(d => d.slots.forEach(s => { if (test(s) && !s.group) cand.push({ d, s }); }));
+            const total = () => cand.reduce((a, c) => a + (c.s.active ? c.s.sets : 0), 0);
+            for (let guard = 0; guard < 12 && total() < floor; guard++) {
+                const has = (d) => d.slots.some(x => x.active && test(x)) ? 1 : 0;
+                const c = cand.filter(({ d, s }) => s.sets < Math.min(s.max, 4) && d.spent + (s.active ? s.tul + s.rest : 30 + 2 * (s.tul + s.rest)) <= d.budget)
+                    .sort((x, y) => ((x.s.active ? 0 : 1) - (y.s.active ? 0 : 1)) || (has(x.d) - has(y.d)) || (x.s.sets - y.s.sets) || (x.s.prio - y.s.prio) || (x.d.index - y.d.index))[0];
+                if (!c) break;
+                activate(c.d, c.s, c.s.active ? 1 : 2);
+            }
+        };
+        const latMin = this._lateralMin(ctx);
+        if (latMin) patternFloor(s => this._patternOf(s.id) === 'iso-shoulder-lat' && s.prio < 5, latMin);
+        if (!days.some(d => d.slots.some(s => s.active && this._patternOf(s.id) === 'pull-h'))) {
+            patternFloor(s => this._patternOf(s.id) === 'pull-h' && s.prio < 5, 2);
+        }
+
         // 3) Dose minima: 4 serie dirette per ogni muscolo grande prima di tutto il resto
         this._greedyFill(ctx, days, vol, 'mini');
         this._rebalanceMini(ctx, days, vol);
@@ -1155,9 +1356,12 @@ const TrainingAlgorithm = {
         if (ctx.floors.polpacci > 0) hardFloor('polpacci', ctx.toning ? Math.min(4, ctx.floors.polpacci) : ctx.floors.polpacci);
 
         // 5) I fondamentali salgono a 3 serie se il tempo e il volume lo permettono
+        // (il fondamentale vale una serie anche oltre l'obiettivo del suo muscolo: aprire con 2 serie è poco)
         days.forEach(d => {
             d.slots.filter(s => s.active && s.role === 'main').forEach(s => {
-                if (this._canAddVolume(ctx, vol, d, s, 1, true)) activate(d, s, 1);
+                if (s.sets < 3 && this._canAddVolume(ctx, vol, d, s, 1, false) &&
+                    (vol[s.m] || 0) + 1 <= Math.min((ctx.targets[s.m] || 0) + 2, this.VOLUME_CONFIG[ctx.level].max + 3)) activate(d, s, 1);
+                else if (this._canAddVolume(ctx, vol, d, s, 1, true)) activate(d, s, 1);
             });
         });
 
@@ -1168,6 +1372,7 @@ const TrainingAlgorithm = {
             days.forEach(d => this._formSupersets(ctx, d, vol));
             this._greedyFill(ctx, days, vol, 1);
             this._greedyFill(ctx, days, vol, 2);
+            this._greedyFill(ctx, days, vol, 'big');
             this._greedyFill(ctx, days, vol, false);
         }
 
@@ -1192,7 +1397,22 @@ const TrainingAlgorithm = {
     // Riempimento: a ogni passo la serie che vale di più (muscolo più lontano dal suo obiettivo,
     // priorità dello slot, giorno dove quel muscolo è meno allenato) per secondo di seduta.
     _greedyFill(ctx, days, vol, floorMode) {
+        // tirata e spinta in equilibrio (R3-02): se la settimana ha più spinte che tirate, le tirate
+        // valgono di più e le spinte di meno (e viceversa oltre 1,5 tirate per spinta)
+        let pp = { push: 0, pull: 0 };
+        const ppF = (members) => {
+            if (ctx.toning) return 1;
+            let f = 1;
+            members.forEach(x => {
+                const k = this._pushPullOf(x.id);
+                if (k === 'pull') f *= pp.pull < pp.push ? 1.6 : (pp.pull > 1.5 * pp.push ? 0.8 : 1);
+                else if (k === 'push') f *= pp.pull < pp.push ? 0.6 : (pp.pull > 1.5 * pp.push ? 1.3 : 1);
+            });
+            return f;
+        };
         for (let guard = 0; guard < 600; guard++) {
+            pp = { push: 0, pull: 0 };
+            days.forEach(d => d.slots.forEach(x => { if (x.active) { const k = this._pushPullOf(x.id); if (k) pp[k] += x.sets; } }));
             let best = null;
             let bestScore = 0;
             for (const d of days) {
@@ -1209,6 +1429,13 @@ const TrainingAlgorithm = {
                         if (members.some(x => x.sets >= x.max)) continue;
                         const cost = this._slotRoundCost(s);
                         if (cost > rem) continue;
+                        // un multiarticolare secondario non supera il fondamentale del giorno finché questo
+                        // può ancora arrivare a 3 serie (forza 45': panca 2 serie e lento 4 non va)
+                        if (s.compound && s.role !== 'main' && s.role !== 'core') {
+                            const main = d.slots.filter(x => x.active && x.role === 'main').sort((a, b) => (a.prio - b.prio) || (a.order - b.order))[0];
+                            if (main && main !== s && !main.group && main.sets < Math.min(3, main.max) && s.sets + 1 > main.sets &&
+                                main.tul + main.rest <= rem && this._canAddVolume(ctx, vol, d, main, 1, false)) continue;
+                        }
                         // almeno un muscolo del gruppo sotto obiettivo, nessuno oltre il tetto
                         let need = 0;
                         let ok = true;
@@ -1226,7 +1453,7 @@ const TrainingAlgorithm = {
                         if (!ok || need <= 0) continue;
                         const prio = Math.min(...members.map(x => x.prio));
                         const bal = 1 / (1 + (d.vol[s.m] || 0) / 10);
-                        const score = this.PRIO_WEIGHT[prio] * need * bal / (floorMode ? 1 : cost / 60);
+                        const score = this.PRIO_WEIGHT[prio] * need * bal * ppF(members) / (floorMode ? 1 : cost / 60);
                         if (score > bestScore) { bestScore = score; best = { d, s, kind: 'set', cost, members }; }
                     } else {
                         const cost = 30 + 2 * (s.tul + s.rest);
@@ -1240,7 +1467,7 @@ const TrainingAlgorithm = {
                         if (same.length) f = same.every(x => x.sets >= 3) ? 1.0 : 0.6;
                         const bal = 1 / (1 + (d.vol[s.m] || 0) / 10);
                         // costo per serie (l'attivazione porta 2 serie): confronto equo con "+1 serie"
-                        const score = this.PRIO_WEIGHT[s.prio] * need * bal * f / (floorMode ? 1 : cost / 120);
+                        const score = this.PRIO_WEIGHT[s.prio] * need * bal * f * ppF([s]) / (floorMode ? 1 : cost / 120);
                         if (score > bestScore) { bestScore = score; best = { d, s, kind: 'activate', cost }; }
                     }
                 }
@@ -1305,11 +1532,34 @@ const TrainingAlgorithm = {
         if ((s.role === 'core' || s.role === 'calves') && !short) return false;
         if (this.SUPERSET_EXCLUDED.includes(s.id) && !(short && this.SUPERSET_SHORT_OK.includes(s.id))) return false;
         const rules = this.SUPERSET_RULES[ctx.goal] || this.SUPERSET_RULES.hypertrophy;
-        // forza: i complementari multiarticolari in superset antagonista solo nelle sedute corte
-        if (!rules.allowCompound && s.compound && !short) return false;
-        // Il fondamentale che apre la seduta resta da solo (vedi anchor in _formSupersets); nella forza
-        // nessun fondamentale va in superset
+        // forza: nessun multiarticolare in superset, nemmeno nelle sedute corte (R3-04: recuperi
+        // completi sui multiarticolari, è lì che si costruisce la forza)
+        if ((!rules.allowCompound || ctx.strength) && s.compound && s.role !== 'core') return false;
         if (ctx.strength && s.prio === 1) return false;
+        return true;
+    },
+
+    _pushPullOf(id) {
+        const p = (this._db(id) || {}).pattern || '';
+        return /^push-/.test(p) ? 'push' : (/^pull-/.test(p) ? 'pull' : null);
+    },
+
+    /**
+     * Coppia ammessa in superset (R3-04): fra due multiarticolari solo spinta↔tirata (mai gamba+gamba,
+     * spinta+spinta, parte alta+gamba); un multiarticolare di gambe mai con un altro esercizio di gambe;
+     * nella forza nessun multiarticolare.
+     */
+    _supersetPairOk(ctx, a, b) {
+        const comp = (x) => x.compound && x.role !== 'core';
+        const ca = comp(a), cb = comp(b);
+        if (ctx.strength && (ca || cb)) return false;
+        if (ca && cb) {
+            const pa = this._pushPullOf(a.id), pb = this._pushPullOf(b.id);
+            return !!pa && !!pb && pa !== pb;
+        }
+        const legEx = (x) => (x.prims || []).some(p => this.LOWER_MUSCLES.includes(p));
+        const legComp = (x) => comp(x) && this.LEG_PATTERNS.includes((this._db(x.id) || {}).pattern);
+        if ((legComp(a) && legEx(b)) || (legComp(b) && legEx(a))) return false;
         return true;
     },
 
@@ -1331,6 +1581,7 @@ const TrainingAlgorithm = {
         for (let i = 0; i < cand.length; i++) {
             for (let j = i + 1; j < cand.length; j++) {
                 const a = cand[i], b = cand[j];
+                if (!this._supersetPairOk(ctx, a, b)) continue;
                 const def = this.SUPERSET_PAIRS.find(p => p.exercises.includes(a.id) && p.exercises.includes(b.id));
                 let score = 0, transition = 15;
                 if (def) { score = 3; transition = def.transition; }
@@ -1351,7 +1602,9 @@ const TrainingAlgorithm = {
                 const third = cand.find(c => !c.group && c !== p.a && c !== p.b && c.role !== 'core' && c.role !== 'calves' &&
                     p.a.role !== 'core' && p.a.role !== 'calves' && p.b.role !== 'core' && p.b.role !== 'calves' &&
                     this._stationFamily(c.id) === this._stationFamily(p.a.id) &&
-                    c.m !== p.a.m && c.m !== p.b.m);
+                    c.m !== p.a.m && c.m !== p.b.m && this._supersetPairOk(ctx, c, p.a) && this._supersetPairOk(ctx, c, p.b) &&
+                    // (R3: niente circuito con tre bilancieri: al massimo un bilanciere per giro)
+                    [c, p.a, p.b].filter(x => ['barbell', 'ez-bar'].includes((this._db(x.id) || {}).loadType)).length <= 1);
                 if (third) members.push(third);
                 members.sort((x, y) => x.order - y.order);
             }
@@ -1374,6 +1627,8 @@ const TrainingAlgorithm = {
         // prova a pareggiare verso l'alto (tempo e volume permettendo), altrimenti verso il basso
         const tryLevel = (lvl) => {
             if (members.some(x => lvl > x.max)) return false;   // mai oltre le serie massime dello slot
+            // mai sotto le alzate laterali minime o il rematore della settimana (R3)
+            if (members.some((x, i) => lvl < old[i] && this._isFloorProtected(ctx, x, old[i] - lvl))) return false;
             const delta = members.map(x => lvl - x.sets);
             const okVol = members.every((x, i) => delta[i] <= 0 || (
                 this._canAddVolume(ctx, vol, d, x, delta[i], false) &&
@@ -1439,7 +1694,8 @@ const TrainingAlgorithm = {
                     if (!s.active || s.role === 'core' || !this.UPPER_MUSCLES.includes(s.m)) continue;
                     if (s.sets <= 2 && nActive <= ctx.minExercises) continue;
                     const drop = s.sets > 2 ? 1 : s.sets;
-                    if ((vol[s.m] || 0) - drop < floorOf(s.m)) continue;
+                    if (this._isFloorProtected(ctx, s, drop)) continue;
+                    if (s.prims.some(p => (vol[p] || 0) - drop < floorOf(p))) continue;
                     // prima le braccia, poi il muscolo più sopra il suo minimo; i fondamentali per ultimi
                     const score = (this.BIG_MUSCLES.includes(s.m) ? 0 : 100) + ((vol[s.m] || 0) - floorOf(s.m)) * 3 + s.prio * 2 - (s.role === 'main' ? 50 : 0);
                     if (score > vScore) { vScore = score; victim = s; vd = d; }
@@ -1543,6 +1799,382 @@ const TrainingAlgorithm = {
         }
     },
 
+    // ========================================
+    // INVARIANTI DA ALLENATORE (R3): laterali, tirata/spinta, rematore, addome
+    // ========================================
+
+    _patternOf(id) {
+        return (this._db(id) || {}).pattern || '';
+    },
+
+    // Nuovo slot nel giorno (stesso percorso degli slot del template); null se l'attrezzatura non lo permette
+    _addSlot(ctx, d, key, prio) {
+        ctx._dayIdx = d.index;
+        const pick = this._pick(ctx, key, prio, d.used);
+        if (!pick) return null;
+        const ex = this._db(pick.id);
+        d.used.add(pick.id);
+        const m = ex.primaryMuscles.includes(pick.m) ? pick.m : ex.primaryMuscles[0];
+        const slot = { id: pick.id, key: pick.key, tkey: key, prio, order: 60 + d.slots.length, m, sets: 0, active: false, partner: null, group: null };
+        this._prescribe(ctx, slot);
+        d.slots.push(slot);
+        return slot;
+    },
+
+    _lowerShareOf(vol) {
+        const lo = this.LOWER_MUSCLES.reduce((a, m) => a + (vol[m] || 0), 0);
+        const up = this.UPPER_MUSCLES.reduce((a, m) => a + (vol[m] || 0), 0);
+        return lo + up ? lo / (lo + up) : 1;
+    },
+
+    // Volume sotto cui un muscolo non scende quando gli si prende una serie
+    _donorFloor(ctx, m) {
+        return Math.max(ctx.floors[m] || 0, this._miniDose(ctx, m), ctx.toning && m === 'petto' ? Math.min(6, ctx.targets.petto || 0) : 0);
+    },
+
+    /**
+     * Fa spazio nel giorno togliendo serie (prima braccia e accessori, poi addome, poi isolamenti dei
+     * muscoli grandi sopra obiettivo, per ultimi i multiarticolari secondari sopra obiettivo); mai il
+     * fondamentale, mai sotto i minimi. Si applica solo se basta: altrimenti non tocca niente.
+     * opts = { protect(slot), upperOnly, minSets, allowCompound }
+     */
+    _makeRoom(ctx, d, needSec, opts = {}) {
+        const vol = ctx._vol;
+        d.spent = this._daySpent(d);
+        const minSets = opts.minSets || 0;
+        if (d.budget - d.spent >= needSec && minSets <= 0) return true;
+        const tmp = { ...vol };
+        let nActive = d.slots.filter(x => x.active && x.prio < 5).length;
+        const cat = (x) => x.role === 'core' ? 1 : (!this.BIG_MUSCLES.includes(x.m) && !x.compound ? 0 : (!x.compound ? 2 : 3));
+        const donors = d.slots.filter(x => x.active && x.role !== 'main' && !x.group && !(opts.protect && opts.protect(x)) && !this._isFloorProtected(ctx, x, x.sets > 2 ? 1 : x.sets) &&
+            (!opts.upperOnly || x.prims.some(p => this.UPPER_MUSCLES.includes(p))) && (opts.allowCompound !== false || !x.compound || x.role === 'core'))
+            .sort((a, b) => (cat(a) - cat(b)) || (((vol[b.m] || 0) - (ctx.targets[b.m] || 0)) - ((vol[a.m] || 0) - (ctx.targets[a.m] || 0))) || (b.prio - a.prio));
+        let freed = d.budget - d.spent;
+        let removed = 0;
+        const plan = [];
+        for (const x of donors) {
+            if (freed >= needSec && removed >= minSets) break;
+            const drop = x.sets > 2 ? 1 : x.sets;
+            if (drop === x.sets && x.prio < 5 && nActive <= ctx.minExercises) continue;
+            if (x.compound && cat(x) === 3 && (tmp[x.m] || 0) - drop < (ctx.targets[x.m] || 0)) continue;
+            if (!x.prims.every(p => (tmp[p] || 0) - drop >= this._donorFloor(ctx, p) || !(ctx.targets[p] > 0))) continue;
+            x.prims.forEach(p => { tmp[p] = (tmp[p] || 0) - drop; });
+            freed += drop * (x.tul + x.rest) + (drop === x.sets ? 30 : 0);
+            removed += drop;
+            if (drop === x.sets && x.prio < 5) nActive--;
+            plan.push({ x, drop });
+        }
+        // superset: un giro in meno a tutti i membri (ognuno resta ≥ 2 serie e sopra i minimi)
+        if (freed < needSec || removed < minSets) {
+            const groups = [...new Set(d.slots.filter(x => x.active && x.group).map(x => x.group))];
+            for (const g of groups) {
+                if (freed >= needSec && removed >= minSets) break;
+                const ms = g.members;
+                if (ms.some(x => !x.active || x.role === 'main' || x.sets <= 2 || (opts.protect && opts.protect(x)) || this._isFloorProtected(ctx, x, 1))) continue;
+                if (opts.upperOnly && !ms.some(x => x.prims.some(p => this.UPPER_MUSCLES.includes(p)))) continue;
+                if (opts.allowCompound === false && ms.some(x => x.compound && x.role !== 'core')) continue;
+                if (!ms.every(x => x.prims.every(p => !(ctx.targets[p] > 0) || (tmp[p] || 0) - 1 >= this._donorFloor(ctx, p)))) continue;
+                ms.forEach(x => x.prims.forEach(p => { tmp[p] = (tmp[p] || 0) - 1; }));
+                freed += this._slotRoundCost(ms[0]);
+                removed += ms.length;
+                plan.push({ group: g });
+            }
+        }
+        if (freed < needSec || removed < minSets) return false;
+        plan.forEach(({ x, drop, group }) => {
+            if (group) { group.members.forEach(y => { y.sets -= 1; this._addVolume(vol, d, y, -1); }); return; }
+            x.sets -= drop;
+            this._addVolume(vol, d, x, -drop);
+            if (x.sets <= 0) { x.sets = 0; x.active = false; }
+        });
+        d.spent = this._daySpent(d);
+        return d.budget - d.spent >= needSec;
+    },
+
+    // +n serie a uno slot (attivazione con 2 se spento), facendo spazio se serve
+    _bump(ctx, d, sl, opts = {}) {
+        const vol = ctx._vol;
+        const n = sl.active ? 1 : 2;
+        if (sl.active && sl.sets >= sl.max) return false;
+        const cap = (p) => (d.vol[p] || 0) + n <= (ctx.dayCap[p] != null ? ctx.dayCap[p] : 8);
+        if (!sl.prims.every(cap)) return false;
+        const V = this.VOLUME_CONFIG[ctx.level];
+        if (sl.prims.some(p => this.BIG_MUSCLES.includes(p) && (vol[p] || 0) + n > V.max + 4)) return false;
+        const cost = sl.active ? sl.tul + sl.rest : 30 + 2 * (sl.tul + sl.rest);
+        d.spent = this._daySpent(d);
+        const upperAdd = sl.prims.filter(p => this.UPPER_MUSCLES.includes(p)).length * n;
+        let minSets = 0;
+        if (ctx.toning && upperAdd > 0) {
+            // tonificazione: la parte alta non deve portare la quota della parte bassa sotto il 57%
+            const t = { ...vol };
+            sl.prims.forEach(p => { t[p] = (t[p] || 0) + n; });
+            if (this._lowerShareOf(t) < 0.57) minSets = n;
+        }
+        if (d.budget - d.spent < cost || minSets) {
+            if (!this._makeRoom(ctx, d, cost, { ...opts, minSets, upperOnly: minSets > 0, protect: (x) => x === sl || (opts.protect && opts.protect(x)) })) return false;
+        }
+        if (!sl.active) { sl.active = true; sl.sets = 0; }
+        sl.sets += n;
+        this._addVolume(vol, d, sl, n);
+        d.spent = this._daySpent(d);
+        return true;
+    },
+
+    // +1 giro a un superset (tutti i membri), se c'è tempo e nessun membro supera i suoi tetti
+    _bumpGroup(ctx, d, x) {
+        const V = this.VOLUME_CONFIG[ctx.level];
+        const members = x.group.members;
+        const cost = this._slotRoundCost(x);
+        d.spent = this._daySpent(d);
+        if (d.budget - d.spent < cost || members.some(y => y.sets >= y.max)) return false;
+        if (members.some(y => y.prims.some(p => (d.vol[p] || 0) + 1 > (ctx.dayCap[p] != null ? ctx.dayCap[p] : 8) ||
+            (this.BIG_MUSCLES.includes(p) && (ctx._vol[p] || 0) + 1 > V.max + 3) ||
+            (y !== x && (y.role === 'core' || y.role === 'calves') && (ctx._vol[p] || 0) + 1 > (ctx.targets[p] || 0))))) return false;
+        members.forEach(y => { y.sets++; this._addVolume(ctx._vol, d, y, 1); });
+        d.spent = this._daySpent(d);
+        return true;
+    },
+
+    /**
+     * Alzate laterali (§4.2, R3-10): il deltoide laterale lavora poco nelle spinte. Fuori dalla forza
+     * almeno 4 serie dirette a settimana (2 per i principianti) di `iso-shoulder-lat`.
+     */
+    _ensureLaterals(ctx, days) {
+        const min = this._lateralMin(ctx);
+        if (!min) return;
+        const isLat = (x) => this._patternOf(x.id) === 'iso-shoulder-lat' && x.prio < 5;
+        const total = () => days.reduce((a, d) => a + d.slots.filter(x => x.active && isLat(x)).reduce((b, x) => b + x.sets, 0), 0);
+        for (let guard = 0; guard < 16 && total() < min; guard++) {
+            let cands = [];
+            days.forEach(d => d.slots.forEach(x => { if (isLat(x)) cands.push({ d, x }); }));
+            if (!cands.length) {
+                const day = days.filter(d => !d.isLower).sort((a, b) => (b.budget - b.spent) - (a.budget - a.spent))[0] || days[0];
+                const sl = day && this._addSlot(ctx, day, 'lateral', 3);
+                if (!sl || !isLat(sl)) break;
+                cands = [{ d: day, x: sl }];
+            }
+            // prima chi è già attivo (niente esercizi in più), poi il giorno con più tempo libero
+            cands.sort((a, b) => ((b.x.active ? 1 : 0) - (a.x.active ? 1 : 0)) || (a.x.sets - b.x.sets) || ((b.d.budget - b.d.spent) - (a.d.budget - a.d.spent)));
+            const protect = (x) => isLat(x);
+            const bumpG = (d, x) => this._bumpGroup(ctx, d, x) ||
+                (this._makeRoom(ctx, d, this._slotRoundCost(x), { protect: (y) => protect(y) || (x.group && x.group.members.includes(y)) }) && this._bumpGroup(ctx, d, x));
+            if (!cands.some(({ d, x }) => x.group ? bumpG(d, x) : this._bump(ctx, d, x, { protect }))) break;
+        }
+    },
+
+    /**
+     * Equilibrio spinta/tirata (§5.5.7, R3-02): almeno un rematore (pull-h) a settimana se l'attrezzatura
+     * lo permette; fuori dalla tonificazione serie di tirata ≥ serie di spinta (invariante ≥ 0,9).
+     */
+    _balancePushPull(ctx, days) {
+        const pat = (x) => this._patternOf(x.id);
+        const isPull = (x) => /^pull-/.test(pat(x)) && x.prio < 5;
+        const isPush = (x) => /^push-/.test(pat(x));
+        const sums = () => {
+            let push = 0, pull = 0;
+            days.forEach(d => d.slots.forEach(x => {
+                if (!x.active) return;
+                if (isPush(x)) push += x.sets; else if (/^pull-/.test(pat(x))) pull += x.sets;
+            }));
+            return { push, pull };
+        };
+        const protectPull = (x) => /^pull-/.test(pat(x));
+        // 1) almeno un rematore
+        const hasRow = () => days.some(d => d.slots.some(x => x.active && pat(x) === 'pull-h'));
+        if (!hasRow()) {
+            let cands = [];
+            days.forEach(d => d.slots.forEach(x => { if (pat(x) === 'pull-h' && x.prio < 5 && !x.group) cands.push({ d, x }); }));
+            if (!cands.length) {
+                const order = days.filter(d => !d.isLower).sort((a, b) => (b.budget - b.spent) - (a.budget - a.spent));
+                for (const d of order) {
+                    const sl = this._addSlot(ctx, d, 'hPull', 3);
+                    if (sl && pat(sl) === 'pull-h') { cands.push({ d, x: sl }); break; }
+                    if (sl) { d.slots.pop(); d.used.delete(sl.id); }
+                }
+            }
+            cands.sort((a, b) => (b.d.budget - b.d.spent) - (a.d.budget - a.d.spent));
+            // il rematore può prendere il posto di una serie di lat machine o di una spinta secondaria
+            cands.some(({ d, x }) => this._bump(ctx, d, x, { protect: (y) => pat(y) === 'pull-h' }) ||
+                this._bump(ctx, d, x, { protect: (y) => pat(y) === 'pull-h', allowCompound: true }));
+        }
+        if (ctx.toning) return;
+        // 2) tirata ≥ spinta: scambio nello stesso giorno, −1 serie a una spinta (mai il fondamentale
+        //    che apre la seduta, mai sotto 2 serie né sotto min−4 del muscolo) e +1 a una tirata
+        const anchorOf = (d) => d.slots.filter(x => x.active && x.compound && x.role !== 'core').sort((a, b) => (a.prio - b.prio) || (a.order - b.order))[0];
+        const V = this.VOLUME_CONFIG[ctx.level];
+        // togliendo serie di spinta senza aggiungere tirate il muscolo non scende sotto il suo minimo (min−2)
+        const pushFloor = (p) => Math.max(4, this._donorFloor(ctx, p));
+        for (let guard = 0; guard < 40; guard++) {
+            const { push, pull } = sums();
+            if (pull >= push) break;
+            let done = false;
+            // a) +1 a una tirata col tempo che c'è (attiva prima, poi spenta), o facendo spazio con accessori
+            const pulls = [];
+            days.forEach(d => d.slots.forEach(x => {
+                if (!isPull(x)) return;
+                if (x.group && x.group.members.some(y => y !== x && (isPush(y) || y.sets >= y.max))) return;
+                pulls.push({ d, x });
+            }));
+            pulls.sort((a, b) => ((b.x.active ? 1 : 0) - (a.x.active ? 1 : 0)) || (a.x.sets - b.x.sets) || ((b.d.budget - b.d.spent) - (a.d.budget - a.d.spent)));
+            for (const { d, x } of pulls) {
+                if (x.group) {
+                    const members = x.group.members;
+                    const cost = this._slotRoundCost(x);
+                    d.spent = this._daySpent(d);
+                    if (d.budget - d.spent < cost || members.some(y => y.sets >= y.max)) continue;
+                    // il compagno non supera i tetti (seduta, max+4 del livello, obiettivo dell'addome/polpacci)
+                    if (members.some(y => y.prims.some(p => (d.vol[p] || 0) + 1 > (ctx.dayCap[p] != null ? ctx.dayCap[p] : 8) ||
+                        (this.BIG_MUSCLES.includes(p) && (ctx._vol[p] || 0) + 1 > V.max + 3) ||
+                        (y !== x && (y.role === 'core' || y.role === 'calves') && (ctx._vol[p] || 0) + 1 > (ctx.targets[p] || 0))))) continue;
+                    members.forEach(y => { y.sets++; this._addVolume(ctx._vol, d, y, 1); });
+                    d.spent = this._daySpent(d);
+                    done = true; break;
+                }
+                if (this._bump(ctx, d, x, { protect: (y) => protectPull(y) || this._patternOf(y.id) === 'iso-shoulder-lat', allowCompound: false })) { done = true; break; }
+            }
+            if (done) continue;
+            // b) scambio nello stesso giorno
+            for (const { d, x } of pulls) {
+                if (x.group || (x.active && x.sets >= x.max)) continue;
+                const need = x.active ? 1 : 2;
+                const anchor = anchorOf(d);
+                // nello scambio il volume totale non cambia: la spinta può scendere fino alla dose minima (4)
+                // (una spinta da 2 serie può lasciare il posto a una tirata spenta: stesso numero di esercizi)
+                const donors = d.slots.filter(y => y.active && isPush(y) && y !== anchor && !y.group &&
+                    (y.sets - need >= 2 || (!x.active && y !== anchor && y.sets === need)) &&
+                    y.prims.every(p => !(ctx.targets[p] > 0) || !this.BIG_MUSCLES.includes(p) || (ctx._vol[p] || 0) - need >= 4))
+                    .sort((a, b) => (b.sets - a.sets) || (b.prio - a.prio));
+                const y = donors[0];
+                if (!y) continue;
+                y.sets -= need;
+                if (y.sets <= 0) { y.sets = 0; y.active = false; }
+                this._addVolume(ctx._vol, d, y, -need);
+                d.spent = this._daySpent(d);
+                if (this._bump(ctx, d, x, { protect: (z) => protectPull(z) || isPush(z), allowCompound: false })) { done = true; break; }
+                y.active = true;   // la tirata non entra: si torna come prima
+                y.sets += need;
+                this._addVolume(ctx._vol, d, y, need);
+                d.spent = this._daySpent(d);
+            }
+            if (done) continue;
+            // c) −1 a una spinta secondaria qualunque (riduce lo squilibrio anche senza tirate da aggiungere)
+            let best = null;
+            days.forEach(d => {
+                const anchor = anchorOf(d);
+                d.slots.forEach(x => {
+                    if (!x.active || !isPush(x) || x === anchor || x.sets <= 2) return;
+                    // un superset si accorcia di un giro solo se non contiene tirate (altrimenti non serve)
+                    const members = x.group ? x.group.members : [x];
+                    if (x.group && (x.group.members[0] !== x && isPush(x.group.members[0]) || members.some(y => /^pull-/.test(pat(y)) || y.sets <= 2))) return;
+                    if (members.some(y => y.prims.some(p => ctx.targets[p] > 0 && (ctx._vol[p] || 0) - 1 < pushFloor(p)) || this._isFloorProtected(ctx, y, 1))) return;
+                    if (!best || x.sets > best.x.sets || (x.sets === best.x.sets && x.prio > best.x.prio)) best = { d, x };
+                });
+            });
+            if (sums().pull >= 0.9 * sums().push) break;
+            if (!best) {
+                // d) via una spinta accessoria da 2 serie (mai il fondamentale, mai l'unico esercizio di quel muscolo)
+                days.forEach(d => {
+                    const anchor = anchorOf(d);
+                    const nAct = d.slots.filter(y => y.active && y.prio < 5).length;
+                    d.slots.forEach(x => {
+                        if (!x.active || !isPush(x) || x === anchor || x.group || x.prio < 3 || nAct <= ctx.minExercises) return;
+                        if (x.prims.some(p => ctx.targets[p] > 0 && (ctx._vol[p] || 0) - x.sets < pushFloor(p))) return;
+                        if (!best || x.prio > best.x.prio) best = { d, x, all: true };
+                    });
+                });
+                if (!best) break;
+            }
+            const cut = best.all ? best.x.sets : 1;
+            (best.x.group ? best.x.group.members : [best.x]).forEach(y => {
+                y.sets -= cut; this._addVolume(ctx._vol, best.d, y, -cut);
+                if (y.sets <= 0) { y.sets = 0; y.active = false; }
+            });
+            best.d.spent = this._daySpent(best.d);
+        }
+    },
+
+    /**
+     * Addome (R3-16): almeno 2 serie a settimana anche quando il tempo è poco (non c'era in 546 schede
+     * su 4800); se il giorno è pieno si toglie una serie a braccia o accessori, mai ai muscoli grandi.
+     */
+    _ensureCoreMinimum(ctx, days) {
+        const total = () => days.reduce((a, d) => a + d.slots.filter(x => x.active && x.role === 'core').reduce((b, x) => b + x.sets, 0), 0);
+        if (total() >= 2 || !(ctx.targets.addome > 0)) return;
+        const cands = [];
+        days.forEach(d => d.slots.forEach(x => { if (x.role === 'core' && !x.active) cands.push({ d, x }); }));
+        // prima i giorni senza gambe, poi quelli con più tempo
+        cands.sort((a, b) => ((a.d.isLower ? 1 : 0) - (b.d.isLower ? 1 : 0)) || ((b.d.budget - this._daySpent(b.d)) - (a.d.budget - this._daySpent(a.d))));
+        if (cands.some(({ d, x }) => this._bump(ctx, d, x, { protect: (y) => y.role === 'core', allowCompound: false }))) return;
+        // (anche una serie di un multiarticolare il cui muscolo è sopra obiettivo può lasciare il posto)
+        if (cands.some(({ d, x }) => this._bump(ctx, d, x, { protect: (y) => y.role === 'core' || y.role === 'main', allowCompound: true }))) return;
+        // giorno pieno: l'addome in superset con un monoarticolare o coi polpacci (costa solo il tempo
+        // della serie); se l'esercizio previsto è lungo (a un lato alla volta) se ne cerca uno più rapido
+        days.filter(d => !d.slots.some(y => y.role === 'core')).forEach(d => {
+            for (const key of ['coreUpper', 'coreLower', 'coreAnti']) {
+                const sl = this._addSlot(ctx, d, key, 5);
+                if (sl) { sl.role = 'core'; sl.max = 3; cands.push({ d, x: sl }); break; }
+            }
+        });
+        // un'isometria breve (plank) costa meno di tutto: candidata in ogni giorno che non ne ha
+        days.forEach(d => {
+            if (d.slots.some(y => y.role === 'core' && y.tul <= 40)) return;
+            const sl = this._addSlot(ctx, d, 'coreAnti', 5);
+            if (sl && sl.tul <= 40) { sl.role = 'core'; sl.max = 3; cands.push({ d, x: sl }); }
+            else if (sl) { d.slots.pop(); d.used.delete(sl.id); }
+        });
+        cands.forEach(c => {
+            if (c.x.tul <= 70) return;
+            for (const key of ['coreUpper', 'coreLower', 'coreAnti']) {
+                const sl = this._addSlot(ctx, c.d, key, 5);
+                if (sl && sl.tul < c.x.tul) { sl.role = 'core'; sl.max = 3; cands.push({ d: c.d, x: sl }); break; }
+                if (sl) { c.d.slots.pop(); c.d.used.delete(sl.id); }
+            }
+        });
+        cands.sort((a, b) => a.x.tul - b.x.tul);
+        for (const { d, x } of cands) {
+            d.spent = this._daySpent(d);
+            const rem = d.budget - d.spent;
+            const isoFree = d.slots.filter(y => y.active && !y.group && !y.compound && y.role !== 'core' && y.sets >= 2)
+                .sort((a, b) => a.sets - b.sets)[0];
+            const isoPair = d.slots.filter(y => y.active && y.group && y.group.members[0] === y && y.group.members.length === 2 &&
+                y.group.members.every(z => !z.compound && z.role !== 'core' && z.role !== 'calves')).sort((a, b) => a.sets - b.sets)[0];
+            const host = isoFree || isoPair;
+            if (!host) continue;
+            let n = Math.max(2, Math.min(3, host.sets));
+            let cost = n * (x.tul + 10);
+            // non ci sta: il monoarticolare scende da 3 a 2 serie (se il suo muscolo resta sopra il minimo)
+            if (cost > rem && isoFree && host.sets === 3 && !this._isFloorProtected(ctx, host, 1) &&
+                host.prims.every(p => !(ctx.targets[p] > 0) || (ctx._vol[p] || 0) - 1 >= this._donorFloor(ctx, p))) {
+                host.sets = 2;
+                this._addVolume(ctx._vol, d, host, -1);
+                d.spent = this._daySpent(d);
+                n = 2;
+                cost = n * (x.tul + 10);   // il tempo liberato dalla serie tolta è già nel tempo libero del giorno
+                if (cost > d.budget - d.spent) { host.sets = 3; this._addVolume(ctx._vol, d, host, 1); d.spent = this._daySpent(d); continue; }
+            } else if (cost > rem) continue;
+            if (isoFree) {
+                const g = { members: [host, x].sort((a, b) => a.order - b.order), transition: 10, rest: Math.max(45, this._round5(Math.max(host.rest, x.rest) * 0.8)), isGiant: false };
+                host.group = g; x.group = g;
+            } else {
+                const g = host.group;
+                g.members.push(x); g.isGiant = true; x.group = g;
+            }
+            x.active = true; x.sets = host.sets;
+            this._addVolume(ctx._vol, d, x, x.sets);
+            if (this._daySpent(d) > d.budget) {   // non ci sta: si torna indietro
+                this._addVolume(ctx._vol, d, x, -x.sets);
+                x.active = false; x.sets = 0;
+                const g = x.group;
+                g.members = g.members.filter(z => z !== x); x.group = null;
+                if (g.members.length < 2) g.members.forEach(z => { z.group = null; });
+                else g.isGiant = g.members.length >= 3;
+                continue;
+            }
+            d.spent = this._daySpent(d);
+            return;
+        }
+    },
+
     /**
      * Tempo avanzato dopo aver raggiunto gli obiettivi di volume:
      * - _spareVolume: resistenza e tonificazione, un po' di volume in più (fino a max+3) sui muscoli
@@ -1613,12 +2245,14 @@ const TrainingAlgorithm = {
         const limit = ctx.sessionDuration * 1.12;
         for (let guard = 0; guard < 40 && this.estimateWorkoutDuration(day) > limit; guard++) {
             const act = d.slots.filter(s => s.active);
-            const cand = act.filter(s => s.sets > 2 && s.role !== 'main').sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0]
+            const okDrop = (s, n) => !(s.group ? s.group.members : [s]).some(x => this._isFloorProtected(ctx, x, n));
+            const cand = act.filter(s => s.sets > 2 && s.role !== 'main' && okDrop(s, 1)).sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0]
                 || act.filter(s => s.sets > 2).sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0];
             if (cand) {
                 (cand.group ? cand.group.members : [cand]).forEach(x => { x.sets = Math.max(2, x.sets - 1); });
             } else {
-                const drop = act.filter(s => s.role !== 'main').sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0];
+                const drop = act.filter(s => s.role !== 'main' && okDrop(s, s.sets)).sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0]
+                    || act.filter(s => s.role !== 'main').sort((a, b) => (b.prio - a.prio) || (b.order - a.order))[0];
                 if (!drop || act.filter(s => s.prio < 5).length <= ctx.minExercises && drop.prio < 5) break;
                 if (drop.group) drop.group.members.forEach(x => { x.group = null; });
                 drop.active = false; drop.sets = 0;
@@ -1693,6 +2327,7 @@ const TrainingAlgorithm = {
                 out.role = s.role === 'core' ? 'core' : (ex.type === 'compound' ? (exercises.length === 0 ? 'main' : 'secondary') : 'accessory');
                 out.pattern = ex.pattern || null;
                 out.metric = ex.metric === 'time' ? 'time' : 'reps';
+                if (s.tkey) out.slotKey = s.tkey;   // la rotazione riconosce lo slot (periodo di 2 cicli)
                 if (letter) {
                     out.supersetGroup = letter;
                     out.supersetOrder = k + 1;
@@ -1703,6 +2338,9 @@ const TrainingAlgorithm = {
                 exercises.push(out);
             });
         });
+        // serie di rampa attese (R3-09): le conta la stima della durata; l'interfaccia le costruisce
+        // con getRampPlan/buildWarmupSets
+        this.getRampPlan(exercises).forEach(r => { exercises[r.index].rampSets = r.count; });
         return {
             name: `Giorno ${index + 1}`,
             type: d.type,
@@ -1794,7 +2432,9 @@ const TrainingAlgorithm = {
         const isDeload = key === 'deload';
         const rt = ph.rirTarget && Number.isFinite(Number(ph.rirTarget.min)) ? ph.rirTarget : (this.CYCLE_CONFIG.rirTargets[key] || null);
         let rir = ph.rir && Number.isFinite(Number(ph.rir.compound)) ? { compound: Number(ph.rir.compound), isolation: Number(ph.rir.isolation ?? ph.rir.compound) } : null;
-        if (!rir) rir = isDeload ? { compound: 4, isolation: 4 } : (rt ? { compound: Number(rt.min), isolation: Number(rt.min) } : { compound: 2, isolation: 2 });
+        // fasi v1.25 senza `rir` (R1-03): i multiarticolari mai sotto RIR 1 (il ciclo v2 non ci scende),
+        // gli isolamenti al minimo della fase
+        if (!rir) rir = isDeload ? { compound: 4, isolation: 4 } : (rt ? { compound: Math.max(1, Number(rt.min)), isolation: Number(rt.min) } : { compound: 2, isolation: 2 });
         return {
             ...ph,
             phase: key,
@@ -1867,11 +2507,29 @@ const TrainingAlgorithm = {
     // ========================================
 
     /**
-     * Nuova scheda per il ciclo successivo: stessi parametri del wizard, esercizi ruotati,
-     * +1 serie/settimana per muscolo (fino al massimo del livello).
-     * Schede manuali: restituite identiche. Ritorna {program, added[], removed[]}.
+     * Volume del ciclo dopo (§12.5, R3-18), cumulativo: +1 con adesione ≥ 0,8, nessuno scarico anticipato
+     * e ≥ 60% degli esercizi in progresso; −1 con uno scarico anticipato o adesione < 0,6; altrimenti 0.
+     * Senza statistiche: 0 (il volume non sale "di default", §17).
      */
-    rotateProgram(program, profile) {
+    nextVolumeOffset(prevOffset, cycleStats) {
+        const prev = Number.isFinite(Number(prevOffset)) ? Number(prevOffset) : 0;
+        const st = cycleStats && typeof cycleStats === 'object' ? cycleStats : null;
+        let delta = 0;
+        if (st) {
+            const adh = Number(st.adherence), early = Number(st.earlyDeloads) || 0, prog = Number(st.progressedPct);
+            if (early > 0 || (Number.isFinite(adh) && adh < 0.6)) delta = -1;
+            else if (Number.isFinite(adh) && adh >= 0.8 && Number.isFinite(prog) && prog >= 0.6) delta = 1;
+        }
+        return Math.max(-3, Math.min(6, prev + delta));
+    },
+
+    /**
+     * Nuova scheda per il ciclo successivo: stessi parametri del wizard, esercizi ruotati con periodo 2
+     * per i fondamentali (§6.4; nella forza mai), volume dal ciclo appena chiuso (cycleStats, §12.5).
+     * cycleStats = { adherence, earlyDeloads, progressedPct } (Storage.getCycleStatistics()).
+     * Schede manuali: restituite identiche. Ritorna {program, added[], removed[], volumeOffset}.
+     */
+    rotateProgram(program, profile, cycleStats = null) {
         const same = { program, added: [], removed: [] };
         if (!program || !program.metadata || !Array.isArray(program.days)) return same;
         const md = program.metadata;
@@ -1886,9 +2544,10 @@ const TrainingAlgorithm = {
         if (!this.VOLUME_CONFIG[prof.level]) prof.level = md.level || 'intermediate';
         if (prof.gender == null || prof.gender === '') prof.gender = md.gender || prof.gender || '';
         const nextCycle = (parseInt(md.cycleNumber, 10) || 1) + 1;
+        const volumeOffset = this.nextVolumeOffset(md.volumeOffset, cycleStats);
         let next;
         try {
-            next = this.generateProgram(prof, { ...opts, cycleNumber: nextCycle });
+            next = this.generateProgram(prof, { ...opts, cycleNumber: nextCycle, volumeOffset, previousProgram: program });
         } finally {
             this._currentCycleOffset = 0;
         }
@@ -1897,7 +2556,7 @@ const TrainingAlgorithm = {
         next.metadata.previousExercises = this._extractExerciseIds(program);
         next.metadata.rotatedAt = new Date().toISOString();
         const summary = this.getRotationSummary(program, next);
-        return { program: next, added: summary.added, removed: summary.removed };
+        return { program: next, added: summary.added, removed: summary.removed, volumeOffset };
     },
 
     _extractExerciseIds(program) {
@@ -1939,13 +2598,17 @@ const TrainingAlgorithm = {
         if (!days.length) return 0;
         const list = Array.isArray(workouts) ? workouts : [];
         const pid = program?.metadata?.programId;
+        // schede precedenti con un'altra struttura (editor, R1-17): le loro sedute si riconoscono dal tipo
+        const prevIds = new Set((Array.isArray(program?.metadata?.previousProgramIds) ? program.metadata.previousProgramIds : []).map(String));
         let best = -1;
         let bestTime = -Infinity;
         for (const w of list) {
             if (!w || w.isFreeWorkout || w.type === 'Allenamento Libero') continue;
             let idx = -1;
             const hasPid = w.programId != null && w.programId !== '';
-            if (pid != null && hasPid) {
+            if (hasPid && prevIds.has(String(w.programId))) {
+                idx = days.findIndex(d => d.type && d.type === w.type);
+            } else if (pid != null && hasPid) {
                 if (String(w.programId) !== String(pid)) continue;
                 const di = parseInt(w.dayIndex, 10);
                 if (Number.isInteger(di) && di >= 0 && di < days.length) idx = di;
@@ -1961,6 +2624,18 @@ const TrainingAlgorithm = {
             if (best < 0 || time > bestTime) { best = idx; bestTime = time; }
         }
         return best < 0 ? 0 : (best + 1) % days.length;
+    },
+
+    /**
+     * La struttura della scheda è cambiata (R1-17)? Numero dei giorni o tipo di un giorno diverso: gli
+     * indici delle sedute vecchie non valgono più (Storage.saveEditedProgram dà un programId nuovo).
+     */
+    programStructureChanged(oldProgram, newProgram) {
+        const a = Array.isArray(oldProgram?.days) ? oldProgram.days : null;
+        const b = Array.isArray(newProgram?.days) ? newProgram.days : null;
+        if (!a || !b) return true;
+        if (a.length !== b.length) return true;
+        return a.some((d, i) => String((d && d.type) || '') !== String((b[i] && b[i].type) || ''));
     },
 
     // Volume settimanale "frazionario" (Pelland 2025): primario 1, secondario 0.5
@@ -2007,7 +2682,9 @@ const TrainingAlgorithm = {
      * Riscaldamento e defaticamento: ctx.warmupMin/cooldownMin, poi quelli del giorno (giorni v2:
      * proporzionali alla durata scelta), poi, con ctx.minutes, la routine ridotta per quella durata,
      * altrimenti la routine intera (ripiego 10') e 5' di defaticamento.
-     * ctx = { goal, minutes, warmupMin, cooldownMin }
+     * ctx = { goal, minutes, warmupMin, cooldownMin, rampSets, calibExtraMin }
+     *   rampSets: serie di rampa del giorno (sostituisce quelle scritte sugli esercizi: warmupSets/rampSets)
+     *   calibExtraMin: minuti in più per "Trova il peso" (Storage.planCalibration(...).extraMin, R3-06)
      */
     estimateWorkoutDuration(workout, ctx = {}) {
         if (!workout || !Array.isArray(workout.exercises) || !workout.exercises.length) return 0;
@@ -2033,10 +2710,13 @@ const TrainingAlgorithm = {
         const repsOf = (ex) => ex.reps != null ? ex.reps : ex.targetReps;
         const setSec = (ex) => this._setSecondsV2(ex.exerciseId, repsOf(ex), goal);
         let sec = warmMin * 60;
-        exs.forEach(ex => {
+        const rampCtx = pick(c.rampSets);
+        if (rampCtx != null) sec += rampCtx * 90;
+        else exs.forEach(ex => {
             const ramp = Array.isArray(ex.warmupSets) ? ex.warmupSets.length : (parseInt(ex.rampSets, 10) || 0);
             sec += ramp * 90;
         });
+        sec += (pick(c.calibExtraMin) || 0) * 60;
         const blocks = this._blocks(exs);
         let lastRest = 0;
         blocks.forEach(b => {
@@ -2299,7 +2979,8 @@ const TrainingAlgorithm = {
         const g = this._gym(gym);
         const U = this._ladderUnits(meta, g, recorded);
         if (!U.length) return [0];
-        if (meta.loadType !== 'bodyweight') {
+        // assistite: la scala finisce all'assistenza massima della macchina (R3-01: 85 → 100 kg oltre i 70)
+        if (meta.loadType !== 'bodyweight' && meta.loadType !== 'assisted') {
             const last0 = U[U.length - 1];
             const want = Math.min(Math.ceil(Number(kg) * 4) || 0, last0 + 4000);
             const B = this._ladderUnits(meta, g, []);
@@ -2446,9 +3127,11 @@ const TrainingAlgorithm = {
         return Math.ceil(((1 + l / 30) * n / k - 1) * 30 - 1e-9);
     },
 
+    // Rep da fare prima del salto: al massimo il range + 2 (R3-07: con +5 le laterali da 2 kg arrivavano
+    // a 3×20 e il lento da 5 kg chiedeva 16 rep; oltre, il salto lo concede il RIR, vedi computeNextTarget)
     needReps(range, kg, nextKg) {
         const [lo, hi] = range;
-        return Math.max(hi, Math.min(hi + 5, this.repsToEarnJump(lo, kg, nextKg)));
+        return Math.max(hi, Math.min(hi + 2, this.repsToEarnJump(lo, kg, nextKg)));
     },
 
     // Difficoltà ammessa (§6.1): principianti solo "beginner" più gli accessori facili alle macchine
@@ -2557,7 +3240,11 @@ const TrainingAlgorithm = {
 
     /**
      * "Trova il peso" (§10.2): massimo 3 serie di prova con RIR.
-     * state = { tests: [{kg, reps, rir}], testReps, targetReps, targetRir, level, lo?, seedKg? }
+     * state = { tests: [{kg, reps, rir}], testReps, targetReps, targetRir, level, lo?, seedKg?, bodyweight?, gender? }
+     * Prova "4+" (troppo facile): carico ×1,3 poi ×1,25 per i principianti (R3-17: ×1,5 li portava al
+     * cedimento), ×1,5 poi ×1,3 per gli altri (la stima di partenza è più lontana dal vero).
+     * Trazioni ASSISTITE (R3-01): il peso è l'assistenza, quindi tutto al contrario (più facile = meno
+     * assistenza); i calcoli si fanno sul carico vero = peso corporeo − assistenza, dentro la scala della macchina.
      * @returns {{done:boolean, nextKg?:number, workingKg?:number, est?:number, lastIsWorkSet?:boolean}}
      */
     nextCalibrationStep(exerciseId, state = {}, gym) {
@@ -2569,27 +3256,45 @@ const TrainingAlgorithm = {
         const targetReps = Number.isFinite(this._num(s.targetReps)) ? this._num(s.targetReps) : testReps;
         const targetRir = Number.isFinite(this._num(s.targetRir)) ? this._num(s.targetRir) : 2;
         const level = this._level(s.level);
+        const meta = this._metaOrDefault(exerciseId);
+        const assisted = meta.loadType === 'assisted';
         if (!tests.length) {
-            const seed = Number.isFinite(this._num(s.seedKg)) ? this._num(s.seedKg) : this.estimateStartingLoad(exerciseId, { level }, gym).kg;
+            const seed = Number.isFinite(this._num(s.seedKg)) ? this._num(s.seedKg) : this.estimateStartingLoad(exerciseId, { level, gender: s.gender, weight: s.bodyweight }, gym).kg;
             return { done: false, nextKg: seed, testReps };
         }
         const last = tests[tests.length - 1];
         const n = tests.length;
+        const beginner = level === 'beginner';
+        const up = n === 1 ? (beginner ? 1.3 : 1.5) : (beginner ? 1.25 : 1.3);
+        // carico vero dell'assistita: peso corporeo − assistenza (mai sotto 5 kg)
+        const bw = this._num(s.bodyweight) > 0 ? this._num(s.bodyweight) : (this._isFemale(s.gender) ? 62 : (this._isMale(s.gender) ? 78 : 70));
+        const g = this._gym(gym);
+        const effOf = (kg) => assisted ? Math.max(5, bw - kg) : kg;
+        // dal carico vero al peso da scrivere (assistenza), dentro la scala della macchina
+        const toKg = (eff, mode) => {
+            if (!assisted) return this.snapLoad(exerciseId, eff, mode, gym);
+            const inv = mode === 'floor' ? 'ceil' : (mode === 'ceil' ? 'floor' : 'nearest');   // meno carico = più assistenza
+            return Math.max(g.stackMinKg, Math.min(g.assistMaxKg, this.snapLoad(exerciseId, bw - eff, inv, gym)));
+        };
         let res;
         if (last.rir >= 4 && last.reps >= testReps) {
-            if (n >= 3) res = { done: true, workingKg: this.snapLoad(exerciseId, last.kg * 1.15, 'nearest', gym) };
+            if (n >= 3) res = { done: true, workingKg: toKg(effOf(last.kg) * 1.15, 'nearest') };
             else {
-                let next = this.snapLoad(exerciseId, last.kg * (n === 1 ? 1.5 : 1.3), 'nearest', gym);
-                if (next <= last.kg) next = this.stepLoad(exerciseId, last.kg, 1, gym);
-                return { done: false, nextKg: next, testReps };
+                let next = toKg(effOf(last.kg) * up, 'nearest');
+                if (!assisted && next <= last.kg) next = this.stepLoad(exerciseId, last.kg, 1, gym);
+                if (assisted && next >= last.kg) next = this.stepLoad(exerciseId, last.kg, -1, gym);
+                // assistenza già al minimo: niente di più facile da togliere, si lavora lì
+                if (assisted && next >= last.kg) res = { done: true, workingKg: last.kg };
+                else return { done: false, nextKg: next, testReps };
             }
         } else {
             const rir = Number.isFinite(last.rir) ? Math.min(4, Math.max(0, last.rir)) : 2;
             const q = rir + (this.RIR_BIAS[level] || 0) + (last.reps > 12 ? 0.5 : 0);
-            const est = last.kg * (1 + (last.reps + q) / 30);
+            const eff = effOf(last.kg);
+            const est = eff * (1 + (last.reps + q) / 30);
             let w = est / (1 + (targetReps + targetRir) / 30);
-            w = Math.max(last.kg * 0.6, Math.min(last.kg * 1.6, w));
-            res = { done: true, workingKg: this.snapLoad(exerciseId, w, 'floor', gym), est: Math.round(est * 10) / 10 };
+            w = Math.max(eff * 0.6, Math.min(eff * 1.6, w));
+            res = { done: true, workingKg: toKg(w, 'floor'), est: Math.round(est * 10) / 10 };
         }
         // la prova vicina al peso giusto conta come prima serie di lavoro (la principiante non spreca serie)
         const lo = Number.isFinite(this._num(s.lo)) ? this._num(s.lo) : null;
@@ -2598,6 +3303,43 @@ const TrainingAlgorithm = {
             res.lastIsWorkSet = last.reps >= lo && this.stepLoad(exerciseId, a, 1, gym) >= b;
         }
         return res;
+    },
+
+    /**
+     * Quali esercizi calibrare in QUESTA seduta (R3-06): al massimo `max` (2 fino a 45', altrimenti 3),
+     * prima il fondamentale, poi i multiarticolari (tier 1, poi 2) nell'ordine della seduta, poi gli
+     * isolamenti; gli altri partono dalla stima e si calibrano nelle sedute dopo.
+     * items: [{ exerciseId, index, role, reps, suggestion }] (suggestion = getProgressionSuggestion)
+     * ctx: { goal, level, minutes, max }
+     * @returns {{ calibrate: string[], deferred: string[], extraMin: number, perExercise: [{exerciseId, index, tests, seconds}] }}
+     */
+    planCalibration(items, ctx = {}) {
+        const c = ctx || {};
+        const goal = this._normalizeGoal(c.goal || 'hypertrophy');
+        const level = this._level(c.level);
+        const max = Number.isFinite(Number(c.max)) && Number(c.max) >= 0 ? Number(c.max) : ((Number(c.minutes) || 60) <= 45 ? 2 : 3);
+        const need = (Array.isArray(items) ? items : []).filter(it => it && it.exerciseId && it.suggestion && it.suggestion.calibrate);
+        const rank = (it) => {
+            const m = this._metaOrDefault(it.exerciseId);
+            if (it.role === 'main') return 0;
+            if (m.type === 'compound') return (m.tier || 2) === 1 ? 1 : 2;
+            return 3;
+        };
+        need.sort((a, b) => (rank(a) - rank(b)) || ((a.index || 0) - (b.index || 0)));
+        const chosen = need.slice(0, max), rest = need.slice(max);
+        const perExercise = chosen.map(it => {
+            // prove attese: principiante ~3 (parte molto sotto), gli altri ~2; una ricalibrazione 2
+            const tests = it.suggestion.recalibrate ? 2 : (level === 'beginner' ? 3 : 2);
+            // la prova vicina al peso giusto vale come prima serie di lavoro: si conta una prova in meno
+            const seconds = Math.round((tests - 1) * (this._setSecondsV2(it.exerciseId, it.reps, goal) + 90) + 90);
+            return { exerciseId: it.exerciseId, index: it.index, tests, seconds };
+        });
+        return {
+            calibrate: chosen.map(it => it.exerciseId),
+            deferred: rest.map(it => it.exerciseId),
+            extraMin: Math.round(perExercise.reduce((a, x) => a + x.seconds, 0) / 60),
+            perExercise
+        };
     },
 
     // ========================================
@@ -2684,14 +3426,29 @@ const TrainingAlgorithm = {
         if (!valid.length && all.length) valid = all.slice();   // solo sedute di scarico: meglio di niente
         const base = { metric, variantId: null, bigJump: false, rirDelta: null, targetRir: nextRir };
 
-        // 0. nessuna seduta: stima prudente (+ "Trova il peso" per chi comincia)
+        // 0. nessuna seduta: peso portato da un esercizio della stessa famiglia (rotazione, R3-05), oppure
+        //    stima prudente + "Trova il peso" (principianti: tutti i caricati; gli altri livelli: i
+        //    multiarticolari, R3-05). Con la calibrazione le rep proposte sono quelle della prova (R3-15).
         if (!valid.length) {
-            const est = this.estimateStartingLoad(id, { ...profile, level }, gym, now);
             const testReps = Math.round((lo + hi) / 2);
             const loaded = !['bodyweight', 'bodyweight-loadable'].includes(lt);
-            const calibrate = loaded && level === 'beginner';
+            const rel = input.related && typeof input.related === 'object' ? input.related : null;
+            if (loaded && rel && rel.exerciseId && this._num(rel.weight) > 0) {
+                const conv = this.convertLoad(rel.exerciseId, id, this._num(rel.weight), gym);
+                if (conv.mode === 'convert' && conv.kg > 0) {
+                    const t = Math.min(4, nextRir + (conv.rirAdjust || 1));
+                    return {
+                        ...base, status: 'new', action: 'start', suggestedWeight: conv.kg, suggestedReps: lo, testReps,
+                        isEstimate: false, aboveSeed: false, calibrate: false, convertedFrom: rel.exerciseId, confidence: conv.confidence,
+                        targetRir: t, increment: 0, lastPerformance: null,
+                        message: `Da ${(this._db(rel.exerciseId) || {}).name || rel.exerciseId}: ${fmt(conv.kg)} kg, RIR ${t}`
+                    };
+                }
+            }
+            const est = this.estimateStartingLoad(id, { ...profile, level }, gym, now);
+            const calibrate = loaded && (level === 'beginner' || (meta.type === 'compound' && (meta.tier || 2) <= 2));
             return {
-                ...base, status: 'new', action: 'start', suggestedWeight: est.kg, suggestedReps: lo, testReps,
+                ...base, status: 'new', action: 'start', suggestedWeight: est.kg, suggestedReps: calibrate ? testReps : lo, testReps,
                 isEstimate: true, aboveSeed: est.aboveSeed, calibrate, increment: 0, lastPerformance: null,
                 message: !loaded ? `Prima volta: ${lo}-${hi} ${unit}`
                     : (calibrate ? `Trova il peso: prova ${fmt(est.kg)} kg × ${testReps}` : `Prima volta: ${fmt(est.kg)} kg, ${lo}-${hi} ${unit}`)
@@ -2757,11 +3514,19 @@ const TrainingAlgorithm = {
             return mk('refamiliarize', w, reps, { rirTarget: 3, targetRir: 3, weeksAbsent, message: msg });
         }
 
-        // Scarico: niente progressione, −10% e RIR 4 (§9.7)
+        // Scarico: niente progressione, −10% e RIR 4 (§9.7). Arrotondato al gradino più vicino; se il
+        // gradino sotto toglie più del 10% (manubri leggeri, cavi: 2 → 1 kg) si tiene lo stesso peso:
+        // nello scarico calano già le serie (R3-12)
         if (input.phase === 'deload') {
             const f = Number.isFinite(this._num(input.loadFactor)) && this._num(input.loadFactor) > 0 ? this._num(input.loadFactor) : 0.9;
             let w = W;
-            if (!noLoad) w = lt === 'assisted' ? snap(W * (2 - f), 'ceil') : snap(W * f, 'floor');
+            if (!noLoad) {
+                if (lt === 'assisted') w = snap(W * (2 - f), 'nearest');
+                else {
+                    w = snap(W * f, 'nearest');
+                    if (w < W && (W - w) / W > (1 - f) + 0.02) w = W;
+                }
+            }
             return mk('deload', w, lo, { targetRir: 4, message: noLoad ? `Scarico: ${lo} ${unit}, RIR 4` : `Scarico: ${fmt(w)} kg, RIR 4` });
         }
 
@@ -2841,7 +3606,13 @@ const TrainingAlgorithm = {
         const need = J ? this.needReps([lo, hi], W, J.nextKg) : hi;
         let status, w = W, reps = lo;
         const extra = {};
-        if (J && top.every(x => x.reps >= need)) { status = 'increase_weight'; w = J.nextKg; reps = lo; extra.bigJump = J.bigJump; }
+        if (need > hi) extra.extendedTo = need;
+        // R3-07: col gradino grande (manubri leggeri) il salto si concede anche al massimo del range se il
+        // RIR registrato (corretto) è ≥ obiettivo + 2: niente 3×20 a 2 kg
+        const withRir0 = top.filter(x => x.rir != null);
+        const easyAtTop = W > 0 && withRir0.length * 2 >= top.length && withRir0.length > 0 &&
+            withRir0.reduce((a, x) => a + x.rir, 0) / withRir0.length + (this.RIR_BIAS[level] || 0) >= prevRir + 2;
+        if (J && (top.every(x => x.reps >= need) || (allHi && easyAtTop))) { status = 'increase_weight'; w = J.nextKg; reps = lo; extra.bigJump = J.bigJump; }
         else if (allLo) { status = 'increase_reps'; reps = Math.min(first + 1, need); }
         else { status = 'maintain'; reps = lo; }
 
@@ -2896,13 +3667,23 @@ const TrainingAlgorithm = {
             }
         }
 
-        // chiaramente troppo leggero (tutte le serie ≥ hi+2 con "4+"): l'interfaccia può proporre "Trova il peso"
-        if (W > 0 && metric === 'reps' && top.every(x => x.reps >= hi + 2) && top.filter(x => x.rir != null).length * 2 >= top.length &&
-            top.filter(x => x.rir != null).every(x => x.rir >= 4) && top.some(x => x.rir != null)) extra.recalibrate = true;
+        // troppo leggero: "4+" su TUTTE le serie al top (registrato su almeno metà) e almeno lo rep →
+        // si ricalibra (R3-05: prima "4+" dava solo +2,5% e la calibrazione non ripartiva). Il seme della
+        // prova è il peso già corretto dal RIR.
+        const rirTop = top.filter(x => x.rir != null);
+        // (con RIR obiettivo 3, "4+" può essere un 4 onesto: lì serve anche il massimo del range)
+        if (W > 0 && metric === 'reps' && lt !== 'assisted' && allLo && rirTop.length && rirTop.length * 2 >= top.length && rirTop.every(x => x.rir >= 4) &&
+            (prevRir <= 2 || allHi)) {
+            extra.recalibrate = true;
+            extra.calibrate = true;
+            extra.testReps = Math.round((lo + hi) / 2);
+        }
         const u = metric === 'time' ? ' s' : '';
+        // range esteso per guadagnare un gradino grande: si dice perché (R3-15: "punta a 14" su "8-12")
+        const beyond = status === 'increase_reps' && reps > hi && J ? ` (oltre ${hi}: poi ${fmt(J.nextKg)} kg)` : '';
         const msg = {
             increase_weight: `Aumenta a ${fmt(w)} kg`,
-            increase_reps: `${fmt(W)} kg, punta a ${reps}${u}`,
+            increase_reps: `${fmt(W)} kg, punta a ${reps}${u}${beyond}`,
             maintain: `Resta a ${fmt(W)} kg, punta a ${reps}${u}`,
             rir_up: `Facile: ${fmt(w)} kg`,
             rir_hold: `Duro: resta a ${fmt(w)} kg`,
@@ -2910,7 +3691,8 @@ const TrainingAlgorithm = {
             backoff: `Stallo: scendi a ${fmt(w)} kg`
         }[status];
         if (status === 'increase_reps') extra.suggestedRepsPerSet = top.map(x => Math.min(Math.max(x.reps + 1, lo), need));
-        return mk(status, w, reps, { ...extra, message: msg });
+        const message = extra.recalibrate ? `Troppo facile: Trova il peso da ${fmt(w)} kg` : msg;
+        return mk(status, w, reps, { ...extra, message });
     },
 
     // ========================================
@@ -2918,17 +3700,25 @@ const TrainingAlgorithm = {
     // ========================================
 
     /**
-     * Rampa di riscaldamento del primo multiarticolare (§11) → [{kg, reps, pct}].
+     * Rampa di riscaldamento (§11) → [{kg, reps, pct}].
+     * targetReps: le rep proposte (numero) oppure il range della scheda ("6-10" vale 8, non 6: R3-09).
+     * opts.single: solo l'ultima serie della rampa (avvicinamento per il primo multiarticolare di
+     * un'altra regione, es. le gambe dopo la panca in un Full Body).
      * Niente rampa per corpo libero, zavorra, assistite, isolamenti, addome.
      */
-    buildWarmupSets(exerciseId, workingKg, targetReps, goal, gym) {
+    buildWarmupSets(exerciseId, workingKg, targetReps, goal, gym, opts = {}) {
         const meta = this.getExerciseMeta(exerciseId);
         const W = Number(workingKg);
         if (!meta || !(W > 0)) return [];
         if (['bodyweight', 'bodyweight-loadable', 'assisted'].includes(meta.loadType)) return [];
         if (meta.type !== 'compound' || /^core-|^iso-|^carry/.test(meta.pattern || '')) return [];
         const g = this._gym(gym);
-        const reps = Math.round(this._num(targetReps)) || this._parseRange(targetReps)[0];
+        let reps;
+        if (typeof targetReps === 'number' && targetReps > 0) reps = Math.round(targetReps);
+        else {
+            const [lo, hi] = this._parseRange(targetReps);
+            reps = Math.round((lo + hi) / 2);
+        }
         const scheme = reps <= 6 ? [[0.40, 8], [0.60, 5], [0.80, 3], [0.90, 1]]
             : (W >= 100 ? [[0.50, 8], [0.70, 5], [0.85, 3]] : [[0.50, 8], [0.80, 5]]);
         const bar = meta.loadType === 'barbell' ? (Number(meta.barWeight) ? this._barFor(meta, g) : 0)
@@ -2946,6 +3736,30 @@ const TrainingAlgorithm = {
             const kg = this.snapLoad(exerciseId, W * 0.5, 'floor', g);
             if (kg < W) out.push({ kg, reps: 8, pct: pct(kg) });
         }
+        return opts && opts.single ? out.slice(-1) : out;
+    },
+
+    /**
+     * Dove va la rampa (§11, R3-09): il fondamentale (primo multiarticolare fuori dai superset) con la
+     * rampa intera, e il primo multiarticolare di un'ALTRA regione (gambe dopo la parte alta o
+     * viceversa) con una sola serie d'avvicinamento.
+     * @returns [{ index, exerciseId, kind: 'full'|'single', count }] — count = serie attese (per la stima)
+     */
+    getRampPlan(exercises) {
+        const exs = Array.isArray(exercises) ? exercises : [];
+        const roles = this._rolesOf(exs);
+        const out = [];
+        let mainIdx = exs.findIndex((e, i) => e && roles[i] === 'main' && !e.supersetGroup);
+        if (mainIdx < 0) mainIdx = exs.findIndex(e => e && !e.supersetGroup && (this._db(e.exerciseId) || {}).type === 'compound');
+        if (mainIdx < 0) return out;
+        const main = exs[mainIdx];
+        const n = this._rampCount(main.exerciseId, main.reps != null ? main.reps : main.targetReps);
+        if (n > 0) out.push({ index: mainIdx, exerciseId: main.exerciseId, kind: 'full', count: n });
+        const reg = this._region(main.exerciseId);
+        // (anche in superset: la serie d'avvicinamento si fa prima del primo esercizio della coppia)
+        const other = exs.findIndex((e, i) => i !== mainIdx && e && (!e.supersetGroup || (parseInt(e.supersetOrder, 10) || 1) === 1) && (this._db(e.exerciseId) || {}).type === 'compound' &&
+            this._rampCount(e.exerciseId, e.reps != null ? e.reps : e.targetReps) > 0 && this._region(e.exerciseId) !== reg);
+        if (other >= 0) out.push({ index: other, exerciseId: exs[other].exerciseId, kind: 'single', count: 1 });
         return out;
     },
 
@@ -3039,7 +3853,8 @@ const TrainingAlgorithm = {
             if (!!m.unilateral === !!orig.unilateral) score += 3;
             if (m.stretch && orig.stretch) score += 2;
             score += ({ 1: 6, 2: 3, 3: 0 })[m.prio] || 0;
-            if (Math.abs((m.tier || 2) - (orig.tier || 2)) >= 2) score -= 10;
+            // un fondamentale non si sostituisce con un accessorio (R3-11: "stacco occupato" → hyperextension)
+            if (Math.abs((m.tier || 2) - (orig.tier || 2)) >= 2) score -= ((orig.tier || 2) === 1 && (m.tier || 2) === 3) ? 30 : 10;
             pains.forEach(a => { if ((m.joint || {})[a] === 1) score -= 8; });
             if (history.has(id)) score += 8;
             if (m.loadType === 'bodyweight' && origLoaded && userHasLoad) score -= 15;
@@ -3061,8 +3876,21 @@ const TrainingAlgorithm = {
         });
     },
 
+    // Forza relativa dentro lo stesso schema e lo stesso attrezzo (R3-11): squat → front squat ×0,8,
+    // piana → inclinata ×0,9, stacco → rumeno ×0,75. Senza voce = 1 (stessa famiglia).
+    LOAD_INDEX: {
+        'bench-press': 1, 'dumbbell-bench-press': 1, 'incline-bench-press': 0.9, 'dumbbell-incline-press': 0.9,
+        'decline-bench-press': 1.05, 'dumbbell-decline-press': 1.05, 'close-grip-bench': 0.9,
+        'squat': 1, 'front-squat': 0.8,
+        'deadlift': 1, 'sumo-deadlift': 1, 'romanian-deadlift': 0.75, 'stiff-leg-deadlift': 0.75,
+        'barbell-row': 1, 'pendlay-row': 0.9,
+        'overhead-press': 1, 'push-press': 1.2, 'dumbbell-shoulder-press': 1, 'arnold-press': 0.9
+    },
+
     /**
      * Peso dell'alternativa (§7.2): conversione solo dove c'è un dato, altrimenti "Trova il peso".
+     * Stesso schema: bilanciere↔manubri (Saeterbakken) × forza relativa; stesso attrezzo libero e stessa
+     * famiglia o forza relativa nota; stessa stazione (lat machine larga ↔ stretta). Macchine diverse: no.
      * @returns {{kg:number|null, confidence:'alta'|'media'|'bassa'|'none', mode:'convert'|'find'|'bodyweight', rirAdjust?:number}}
      */
     convertLoad(fromId, toId, kg, gym) {
@@ -3070,13 +3898,18 @@ const TrainingAlgorithm = {
         if (!a || !b) return { kg: null, confidence: 'none', mode: 'find' };
         if (b.loadType === 'bodyweight') return { kg: 0, confidence: 'alta', mode: 'bodyweight' };
         if (a.pattern !== b.pattern) return { kg: null, confidence: 'none', mode: 'find' };
+        const I = this.LOAD_INDEX;
+        const idx = (id) => (I[id] != null ? I[id] : 1);
+        const known = I[fromId] != null && I[toId] != null;
         let f = null;
         const pair = (x, y) => a.loadType === x && b.loadType === y;
-        if (a.pattern === 'push-h' && pair('barbell', 'dumbbell-pair')) f = 0.415;          // Saeterbakken 2011
-        else if (a.pattern === 'push-h' && pair('dumbbell-pair', 'barbell')) f = 1 / 0.415;
-        else if (a.pattern === 'push-v' && pair('barbell', 'dumbbell-pair')) f = 0.465;     // Saeterbakken & Fimland 2013
-        else if (a.pattern === 'push-v' && pair('dumbbell-pair', 'barbell')) f = 1 / 0.465;
-        else if (a.family === b.family && a.loadType === b.loadType && !['machine-stack', 'machine-plate', 'assisted'].includes(a.loadType)) f = 1;
+        const rel = idx(toId) / idx(fromId);
+        if (a.pattern === 'push-h' && pair('barbell', 'dumbbell-pair')) f = 0.415 * rel;          // Saeterbakken 2011
+        else if (a.pattern === 'push-h' && pair('dumbbell-pair', 'barbell')) f = rel / 0.415;
+        else if (a.pattern === 'push-v' && pair('barbell', 'dumbbell-pair')) f = 0.465 * rel;     // Saeterbakken & Fimland 2013
+        else if (a.pattern === 'push-v' && pair('dumbbell-pair', 'barbell')) f = rel / 0.465;
+        else if (a.loadType === b.loadType && !['machine-stack', 'machine-plate', 'assisted'].includes(a.loadType) && (a.family === b.family || known)) f = rel;
+        else if (this.STATION_OVERRIDE[fromId] && this.STATION_OVERRIDE[fromId] === this.STATION_OVERRIDE[toId] && a.loadType === b.loadType) f = 1;
         const w = Number(kg);
         if (f == null || !(w > 0)) return { kg: null, confidence: 'bassa', mode: 'find' };
         return { kg: this.snapLoad(toId, w * f, 'floor', gym), confidence: 'media', mode: 'convert', rirAdjust: 1 };
@@ -3129,7 +3962,8 @@ const TrainingAlgorithm = {
     /**
      * Seduta compressa per chi ha poco tempo (§13.2). Passi in ordine, stima ricalcolata dopo ognuno:
      * S1 riscaldamento a 5', S2 riposi di accessori e core, S3 superset fra non-main compatibili,
-     * S4 core via se c'è in ≥2 altri giorni, S5 accessori a 2 serie, S6 secondari −1, S7 via gli
+     * S4 core via se c'è in ≥2 altri giorni, S5 accessori a 2 serie, S5b via l'addome (R3-16: prima dei
+     * multiarticolari), S6 secondari −1, S7 via gli
      * accessori (prima quelli non d'enfasi, restano ≥3 esercizi), S8 main −1.
      * ctx = { goal, emphasis, coreDaysElsewhere, warmupMin, cooldownMin }
      * @returns {{day, changes, estimatedMinutes, fits}}
@@ -3172,6 +4006,7 @@ const TrainingAlgorithm = {
         }
         work.exercises.forEach(ex => {
             if (Array.isArray(ex.warmupSets) && ex.warmupSets.length > 2) { ex.warmupSets = ex.warmupSets.slice(-2); changes.push({ step: 'S1', exerciseId: ex.exerciseId, what: 'ramp', to: 2 }); }
+            else if (!Array.isArray(ex.warmupSets) && (parseInt(ex.rampSets, 10) || 0) > 2) { ex.rampSets = 2; changes.push({ step: 'S1', exerciseId: ex.exerciseId, what: 'ramp', to: 2 }); }
         });
         if (est() <= target) return done();
 
@@ -3247,6 +4082,16 @@ const TrainingAlgorithm = {
             setSets(ex, 2);
             if (est() <= target) return done();
         }
+
+        // S5b (R3-16): l'addome esce prima di togliere serie ai multiarticolari (prima la seduta corta
+        // toglieva una serie di squat e teneva il wood chop)
+        work.exercises.filter(ex => ex.role === 'core').reverse().forEach(ex => {
+            if (est() <= target) return;
+            unpair(ex);
+            work.exercises.splice(work.exercises.indexOf(ex), 1);
+            changes.push({ step: 'S5b', removed: ex.exerciseId });
+        });
+        if (est() <= target) return done();
 
         // S6: secondari −1 serie (minimo 2), dall'ultimo
         for (let i = work.exercises.length - 1; i >= 0; i--) {
@@ -3454,6 +4299,32 @@ const TrainingAlgorithm = {
             message: weekly.filter(w => w.sessions > 0).map(w => `${w.sessions}× ${w.type.toUpperCase()} ${w.minutes}'`).join(' + ') || 'Cardio facoltativo'
         };
         return { ...legacy, weekly, rules, notes: rules.map(r => NOTES[r]) };
+    },
+
+    /**
+     * Il prossimo cardio della settimana (R3-14), dai tipi di `weekly` (non HIIT/LISS alternati alla cieca):
+     * prima il tipo con più sedute che mancano, a parità quello fatto meno volte, poi il LISS; minuti del suo tipo.
+     * sessionsThisWeek: [{type:'hiit'|'liss'}] (Storage.getConditioningThisWeek()).
+     * @returns {{type, minutes, minutesMax, intensity, done, target, doneByType, notes}|null}
+     */
+    nextCardio(suggestions, sessionsThisWeek = []) {
+        const weekly = suggestions && Array.isArray(suggestions.weekly) ? suggestions.weekly.filter(w => w && w.sessions > 0) : [];
+        if (!weekly.length) return null;
+        const doneByType = { liss: 0, hiit: 0 };
+        (Array.isArray(sessionsThisWeek) ? sessionsThisWeek : []).forEach(x => {
+            const t = String((x && x.type) || '').toLowerCase();
+            if (t in doneByType) doneByType[t]++;
+        });
+        const target = weekly.reduce((a, w) => a + w.sessions, 0);
+        const done = Math.min(target, weekly.reduce((a, w) => a + Math.min(w.sessions, doneByType[w.type] || 0), 0));
+        // a parità di sedute mancanti il tipo fatto meno volte (alternanza), poi il LISS
+        const left = weekly.map(w => ({ w, left: w.sessions - (doneByType[w.type] || 0) })).filter(x => x.left > 0)
+            .sort((x, y) => (y.left - x.left) || ((doneByType[x.w.type] || 0) - (doneByType[y.w.type] || 0)) || (x.w.type === 'liss' ? -1 : 1));
+        const pick = (left[0] || { w: weekly.find(w => w.type === 'liss') || weekly[0] }).w;
+        return {
+            type: pick.type, minutes: pick.minutes, minutesMax: pick.minutesMax, intensity: pick.intensity,
+            done, target, complete: done >= target, doneByType, notes: Array.isArray(suggestions.notes) ? suggestions.notes.slice() : []
+        };
     },
 
     // Giorni (indici della scheda) lontani dalle gambe: né il giorno di gambe né quello prima

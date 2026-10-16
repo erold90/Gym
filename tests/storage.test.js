@@ -621,18 +621,48 @@ test('saveWorkout: campi nuovi, riferimenti alla scheda, spazio pieno = errore e
     eq([free.dayIndex, free.programId, free.isFreeWorkout], [null, null, true]);
     ok(free.id !== saved.id, 'id unici');
     eq(S.getWorkouts().length, 2);
-    const before = ls._snapshot();
+    // R1-11: a memoria piena si tolgono i dati RICALCOLABILI (PR, streak) e si riprova; se non basta
+    // lancia e niente altro cambia (allenamenti, scheda, profilo intatti)
+    const keep = () => JSON.stringify([...ls._map.entries()].filter(([k]) => !['gymtracker_prs', 'gymtracker_streak'].includes(k)).sort());
+    const before = keep();
     ls._failOn(k => k === 'gymtracker_workouts');
     const err = throwsCode(() => S.saveWorkout({ name: 'X', exercises: [] }), 'QUOTA', 'spazio pieno');
     ok(/pieno/.test(err.message));
-    eq(ls._snapshot(), before, 'niente scritto a metà');
+    eq(keep(), before, 'niente scritto a metà (solo dati ricalcolabili tolti)');
+    eq(S.lastWriteError.code, 'QUOTA');
     ls._failOn(k => k === 'gymtracker_active_session');
     eq(S.saveActiveSession({ a: 1 }), false, 'sessione in corso: false, non lancia');
     ls._failOn(null);
-    ok(S.saveActiveSession({ exercises: [1, 2] }));
-    eq(S.getActiveSession().exercises, [1, 2]);
+    const sess = { workout: { name: 'Upper A', exercises: [{ exerciseId: 'bench-press', setsData: [{ weight: 60, reps: 8 }, null] }, null, { name: 'senza id' }] } };
+    ok(S.saveActiveSession(sess));
+    eq(S.getActiveSession().workout.exercises.map(e => [e.exerciseId, e.setsData.length]), [['bench-press', 1]], 'R1-18: sessione normalizzata');
     S.clearActiveSession();
     eq(S.getActiveSession(), null);
+    // R1-18: sessione non recuperabile (niente esercizi validi) → cancellata, non riprovata a ogni avvio
+    ls.setItem('gymtracker_active_session', JSON.stringify({ workout: { exercises: [null] } }));
+    eq(S.getActiveSession(), null);
+    eq(ls.getItem('gymtracker_active_session'), null, 'sessione rotta cancellata');
+});
+
+test('R1-11 / R1-20: spazio pieno → dati ricalcolabili tolti e scrittura riuscita; SecurityError distinto', () => {
+    const now = D(2026, 10, 15, 10);
+    const env = makeEnv({ now, seed: {
+        gymtracker_prs: { 'squat': { maxWeight: 100, history: [] } }, gymtracker_streak: { current: 2, best: 3 },
+        gymtracker_meta: { schemaVersion: 2, prsBeforeV126: 'x'.repeat(50) },
+        gymtracker_corrupt_workouts_1700000000000: '[vecchia', gymtracker_corrupt_workouts_1800000000000: '[nuova'
+    } });
+    const { S, ls } = env;
+    let fails = 1;
+    ls._failOn(k => k === 'gymtracker_workouts' && fails-- > 0);   // la prima scrittura fallisce, la seconda no
+    const w = S.saveWorkout({ name: 'X', exercises: [{ exerciseId: 'squat', sets: [{ weight: 60, reps: 8, completed: true }] }] });
+    ok(w && S.getWorkouts().length === 1, 'salvata al secondo tentativo');
+    ok(ls.getItem('gymtracker_corrupt_workouts_1800000000000') !== null && ls.getItem('gymtracker_corrupt_workouts_1700000000000') === null, 'resta solo la copia rotta più recente');
+    ok(!('prsBeforeV126' in env.get('gymtracker_meta')), 'vecchia copia dei PR tolta');
+    eq(S.getPersonalRecords().squat.maxWeight, 60, 'PR ricalcolati dagli allenamenti');
+    ls._failOn(k => { if (k === 'gymtracker_settings') { const e = new Error('The operation is insecure.'); e.name = 'SecurityError'; e.code = 18; throw e; } return false; });
+    const err = throwsCode(() => S._write('gymtracker_settings', {}), 'SECURITY', 'Safari privato');
+    ok(!/pieno/.test(err.message) && S.lastWriteError.code === 'SECURITY');
+    ls._failOn(null);
 });
 
 // ============================================================
@@ -663,7 +693,8 @@ test('Export → import completo (schemaVersion 2) e dati identici', () => {
     ok(Array.isArray(data.cycleHistory) && data.cycleHistory.length === 1, 'cycle_history esportata');
     ok(Array.isArray(data.conditioning) && data.conditioning.length === 1, 'conditioning esportato');
     ok(!('gymtracker_active_session' in (data.extra || {})) && !json.includes('inCorso'), 'sessione in corso esclusa');
-    ok(!json.includes('{rotto'), 'copie rotte escluse');
+    // R1-20: le copie dei dati rotti si esportano (erano l'unica copia), non tornano chiavi vive
+    ok(json.includes('{rotto') && data.extra && data.extra.gymtracker_corrupt_settings === '{rotto', 'copie rotte esportate');
     eq(data.extra.gymtracker_futura, '{"x":1}', 'chiavi gymtracker_* nuove incluse');
     const b = makeEnv({ now });
     ok(b.S.importAllData(json), 'import riuscito: ' + b.S.lastImportError);
@@ -948,13 +979,157 @@ test('Deload manuale: scade da solo dopo 7 giorni, advanceCycleWeek lo spegne, v
 });
 
 test('syncCycleWeek e getCalendarCycleWeek', () => {
-    const env = makeEnv({ now: D(2026, 10, 15, 10), seed: { gymtracker_active_program: program({ start: D(2026, 9, 28, 0), week: 1 }) } });
+    // (una seduta in ognuna delle settimane passate: le settimane perse si ripetono, vedi R3-13)
+    const ws = [workout(D(2026, 9, 29, 18), [['squat', [[60, 8]]]]), workout(D(2026, 10, 6, 18), [['squat', [[60, 8]]]])];
+    const env = makeEnv({ now: D(2026, 10, 15, 10), seed: { gymtracker_active_program: program({ start: D(2026, 9, 28, 0), week: 1 }), gymtracker_workouts: ws } });
     eq(env.S.getCalendarCycleWeek(), 3);
     eq(env.S.syncCycleWeek(), { changed: true, from: 1, to: 3 });
     eq(env.S.getCycleInfo().currentWeek, 3);
     eq(env.S.syncCycleWeek().changed, false);
-    const late = makeEnv({ now: D(2026, 12, 15, 10), seed: { gymtracker_active_program: program({ start: D(2026, 9, 28, 0), week: 1 }) } });
+    const lateP = program({ start: D(2026, 9, 28, 0), week: 1 });
+    lateP.metadata.cycle.version = 2;   // (un ciclo v1.25 così vecchio verrebbe riallineato, R1-04)
+    const late = makeEnv({ now: D(2026, 12, 15, 10), seed: { gymtracker_active_program: lateP } });
     eq(late.S.syncCycleWeek().to, 4, 'mai oltre la durata');
+});
+
+test('R3-13: settimana di lavoro saltata = si ripete (non si passa allo scarico con una settimana in meno)', () => {
+    const start = D(2026, 10, 19, 0);   // lunedì
+    const real = makeEnv({ now: start, algorithm: 'real' });
+    const prog = real.TA.generateProgram({ level: 'beginner', gender: 'female', equipment: ['manubri', 'macchine'] }, { goal: 'toning', daysPerWeek: 3, split: 'upper-lower', sessionDuration: 45 });
+    prog.metadata.cycle.startDate = new Date(start).toISOString();
+    const ws = [];
+    for (let wk = 0; wk < 4; wk++) [0, 2, 4].forEach(d => ws.push(workout(start + (wk * 7 + d) * DAY + 18 * 3600000, [['goblet-squat', [[8, 10]]]], { type: prog.days[0].type })));
+    // settimana 5 (16-22/11) saltata; lunedì 23/11 = settimana 6 per il calendario = scarico
+    const env = makeEnv({ now: start + 35 * DAY + 9 * 3600000, algorithm: 'real', seed: { gymtracker_active_program: prog, gymtracker_workouts: ws } });
+    const r = env.S.syncCycleWeek();
+    eq([r.to, r.repeatedWeeks], [5, 1], 'si rifà la settimana 5');
+    eq(env.S.getCurrentPhase().phase, 'intensification', 'non è ancora lo scarico');
+    ok(!env.S.shouldCompleteCycle(), 'ciclo non chiuso con 4 settimane su 5');
+    // la settimana ripetuta fatta → la successiva è lo scarico
+    [0, 2, 4].forEach(d => env.S.saveWorkout({ name: 'x', type: prog.days[0].type, exercises: [], date: new Date(start + (35 + d) * DAY + 18 * 3600000).toISOString() }));
+    env.clock.set(start + 42 * DAY + 9 * 3600000);
+    env.S.syncCycleWeek();
+    eq(env.S.getCurrentPhase().phase, 'deload');
+});
+
+test('R1-05: syncCycleWeek non spegne uno scarico anticipato ancora valido', () => {
+    const fri = D(2026, 10, 16, 18);
+    const env = makeEnv({ now: fri, seed: { gymtracker_active_program: program({ start: D(2026, 10, 5, 0), week: 2 }), gymtracker_workouts: [workout(D(2026, 10, 6, 18), [['squat', [[60, 8]]]]), workout(D(2026, 10, 13, 18), [['squat', [[60, 8]]]])] } });
+    env.S.startManualDeload();
+    env.clock.set(D(2026, 10, 19, 9));   // lunedì: la settimana avanza
+    eq(env.S.syncCycleWeek().to, 3);
+    ok(env.S.isDeloadActive(), 'scarico anticipato ancora attivo');
+    eq(env.S.getActiveProgram().metadata.cycle.earlyDeloads, 1, 'contato per il volume del ciclo dopo (§12.5)');
+});
+
+test('R1-04 / R1-15: ciclo v1.25 molto oltre la durata riallineato UNA volta (scarico migrato tenuto); plank 8-12 → 30-45; fine ciclo proposta 1 volta al giorno', () => {
+    const now = D(2026, 10, 15, 10);
+    const old = program({ start: D(2026, 7, 6, 0), week: 5, duration: 5, deload: true });
+    old.days[0].exercises.push({ exerciseId: 'plank', name: 'Plank', sets: 3, reps: '8-12', rest: 60, type: 'isolation' });
+    const env = makeEnv({ now, seed: { gymtracker_active_program: old } });
+    const c = env.S.getCycleInfo();
+    eq(c.currentWeek, 1, 'riallineato alla settimana 1');
+    ok(env.S.isDeloadActive(), 'lo scarico migrato resta (7 giorni)');
+    ok(env.get('gymtracker_meta').legacyCycleRealignedAt, 'una volta sola');
+    eq(env.S.getActiveProgram().days[0].exercises.find(e => e.exerciseId === 'plank').reps, '30-45');
+    const snap = env.ls._snapshot();
+    env.S.migrate();
+    eq(env.ls._snapshot(), snap, 'seconda apertura: niente da rifare');
+    // fine ciclo: al massimo una proposta al giorno, mai con una seduta aperta
+    const done = makeEnv({ now, seed: { gymtracker_active_program: program({ start: D(2026, 9, 14, 0), week: 4 }) } });
+    ok(done.S.shouldCompleteCycle());
+    eq([done.S.shouldPromptCycleEnd(), done.S.shouldPromptCycleEnd()], [true, false], 'una volta oggi');
+    done.clock.set(now + DAY);
+    done.S.saveActiveSession({ workout: { exercises: [{ exerciseId: 'squat', setsData: [] }] } });
+    eq(done.S.shouldPromptCycleEnd(), false, 'seduta aperta: no');
+    done.S.clearActiveSession();
+    eq(done.S.shouldPromptCycleEnd(), true, 'domani sì');
+});
+
+test('R1-10: cache in memoria di storico e scheda, azzerata da scritture, rimozioni e altre schede', () => {
+    const now = D(2026, 10, 15, 10);
+    const env = makeEnv({ now, seed: { gymtracker_active_program: program({ start: D(2026, 10, 12, 0) }), gymtracker_workouts: [workout(now - DAY, [['squat', [[60, 8]]]])] } });
+    const { S, ls } = env;
+    let reads = 0;
+    const get = ls.getItem;
+    ls.getItem = (k) => { if (k === 'gymtracker_workouts') reads++; return get(k); };
+    S.getWorkouts(); S.getWorkouts(); S.getWorkouts();
+    eq(reads, 0, 'storico già in cache dopo la migrazione: nessuna rilettura');
+    ok(S.getActiveProgram() === S.getActiveProgram(), 'stessa scheda');
+    const p = S._programCopy();
+    p.name = 'Nuova';
+    ok(S.getActiveProgram().name !== 'Nuova', 'la copia non tocca la cache');
+    S.setActiveProgram(p);
+    eq(S.getActiveProgram().name, 'Nuova', 'scrittura → cache aggiornata');
+    ls.setItem('gymtracker_active_program', JSON.stringify({ ...p, name: 'Da un\'altra scheda' }));
+    S._cacheDrop('gymtracker_active_program');   // quello che fa l'evento `storage`
+    eq(S.getActiveProgram().name, 'Da un\'altra scheda');
+    S.clearActiveProgram();
+    eq(S.getActiveProgram(), null, 'rimozione → niente in cache');
+    ls.getItem = get;
+});
+
+test('R1-13 / R1-17: countRealPRs([w]); scheda modificata nella struttura → programId nuovo e giorno giusto', () => {
+    const now = D(2026, 10, 15, 10);
+    const w1 = workout(now - 3 * DAY, [['squat', [[60, 8]]]]), w2 = workout(now - DAY, [['squat', [[70, 8, { isNewPR: true }], [65, 8, { isNewPR: true }]]]]);
+    const env = makeEnv({ now, seed: { gymtracker_workouts: [w2, w1], gymtracker_active_program: program({ start: D(2026, 10, 12, 0) }) } });
+    eq([env.S.countRealPRs([env.S.getWorkouts()[0]]), env.S.countRealPRs([env.S.getWorkouts()[1]])], [1, 0], 'solo il record vero');
+    const S = env.S, TA = env.TA;
+    const p0 = S.getActiveProgram();
+    const pid = p0.metadata.programId;
+    S.saveWorkout({ name: 'Lower A', type: 'Lower A', dayIndex: 1, exercises: [] });
+    // l'editor toglie Upper A: Lower A ora è l'indice 0
+    const edited = JSON.parse(JSON.stringify(p0));
+    edited.days.splice(0, 1);
+    const saved = S.saveEditedProgram(edited);
+    ok(saved.metadata.programId !== pid && saved.metadata.previousProgramIds.includes(pid), 'programId nuovo, il vecchio ricordato');
+    eq(TA.getNextDayIndex(S.getActiveProgram(), S.getWorkouts()), 1, 'dopo Lower A viene Upper B (indice 1), non l\'indice sfasato');
+    // stessa struttura (cambia solo un esercizio): stesso programId
+    const same = JSON.parse(JSON.stringify(S.getActiveProgram()));
+    same.days[0].exercises[0].sets = 4;
+    eq(S.saveEditedProgram(same).metadata.programId, saved.metadata.programId);
+});
+
+test('R3-05 / R3-06 / R3-14: peso dalla stessa famiglia, calibrazione distribuita con coda, prossimo cardio', () => {
+    const now = D(2026, 10, 15, 10);
+    const env = makeEnv({ now, algorithm: 'real', seed: {
+        gymtracker_profile: { name: 'Lui', gender: 'male', weight: 85, level: 'intermediate', goal: 'hypertrophy', equipment: ['bilanciere', 'manubri', 'macchine', 'cavi', 'panca', 'sbarra'] },
+        gymtracker_workouts: [workout(now - 2 * DAY, [['bench-press', [[80, 8], [80, 8]]], ['squat', [[100, 8]]]])]
+    } });
+    const { S, TA } = env;
+    env.DB_TYPE = (id) => env.run(`EXERCISES_DB['${id}'].type`);
+    const db = S.getProgressionSuggestion('dumbbell-bench-press', '8-12', 'hypertrophy');
+    eq([db.status, db.suggestedWeight, db.convertedFrom, db.calibrate], ['new', 32, 'bench-press', false], 'panca → manubri ×0,415');
+    eq(S.getProgressionSuggestion('front-squat', '6-10', 'hypertrophy').suggestedWeight, 80, 'squat 100 → front squat ×0,8');
+    const fresh = S.getProgressionSuggestion('lat-pulldown', '8-12', 'hypertrophy');
+    eq([fresh.status, fresh.calibrate, fresh.suggestedReps], ['new', true, 10], 'multiarticolare mai fatto: Trova il peso anche per l\'intermedio, rep della prova');
+    // calibrazione distribuita: al massimo 3 per seduta (60'), prima il fondamentale
+    const prog = TA.generateProgram(S.getProfile(), { goal: 'hypertrophy', daysPerWeek: 4, split: 'upper-lower', sessionDuration: 60 });
+    S.setActiveProgram(prog);
+    const day = prog.days.find(d => d.exercises.filter(e => e.type === 'compound').length >= 4) || prog.days[0];
+    const plan = S.planCalibration(day);
+    ok(plan.calibrate.length <= 3 && plan.calibrate.length > 0, 'al massimo 3');
+    ok(plan.calibrate.every(id => env.DB_TYPE(id) === 'compound'), 'intermedio: solo multiarticolari');
+    const firstNew = day.exercises.find(e => e.role === 'main' && e.exerciseId !== 'bench-press');
+    if (firstNew) eq(plan.calibrate[0], firstNew.exerciseId, 'prima il fondamentale');
+    ok(plan.extraMin > 0 && plan.extraMin < 20, 'minuti in più: ' + plan.extraMin);
+    ok(plan.deferred.every(id => S._calibrationQueue()[id]), 'gli altri in coda');
+    if (plan.deferred.length) {
+        const id = plan.deferred[0];
+        S.saveWorkout({ name: 'x', type: day.type, exercises: [{ exerciseId: id, sets: [{ weight: 20, reps: 10, completed: true, rir: 4 }] }] });
+        const sug = S.getProgressionSuggestion(id, '8-12', 'hypertrophy');
+        eq([sug.calibrate, sug.calibrateQueued], [true, true], 'alla seduta dopo: Trova il peso');
+        S.saveWorkout({ name: 'x', type: day.type, exercises: [{ exerciseId: id, sets: [{ weight: 30, reps: 10, completed: true, rir: 2, isCalibration: true }, { weight: 30, reps: 10, completed: true }] }] });
+        ok(!S._calibrationQueue()[id], 'calibrato → fuori dalla coda');
+    }
+    // cardio: tonificazione intermedia 1 HIIT + 2 LISS → LISS, HIIT, LISS (prima il tipo con più sedute mancanti)
+    S.saveProfile({ goal: 'toning', level: 'intermediate', gender: 'female' });
+    S.setActiveProgram(TA.generateProgram(S.getProfile(), { goal: 'toning', daysPerWeek: 3, split: 'upper-lower', sessionDuration: 60 }));
+    const seq = [];
+    for (let i = 0; i < 3; i++) { const n = S.getNextCardio(); seq.push(n.type + n.minutes); S.saveConditioningSession({ type: n.type, durationSec: n.minutes * 60 }); }
+    eq(seq, ['liss30', 'hiit10', 'liss30']);
+    const n = S.getNextCardio();
+    ok(n.complete && n.notes.length > 0, 'settimana fatta, regole da mostrare');
 });
 
 test('Ciclo con l\'algoritmo VERO (se si carica): generateProgram → completeCycle', () => {

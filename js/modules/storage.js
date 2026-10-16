@@ -84,11 +84,48 @@ const Storage = {
             e.code === 22 || e.code === 1014 || /quota/i.test(String(e.message || '')));
     },
 
+    // ========================================
+    // CACHE IN MEMORIA (R1-10): storico e scheda si leggevano decine di volte a ogni disegno.
+    // Solo le chiavi grandi e lette spesso; il valore in cache è CONDIVISO: chi lo legge non lo
+    // modifica (le funzioni di Storage che cambiano la scheda lavorano su una copia, _programCopy).
+    // Si azzera a ogni scrittura/rimozione, a import e cancellazioni, e se un'altra scheda del
+    // browser cambia il localStorage (evento `storage`). Con localStorage.gymtracker_dev_freeze = '1'
+    // i valori in cache sono congelati: chi li modifica per errore si vede subito (solo sviluppo).
+    // ========================================
+    _CACHED_KEYS: ['gymtracker_workouts', 'gymtracker_active_program'],
+    _cache: new Map(),
+
+    _cacheDrop(key) {
+        if (key === undefined || key === null) this._cache.clear();
+        else this._cache.delete(key);
+    },
+
+    _devFreeze() {
+        try { return localStorage.getItem('gymtracker_dev_freeze') === '1'; } catch (e) { return false; }
+    },
+
+    _deepFreeze(v) {
+        if (v && typeof v === 'object' && !Object.isFrozen(v)) {
+            Object.freeze(v);
+            Object.keys(v).forEach(k => this._deepFreeze(v[k]));
+        }
+        return v;
+    },
+
+    /** Rimuove una chiave (e la sua copia in cache). */
+    _remove(key) {
+        this._cacheDrop(key);
+        try { localStorage.removeItem(key); } catch (e) { /* no-op */ }
+    },
+
     /**
      * Legge una chiave JSON. Se il valore non si legge o ha il tipo sbagliato, lo copia in
      * gymtracker_corrupt_<chiave> e restituisce (e scrive) il default. Mai un'eccezione.
+     * opts.normalize(val) → valore normalizzato una volta sola (finisce in cache).
      */
-    _read(key, fallback, check) {
+    _read(key, fallback, check, opts = {}) {
+        const cached = this._CACHED_KEYS.includes(key);
+        if (cached && this._cache.has(key)) return this._cache.get(key);
         let raw = null;
         try {
             raw = localStorage.getItem(key);
@@ -107,11 +144,16 @@ const Storage = {
             this._quarantine(key, raw, 'type', fallback);
             return this._clone(fallback);
         }
+        if (opts.normalize) {
+            try { val = opts.normalize(val); } catch (e) { /* si tiene il valore letto */ }
+        }
+        if (cached) this._cache.set(key, this._devFreeze() ? this._deepFreeze(val) : val);
         return val;
     },
 
     // Mette da parte un valore rotto (mai perso) e lo sostituisce col default
     _quarantine(key, raw, reason, fallback) {
+        this._cacheDrop(key);
         const base = this.CORRUPT_PREFIX + String(key).replace(/^gymtracker_/, '');
         let backupKey = base;
         try {
@@ -129,19 +171,67 @@ const Storage = {
         try { console.warn(`[Storage] ${key} illeggibile (${reason})` + (backupKey ? `, copia in ${backupKey}` : '')); } catch (e) { /* no-op */ }
     },
 
-    /** Scrive o LANCIA (err.code = 'QUOTA' | 'WRITE'): per i dati che non si possono perdere. */
-    _write(key, value) {
+    _isSecurityError(e) {
+        return !!e && (e.name === 'SecurityError' || e.code === 18);
+    },
+
+    /**
+     * Fa spazio cancellando i dati RICALCOLABILI (R1-11): PR e streak (si rifanno dagli allenamenti),
+     * la vecchia copia dei PR in meta, le copie dei dati rotti più vecchie (resta la più recente per chiave).
+     * @returns {number} chiavi tolte o alleggerite
+     */
+    _freeSpace() {
+        let n = 0;
+        [this.KEYS.PERSONAL_RECORDS, this.KEYS.STREAK].forEach(k => {
+            try { if (localStorage.getItem(k) !== null) { this._remove(k); n++; } } catch (e) { /* no-op */ }
+        });
         try {
-            localStorage.setItem(key, JSON.stringify(value));
+            const raw = localStorage.getItem(this.KEYS.META);
+            const meta = raw ? JSON.parse(raw) : null;
+            if (meta && meta.prsBeforeV126 !== undefined) {
+                delete meta.prsBeforeV126;
+                localStorage.setItem(this.KEYS.META, JSON.stringify(meta));
+                n++;
+            }
+        } catch (e) { /* no-op */ }
+        // copie rotte: per ogni chiave si tiene la più recente (gymtracker_corrupt_<k> o _<data> più alta)
+        const groups = {};
+        this.getCorruptKeys().forEach(k => {
+            const m = k.match(/^(.*?)(?:_(\d{12,}))?$/);
+            const base = m ? m[1] : k;
+            (groups[base] = groups[base] || []).push({ k, t: m && m[2] ? Number(m[2]) : 0 });
+        });
+        Object.values(groups).forEach(list => {
+            list.sort((a, b) => b.t - a.t).slice(1).forEach(({ k }) => { this._remove(k); n++; });
+        });
+        return n;
+    },
+
+    /** Scrive o LANCIA (err.code = 'QUOTA' | 'SECURITY' | 'WRITE'): per i dati che non si possono perdere. */
+    _write(key, value) {
+        this._cacheDrop(key);
+        const json = JSON.stringify(value);
+        try {
+            localStorage.setItem(key, json);
             return true;
         } catch (e) {
-            const err = new Error(this._isQuotaError(e)
-                ? 'Spazio di archiviazione pieno: dati non salvati'
-                : 'Scrittura non riuscita: dati non salvati');
-            err.code = this._isQuotaError(e) ? 'QUOTA' : 'WRITE';
+            // spazio pieno: prima di arrendersi si tolgono i dati ricalcolabili e si riprova (R1-11)
+            if (this._isQuotaError(e) && key !== this.KEYS.PERSONAL_RECORDS && key !== this.KEYS.STREAK && this._freeSpace() > 0) {
+                try {
+                    localStorage.setItem(key, json);
+                    return true;
+                } catch (e2) { e = e2; }
+            }
+            // Safari in navigazione privata: SecurityError, non "memoria piena" (R1-20)
+            const code = this._isSecurityError(e) ? 'SECURITY' : (this._isQuotaError(e) ? 'QUOTA' : 'WRITE');
+            const err = new Error(code === 'QUOTA' ? 'Spazio di archiviazione pieno: dati non salvati'
+                : (code === 'SECURITY' ? 'Il browser non permette di salvare (navigazione privata?): dati non salvati'
+                    : 'Scrittura non riuscita: dati non salvati'));
+            err.code = code;
             err.key = key;
             err.cause = e;
             this.lastError = err;
+            this.lastWriteError = { code, key, at: new Date().toISOString(), message: err.message };
             throw err;
         }
     },
@@ -351,9 +441,9 @@ const Storage = {
         return isFinite(id) && id > 1e12 ? id : -Infinity;
     },
 
-    /** Tutti gli allenamenti, dal più recente. Elementi non validi ignorati. */
+    /** Tutti gli allenamenti, dal più recente. Elementi non validi ignorati (oggetti condivisi con la cache: non modificarli). */
     getWorkouts() {
-        const arr = this._read(this.KEYS.WORKOUTS, [], Array.isArray);
+        const arr = this._read(this.KEYS.WORKOUTS, [], Array.isArray, { normalize: a => this._normalizeWorkouts(a) });
         return arr
             .filter(w => this._isObj(w))
             .map((w, i) => ({ w, i, t: this._workoutTime(w) }))
@@ -397,7 +487,22 @@ const Storage = {
         this._write(this.KEYS.WORKOUTS, workouts);   // lancia se pieno: niente perdite in silenzio
 
         this._afterWorkoutsChanged();
+        try { this._updateCalibrationQueue(w); } catch (e) { /* di contorno */ }
         return w;
+    },
+
+    // Esce dalla coda chi è stato calibrato (serie di prova completate) o è in coda da più di 3 settimane
+    _updateCalibrationQueue(w) {
+        const q = this._calibrationQueue();
+        const ids = Object.keys(q);
+        if (!ids.length) return;
+        let changed = false;
+        const old = Date.now() - 21 * 86400000;
+        (Array.isArray(w.exercises) ? w.exercises : []).forEach(ex => {
+            if (ex && q[ex.exerciseId] && Array.isArray(ex.sets) && ex.sets.some(st => st && st.completed && st.isCalibration)) { delete q[ex.exerciseId]; changed = true; }
+        });
+        ids.forEach(id => { if (q[id] && this._time(q[id]) < old) { delete q[id]; changed = true; } });
+        if (changed) this._setCalibrationQueue(q);
     },
 
     _afterWorkoutsChanged() {
@@ -502,10 +607,73 @@ const Storage = {
         }
     },
 
+    /**
+     * Scheda attiva. Il valore è condiviso con la cache (R1-10): chi deve modificarla usa
+     * _programCopy() (o una sua copia) e poi setActiveProgram.
+     */
     getActiveProgram() {
         // Una scheda senza giorni non è usabile: messa da parte, l'app ne farà generare un'altra
         return this._read(this.KEYS.ACTIVE_PROGRAM, null,
-            v => v === null || (this._isObj(v) && Array.isArray(v.days)));
+            v => v === null || (this._isObj(v) && Array.isArray(v.days)), { normalize: v => this._normalizeProgram(v) });
+    },
+
+    /** Copia modificabile della scheda attiva (null se non c'è). */
+    _programCopy() {
+        const p = this.getActiveProgram();
+        return p ? this._clone(p) : null;
+    },
+
+    // Dati annidati rotti (R1-18): giorni oggetto, esercizi oggetto con exerciseId. Una volta sola in lettura.
+    _normalizeProgram(p) {
+        if (!this._isObj(p)) return p;
+        const okDays = p.days.every(d => this._isObj(d) && (d.exercises === undefined || (Array.isArray(d.exercises) && d.exercises.every(e => this._isObj(e) && typeof e.exerciseId === 'string'))));
+        if (okDays) return p;
+        return {
+            ...p,
+            days: p.days.filter(d => this._isObj(d)).map(d => ({
+                ...d, exercises: (Array.isArray(d.exercises) ? d.exercises : []).filter(e => this._isObj(e) && typeof e.exerciseId === 'string' && e.exerciseId)
+            }))
+        };
+    },
+
+    _normalizeWorkouts(arr) {
+        const okW = (w) => this._isObj(w) && (w.exercises === undefined || (Array.isArray(w.exercises) &&
+            w.exercises.every(ex => this._isObj(ex) && (ex.sets === undefined || (Array.isArray(ex.sets) && ex.sets.every(x => this._isObj(x)))))));
+        if (arr.every(okW)) return arr;
+        return arr.filter(w => this._isObj(w)).map(w => okW(w) ? w : {
+            ...w,
+            exercises: (Array.isArray(w.exercises) ? w.exercises : []).filter(ex => this._isObj(ex)).map(ex => ({
+                ...ex, sets: (Array.isArray(ex.sets) ? ex.sets : []).filter(x => this._isObj(x))
+            }))
+        });
+    },
+
+    /**
+     * Salva una scheda modificata dall'editor (R1-17). Se la STRUTTURA cambia (numero o tipi dei
+     * giorni) la scheda riceve un programId nuovo e quello vecchio va in metadata.previousProgramIds:
+     * getNextDayIndex riconosce le sedute vecchie dal tipo del giorno, non dall'indice (che è sfasato).
+     * Ciclo, numero del ciclo e il resto dei metadata restano. @returns la scheda salvata
+     */
+    saveEditedProgram(program) {
+        const TA = this._algo('programStructureChanged');
+        const old = this.getActiveProgram();
+        const p = this._clone(program);
+        if (!this._isObj(p) || !Array.isArray(p.days)) return null;
+        p.metadata = this._isObj(p.metadata) ? p.metadata : {};
+        const changed = TA ? TA.programStructureChanged(old, p) : true;
+        if (old && old.metadata && changed) {
+            const prevIds = Array.isArray(old.metadata.previousProgramIds) ? old.metadata.previousProgramIds.slice() : [];
+            if (old.metadata.programId != null && !prevIds.includes(old.metadata.programId)) prevIds.push(old.metadata.programId);
+            p.metadata.previousProgramIds = prevIds.slice(-10);
+            let id = Date.now();
+            if (String(id) === String(old.metadata.programId)) id++;
+            p.metadata.programId = id;
+        } else if (old && old.metadata && old.metadata.programId != null) {
+            p.metadata.programId = old.metadata.programId;
+            if (old.metadata.previousProgramIds) p.metadata.previousProgramIds = old.metadata.previousProgramIds;
+        }
+        this.setActiveProgram(p);
+        return p;
     },
 
     setActiveProgram(program) {
@@ -513,7 +681,7 @@ const Storage = {
     },
 
     clearActiveProgram() {
-        try { localStorage.removeItem(this.KEYS.ACTIVE_PROGRAM); } catch (e) { /* no-op */ }
+        this._remove(this.KEYS.ACTIVE_PROGRAM);
     },
 
     // ========================================
@@ -1142,7 +1310,9 @@ const Storage = {
         let nextRir = Number.isFinite(Number(o.targetRir)) && o.targetRir !== null ? Number(o.targetRir)
             : (phase && phase.rir ? (phase.phase === 'deload' ? 4 : (compound ? phase.rir.compound : phase.rir.isolation)) : prevRir);
         if (typeof TA._painTouches === 'function' && TA._painTouches(exerciseId, profile)) nextRir = Math.max(2, nextRir);
-        return TA.computeNextTarget({
+        // mai fatto: peso portato da un esercizio della stessa famiglia fatto di recente (rotazione, R3-05)
+        const related = sessions.length ? null : this._relatedLoad(exerciseId);
+        const sug = TA.computeNextTarget({
             exerciseId,
             range: [range.min, range.max],
             targetRir: prevRir,
@@ -1155,8 +1325,85 @@ const Storage = {
             now: new Date(),
             profile,
             phase: phase ? phase.phase : null,
-            loadFactor: phase ? phase.loadFactor : undefined
+            loadFactor: phase ? phase.loadFactor : undefined,
+            related
         });
+        // calibrazione rimandata da planCalibration: si fa alla prossima seduta (R3-06)
+        if (!sug.calibrate && sug.status !== 'deload' && this._calibrationQueue()[exerciseId] &&
+            !['bodyweight', 'bodyweight-loadable'].includes(this._loadType(exerciseId))) {
+            const r = this.parseRepRange(targetRepRange || (sessions[0] && sessions[0].targetReps));
+            sug.calibrate = true;
+            sug.calibrateQueued = true;
+            sug.testReps = Math.round((r.min + r.max) / 2);
+            sug.message = `Trova il peso: prova ${String(GT.round(sug.suggestedWeight, 0.01)).replace('.', ',')} kg × ${sug.testReps}`;
+        }
+        return sug;
+    },
+
+    /** Ultimo carico di un esercizio fatto di recente da cui convertire (stessa famiglia/schema, §7.2). */
+    _relatedLoad(exerciseId) {
+        const TA = this._algo('convertLoad');
+        if (!TA) return null;
+        const lt = this._loadType(exerciseId);
+        if (!lt || ['bodyweight', 'bodyweight-loadable', 'assisted'].includes(lt)) return null;
+        for (const id of this._recentExerciseIds(12)) {
+            if (id === exerciseId) continue;
+            const c = TA.convertLoad(id, exerciseId, 100);
+            if (!c || c.mode !== 'convert') continue;
+            const ses = this.getExerciseSessions(id, { limit: 1 })[0];
+            if (!ses) continue;
+            const w = Math.max(0, ...ses.sets.filter(x => x.completed && !x.isWarmup && !x.isCalibration && x.reps > 0).map(x => x.weight));
+            if (w > 0) return { exerciseId: id, weight: w, date: ses.date };
+        }
+        return null;
+    },
+
+    _calibrationQueue() {
+        const meta = this._read(this.KEYS.META, {}, v => this._isObj(v));
+        return this._isObj(meta.calibrationQueue) ? meta.calibrationQueue : {};
+    },
+
+    _setCalibrationQueue(q) {
+        const meta = this._read(this.KEYS.META, {}, v => this._isObj(v));
+        meta.calibrationQueue = q;
+        return this._tryWrite(this.KEYS.META, meta);
+    },
+
+    /**
+     * "Trova il peso" distribuito nelle sedute (R3-06): quali esercizi del giorno calibrare OGGI (al
+     * massimo 2-3, prima i multiarticolari principali); gli altri partono dalla stima e vengono messi in
+     * coda: alla seduta dopo il loro suggerimento ha `calibrate: true` (calibrateQueued).
+     * day: giorno della scheda ({exercises}) o array di esercizi ({exerciseId, reps|targetReps, role?, targetRir?}).
+     * opts: { goal, minutes (durata della seduta, default quella della scheda), max, dryRun (non mette in coda) }
+     * @returns {{ calibrate: string[], deferred: string[], extraMin: number, perExercise: [...] }}
+     */
+    planCalibration(day, opts = {}) {
+        const TA = this._algo('planCalibration');
+        const exs = (Array.isArray(day) ? day : (day && Array.isArray(day.exercises) ? day.exercises : [])).filter(e => e && e.exerciseId);
+        if (!TA || !exs.length) return { calibrate: [], deferred: [], extraMin: 0, perExercise: [] };
+        const o = opts || {};
+        const profile = this.getProfile();
+        const md = (this.getActiveProgram() || {}).metadata || {};
+        const goal = o.goal || md.goal || profile.goal || 'hypertrophy';
+        const roles = TA._rolesOf(exs);
+        const items = exs.map((ex, i) => {
+            const reps = ex.reps != null ? ex.reps : ex.targetReps;
+            let suggestion = null;
+            try {
+                const so = { level: profile.level };
+                if (Number.isFinite(Number(ex.targetRir)) && ex.targetRir !== null && ex.targetRir !== '') so.targetRir = Number(ex.targetRir);
+                suggestion = this.getProgressionSuggestion(ex.exerciseId, reps, goal, so);
+            } catch (e) { suggestion = null; }
+            return { exerciseId: ex.exerciseId, index: i, role: roles[i], reps, suggestion };
+        });
+        const plan = TA.planCalibration(items, { goal, level: profile.level, minutes: o.minutes != null ? o.minutes : md.sessionDuration, max: o.max });
+        if (!o.dryRun && plan.deferred.length) {
+            const q = { ...this._calibrationQueue() };
+            const now = new Date().toISOString();
+            plan.deferred.forEach(id => { if (!q[id]) q[id] = now; });
+            this._setCalibrationQueue(q);
+        }
+        return plan;
     },
 
     // v1.26 (ripiego se algorithm.js non ha computeNextTarget): doppia progressione sul TOP SET
@@ -1421,10 +1668,25 @@ const Storage = {
         return TA.nextCalibrationStep(exerciseId, st, this.getGymConfig());
     },
 
-    /** Rampa di riscaldamento del primo multiarticolare (§11) → [{kg, reps, pct}]. */
-    getWarmupSets(exerciseId, workingKg, targetReps, goal) {
+    /**
+     * Rampa di riscaldamento (§11) → [{kg, reps, pct}]. targetReps: le rep proposte (numero) o il range.
+     * opts.single: solo l'ultima serie (avvicinamento per il primo multiarticolare di un'altra regione,
+     * vedi TrainingAlgorithm.getRampPlan).
+     */
+    getWarmupSets(exerciseId, workingKg, targetReps, goal, opts = {}) {
         const TA = this._algo('buildWarmupSets');
-        return TA ? TA.buildWarmupSets(exerciseId, workingKg, targetReps, goal, this.getGymConfig()) : [];
+        return TA ? TA.buildWarmupSets(exerciseId, workingKg, targetReps, goal, this.getGymConfig(), opts || {}) : [];
+    },
+
+    /** Prossimo cardio della settimana (R3-14): tipo e minuti da `weekly`, più le note da mostrare. */
+    getNextCardio() {
+        const TA = this._algo('nextCardio');
+        if (!TA || typeof TA.generateConditioningSuggestions !== 'function') return null;
+        const program = this.getActiveProgram();
+        const profile = this.getProfile();
+        const goal = (program && program.metadata && program.metadata.goal) || profile.goal;
+        const sug = TA.generateConditioningSuggestions(goal, program, profile);
+        return TA.nextCardio(sug, this.getConditioningThisWeek());
     },
 
     /**
@@ -1562,30 +1824,76 @@ const Storage = {
     },
 
     /**
-     * Allinea la settimana del ciclo al calendario (senza superare l'ultima).
-     * @returns {{changed:boolean, from:number, to:number}|null}
+     * Settimane di lavoro saltate per intero (R3-13): la settimana persa si RIPETE, non si salta. Si sposta
+     * l'inizio del ciclo di 7 giorni per ogni settimana passata senza sedute (mai lo scarico, al massimo 2
+     * per ciclo: oltre, una pausa lunga la gestisce il rientro). Restituisce le settimane ripetute.
+     */
+    _repeatMissedWeeks(program) {
+        const cycle = this._getCycle(program);
+        if (!cycle || !GT.isValidDate(cycle.startDate)) return 0;
+        const duration = this._cycleDuration(cycle);
+        let repeated = this._int(cycle.repeatedWeeks) || 0;
+        let shifted = 0;
+        const workouts = this.getWorkouts().filter(w => !w.isFreeWorkout);
+        // dopo uno spostamento la settimana ripetuta è quella persa: si riparte a controllare da lì
+        let fromW = Math.max(1, this._int(cycle.currentWeek) || 1);
+        for (let guard = 0; guard < 4 && repeated < 2; guard++) {
+            const start = GT.startOfDay(cycle.startDate);
+            const days = GT.calendarDaysBetween(start, new Date());
+            const cal = isFinite(days) ? Math.floor(days / 7) + 1 : 1;
+            // la prima settimana già passata, dalla corrente in poi, senza nessuna seduta
+            let missed = 0;
+            for (let w = fromW; w < Math.min(cal, duration + 1); w++) {
+                const ph = this._phaseFor(cycle, w);
+                if (ph && ph.phase === 'deload') break;
+                const a = GT.addDays(start, (w - 1) * 7).getTime(), b = GT.addDays(start, w * 7).getTime();
+                if (!workouts.some(x => { const t = this._time(x.date); return t >= a && t < b; })) { missed = w; break; }
+            }
+            if (!missed) break;
+            fromW = missed;
+            cycle.startDate = GT.addDays(start, 7).toISOString();
+            if (cycle.weekStartedAt) delete cycle.weekStartedAt;
+            repeated++;
+            shifted++;
+        }
+        if (shifted) cycle.repeatedWeeks = repeated;
+        return shifted;
+    },
+
+    /**
+     * Allinea la settimana del ciclo al calendario (senza superare l'ultima). Una settimana di lavoro
+     * passata senza sedute si ripete (R3-13). Uno scarico anticipato ancora valido resta (R1-05).
+     * @returns {{changed:boolean, from:number, to:number, repeatedWeeks?:number}|null}
      */
     syncCycleWeek() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return null;
         const duration = this._cycleDuration(cycle);
         const from = Math.max(1, this._int(cycle.currentWeek) || 1);
-        const to = Math.min(this.getCalendarCycleWeek() || 1, duration);
-        if (to <= from) return { changed: false, from, to: from };
+        const repeated = this._repeatMissedWeeks(program);
+        const days = GT.calendarDaysBetween(cycle.startDate, new Date());
+        const cal = isFinite(days) ? Math.max(1, Math.floor(days / 7) + 1) : 1;
+        const to = Math.min(cal, duration);
+        if (to <= from) {
+            if (repeated) this.setActiveProgram(program);
+            return repeated ? { changed: true, from, to: from, repeatedWeeks: repeated } : { changed: false, from, to: from };
+        }
         cycle.currentWeek = to;
         cycle.weekStartedAt = GT.addDays(GT.startOfDay(cycle.startDate), (to - 1) * 7).toISOString();
-        cycle.isDeloadActive = false;
-        cycle.manualDeloadUntil = null;
+        if (!this._isManualDeload(cycle)) {
+            cycle.isDeloadActive = false;
+            cycle.manualDeloadUntil = null;
+        }
         this.setActiveProgram(program);
-        return { changed: true, from, to };
+        return repeated ? { changed: true, from, to, repeatedWeeks: repeated } : { changed: true, from, to };
     },
 
     /**
      * Advance cycle to next week (spegne il deload manuale).
      */
     advanceCycleWeek() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return null;
 
@@ -1630,11 +1938,14 @@ const Storage = {
      * con tutte le sessioni fatte.
      */
     shouldCompleteCycle() {
-        const program = this.getActiveProgram();
+        // con le settimane perse ripetute (R3-13), come farà syncCycleWeek: qui senza salvare
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return false;
+        this._repeatMissedWeeks(program);
         const duration = this._cycleDuration(cycle);
-        const calWeek = this.getCalendarCycleWeek() || 1;
+        const cdays = GT.calendarDaysBetween(cycle.startDate, new Date());
+        const calWeek = isFinite(cdays) ? Math.max(1, Math.floor(cdays / 7) + 1) : 1;
         if (calWeek > duration) return true;
 
         const current = Math.max(1, this._int(cycle.currentWeek) || 1);
@@ -1653,12 +1964,30 @@ const Storage = {
     },
 
     /**
+     * Proporre la fine del ciclo (R1-04)? Al massimo una volta al giorno, mai con una seduta aperta:
+     * quando restituisce true registra la data (meta.cycleEndPromptedOn).
+     */
+    shouldPromptCycleEnd() {
+        let open = null;
+        try { open = this.getActiveSession(); } catch (e) { open = null; }
+        if (open) return false;
+        if (!this.shouldCompleteCycle()) return false;
+        const meta = this._read(this.KEYS.META, {}, v => this._isObj(v));
+        const today = GT.dateKey(new Date());
+        if (meta.cycleEndPromptedOn === today) return false;
+        meta.cycleEndPromptedOn = today;
+        this._tryWrite(this.KEYS.META, meta);
+        return true;
+    },
+
+    /**
      * Deload manuale/anticipato per 7 giorni: scade da solo, advanceCycleWeek lo spegne.
      */
     startManualDeload() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return false;
+        if (!this._isManualDeload(cycle)) cycle.earlyDeloads = (this._int(cycle.earlyDeloads) || 0) + 1;   // per il volume del ciclo dopo (§12.5)
         cycle.manualDeloadUntil = GT.addDays(new Date(), 7).toISOString();
         cycle.isDeloadActive = true;
         this.setActiveProgram(program);
@@ -1666,7 +1995,7 @@ const Storage = {
     },
 
     stopManualDeload() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return false;
         cycle.manualDeloadUntil = null;
@@ -1729,7 +2058,7 @@ const Storage = {
      * Reset cycle (stessa scheda, settimana 1). Per la chiusura vera usare completeCycle().
      */
     resetCycle() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (!cycle) return null;
 
@@ -1738,6 +2067,7 @@ const Storage = {
         cycle.isDeloadActive = false;
         cycle.manualDeloadUntil = null;
         delete cycle.weekStartedAt;
+        delete cycle.repeatedWeeks;
 
         this.setActiveProgram(program);
         return this.getCycleInfo();
@@ -1825,7 +2155,9 @@ const Storage = {
                 const profile = this.getProfile();
                 // Livello: quello scelto nel profilo; se il profilo non è mai stato salvato, quello della scheda
                 if (!raw.level && md.level) profile.level = md.level;
-                const res = TrainingAlgorithm.rotateProgram(this._clone(program), profile);
+                // adesione, scarichi anticipati e progressi decidono il volume del ciclo dopo (§12.5)
+                const res = TrainingAlgorithm.rotateProgram(this._clone(program), profile, statistics ?
+                    { adherence: statistics.adherence, earlyDeloads: statistics.earlyDeloads, progressedPct: statistics.progressedPct } : null);
                 if (res && this._isObj(res.program) && Array.isArray(res.program.days)) {
                     newProgram = res.program;
                     rotation = { added: this._normalizeAdded(res.added), removed: this._normalizeAdded(res.removed) };
@@ -1860,6 +2192,8 @@ const Storage = {
         cycle.isDeloadActive = false;
         cycle.manualDeloadUntil = null;
         delete cycle.weekStartedAt;
+        delete cycle.earlyDeloads;
+        delete cycle.repeatedWeeks;
         nm.cycle = cycle;
         nm.cycleNumber = oldNumber + 1;
 
@@ -1886,6 +2220,48 @@ const Storage = {
     /**
      * Get statistics for current cycle
      */
+    /**
+     * Dati per il volume del ciclo dopo (§12.5, R3-18): adesione (sedute fatte / previste nelle settimane
+     * di lavoro trascorse), scarichi anticipati, quota di esercizi in progresso (indice di prestazione
+     * kg × (1 + (rep + RIR)/30) dell'ultima seduta > della prima, caricati a ripetizioni).
+     */
+    _cycleRotationStats(cycleInfo, workouts) {
+        const out = { adherence: null, earlyDeloads: this._int(cycleInfo.earlyDeloads) || 0, progressedPct: null };
+        const start = GT.startOfDay(cycleInfo.startDate);
+        const weeks = Math.min(cycleInfo.currentWeek, cycleInfo.duration);
+        const workWeeks = [];
+        for (let w = 1; w <= weeks; w++) {
+            const ph = (cycleInfo.phases || []).find(p => p && p.week === w);
+            if (!ph || ph.phase !== 'deload') workWeeks.push(w);
+        }
+        const inWork = workouts.filter(x => {
+            if (x.isFreeWorkout) return false;
+            const t = this._time(x.date);
+            return workWeeks.some(w => t >= GT.addDays(start, (w - 1) * 7).getTime() && t < GT.addDays(start, w * 7).getTime());
+        });
+        const planned = workWeeks.length * this._daysPerWeek(this.getActiveProgram());
+        if (planned > 0) out.adherence = Math.round(Math.min(1, inWork.length / planned) * 100) / 100;
+        const TA = this._algo('getExerciseMeta');
+        const pi = {};
+        inWork.slice().sort((a, b) => this._time(a.date) - this._time(b.date)).forEach(w => (w.exercises || []).forEach(ex => {
+            if (!ex || !ex.exerciseId) return;
+            const m = TA ? TA.getExerciseMeta(ex.exerciseId) : null;
+            if (!m || m.metric === 'time' || ['bodyweight', 'bodyweight-loadable', 'assisted'].includes(m.loadType)) return;
+            let best = 0;
+            (ex.sets || []).forEach(st => {
+                if (!st || !st.completed || st.isWarmup || st.isCalibration) return;
+                const kg = this._num(st.weight), r = this._int(st.reps);
+                if (!(kg > 0) || !(r > 0)) return;
+                const rir = Number.isFinite(Number(st.rir)) && st.rir !== '' && st.rir !== null ? Number(st.rir) : 2;
+                best = Math.max(best, kg * (1 + (r + rir) / 30));
+            });
+            if (best > 0) (pi[ex.exerciseId] = pi[ex.exerciseId] || []).push(best);
+        }));
+        const evald = Object.values(pi).filter(l => l.length >= 2);
+        if (evald.length) out.progressedPct = Math.round(evald.filter(l => l[l.length - 1] > l[0] + 1e-9).length / evald.length * 100) / 100;
+        return out;
+    },
+
     getCycleStatistics() {
         const cycleInfo = this.getCycleInfo();
         if (!cycleInfo) return null;
@@ -1893,9 +2269,11 @@ const Storage = {
         const start = GT.startOfDay(cycleInfo.startDate);
         const startT = this._time(start);
         const workouts = isNaN(startT) ? [] : this.getWorkouts().filter(w => this._time(w.date) >= startT);
+        const rot = this._cycleRotationStats(cycleInfo, workouts);
 
         if (workouts.length === 0) {
             return {
+                ...rot,
                 totalWorkouts: 0,
                 totalVolume: 0,
                 totalSets: 0,
@@ -1948,6 +2326,7 @@ const Storage = {
         }
 
         return {
+            ...rot,
             totalWorkouts: workouts.length,
             totalVolume: Math.round(totalVolume),
             totalSets,
@@ -2151,8 +2530,10 @@ const Storage = {
     // Chiavi di progresso: con un backup schemaVersion ≥ 2, se mancano si svuotano
     _PROGRESS_FIELDS: ['workouts', 'personalRecords', 'streak', 'cycleHistory', 'conditioning', 'measurements'],
 
+    // Le copie dei dati rotti (corrupt_*) si esportano (R1-20: erano l'unica copia di dati persi) ma non
+    // si reimportano come chiavi vive: tornano come corrupt_* (vedi importAllData)
     _isExcludedFromExport(key) {
-        return key === this.KEYS.ACTIVE_SESSION || key === this.KEYS.META || key.indexOf(this.CORRUPT_PREFIX) === 0;
+        return key === this.KEYS.ACTIVE_SESSION || key === this.KEYS.META || key === 'gymtracker_dev_freeze';
     },
 
     _typeOk(v, type) {
@@ -2243,10 +2624,12 @@ const Storage = {
             try { snapshot[k] = localStorage.getItem(k); } catch (e) { /* no-op */ }
         });
 
+        this._cacheDrop();
         try {
             writes.forEach(([k, v, isRaw]) => localStorage.setItem(k, isRaw ? v : JSON.stringify(v)));
             removes.forEach(k => localStorage.removeItem(k));
         } catch (e) {
+            this._cacheDrop();
             // Rollback: tutto come prima
             try {
                 const touched = new Set([...writes.map(w => w[0]), ...removes]);
@@ -2260,6 +2643,7 @@ const Storage = {
             return false;
         }
 
+        this._cacheDrop();
         // Dopo l'import: dati derivati e migrazioni (errori qui non annullano l'import)
         try { this._migrateProgramCycle(); } catch (e) { /* no-op */ }
         try { if (data.workouts !== undefined) this.rebuildPersonalRecords(); } catch (e) { /* no-op */ }
@@ -2269,9 +2653,8 @@ const Storage = {
 
     /** Cancella TUTTI i dati dell'app (richiesta esplicita dell'utente). */
     clearAllData() {
-        this._allAppKeys().forEach(key => {
-            try { localStorage.removeItem(key); } catch (e) { /* no-op */ }
-        });
+        this._allAppKeys().forEach(key => this._remove(key));
+        this._cacheDrop();
     },
 
     /**
@@ -2280,9 +2663,9 @@ const Storage = {
      */
     clearProgressData() {
         [this.KEYS.WORKOUTS, this.KEYS.PERSONAL_RECORDS, this.KEYS.STREAK, this.KEYS.CYCLE_HISTORY, this.KEYS.CONDITIONING]
-            .forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* no-op */ } });
+            .forEach(k => this._remove(k));
 
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         const cycle = this._getCycle(program);
         if (cycle) {
             cycle.currentWeek = 1;
@@ -2301,20 +2684,43 @@ const Storage = {
     /** Salva la sessione in corso (a ogni modifica). Restituisce false se non riesce, senza lanciare. */
     saveActiveSession(obj) {
         try {
-            localStorage.setItem(this.KEYS.ACTIVE_SESSION, JSON.stringify({ ...(obj || {}), savedAt: new Date().toISOString() }));
-            return true;
+            return this._write(this.KEYS.ACTIVE_SESSION, { ...(obj || {}), savedAt: new Date().toISOString() });
         } catch (e) {
             this.lastError = e;
             return false;
         }
     },
 
+    /**
+     * Sessione in corso, normalizzata (R1-18): workout oggetto con esercizi oggetto (exerciseId testo) e
+     * serie oggetto. Se non è recuperabile (niente esercizi validi) viene cancellata e si restituisce null:
+     * non si riprova a ogni avvio.
+     */
     getActiveSession() {
-        return this._read(this.KEYS.ACTIVE_SESSION, null, v => v === null || this._isObj(v));
+        const s = this._read(this.KEYS.ACTIVE_SESSION, null, v => v === null || this._isObj(v));
+        if (!s) return null;
+        let norm = null;
+        try { norm = this._normalizeSession(s); } catch (e) { norm = null; }
+        if (!norm) { this.clearActiveSession(); return null; }
+        return norm;
+    },
+
+    _normalizeSession(s) {
+        const w = s && s.workout;
+        if (!this._isObj(w)) return null;
+        const exercises = (Array.isArray(w.exercises) ? w.exercises : [])
+            .filter(ex => this._isObj(ex) && typeof ex.exerciseId === 'string' && ex.exerciseId)
+            .map(ex => {
+                const out = { ...ex };
+                ['setsData', 'sets'].forEach(k => { if (Array.isArray(out[k])) out[k] = out[k].filter(x => this._isObj(x)); else if (k in out && !Array.isArray(out[k]) && typeof out[k] !== 'number') delete out[k]; });
+                return out;
+            });
+        if (!exercises.length) return null;
+        return { ...s, workout: { ...w, exercises } };
     },
 
     clearActiveSession() {
-        try { localStorage.removeItem(this.KEYS.ACTIVE_SESSION); } catch (e) { /* no-op */ }
+        this._remove(this.KEYS.ACTIVE_SESSION);
     },
 
     // ========================================
@@ -2459,7 +2865,7 @@ const Storage = {
 
     // Vecchio deload anticipato "per sempre" (isDeloadActive senza scadenza) → 7 giorni da ora
     _migrateProgramCycle() {
-        const program = this.getActiveProgram();
+        const program = this._programCopy();
         // Scheda della v1.25 senza programId: gliene serve uno perché i workout nuovi lo portino
         // (getNextDayIndex). I workout vecchi restano senza e si riconoscono dal tipo del giorno.
         if (program && this._isObj(program.metadata) && program.metadata.programId === undefined) {
@@ -2487,10 +2893,54 @@ const Storage = {
      * - streak a giorni → a settimane (il vecchio record resta in legacyDaysBest);
      * - PR ricalcolati dagli allenamenti (la copia vecchia resta in gymtracker_meta.prsBeforeV126).
      */
+    /**
+     * Ciclo della v1.25 (fasi senza `rir`, nessuna `version`) già oltre la sua durata (R1-04): si
+     * riallinea UNA volta (settimana 1 da questo lunedì), tenendo lo scarico manuale migrato.
+     * @returns {boolean} riallineato adesso
+     */
+    _realignLegacyCycle(meta) {
+        if (meta.legacyCycleRealignedAt) return false;
+        const program = this.getActiveProgram();
+        const cycle = this._getCycle(program);
+        if (!cycle || cycle.version === 2 || cycle.phases.some(p => p && p.rir)) return false;
+        const days = GT.calendarDaysBetween(cycle.startDate, new Date());
+        const cal = isFinite(days) ? Math.floor(days / 7) + 1 : 1;
+        // (più di una settimana intera oltre la fine: chi ha appena finito il ciclo lo chiude normalmente)
+        if (cal <= this._cycleDuration(cycle) + 1) return false;
+        const keepUntil = this._isManualDeload(cycle) ? cycle.manualDeloadUntil : null;
+        this.resetCycle();
+        if (keepUntil) {
+            const p2 = this._programCopy();
+            const c2 = this._getCycle(p2);
+            c2.manualDeloadUntil = keepUntil;
+            c2.isDeloadActive = true;
+            this.setActiveProgram(p2);
+        }
+        meta.legacyCycleRealignedAt = new Date().toISOString();
+        return true;
+    },
+
+    // Esercizi a tempo (plank…) con un range da ripetizioni della v1.25 ("8-12" = 8-12 s): 30-45 s (R1-15)
+    _fixTimedRanges() {
+        const program = this._programCopy();
+        if (!program || !Array.isArray(program.days)) return false;
+        let changed = false;
+        program.days.forEach(d => (d && Array.isArray(d.exercises) ? d.exercises : []).forEach(ex => {
+            const db = this._exercise(ex && ex.exerciseId);
+            if (!db || db.metric !== 'time') return;
+            const r = this.parseRepRange(String(ex.reps == null ? '' : ex.reps));
+            if (r.max < 15) { ex.reps = '30-45'; changed = true; }
+        }));
+        if (changed) this._tryWrite(this.KEYS.ACTIVE_PROGRAM, program);
+        return changed;
+    },
+
     migrate() {
         const meta = this._read(this.KEYS.META, {}, v => this._isObj(v));
         try { this._migrateProgramCycle(); } catch (e) { /* no-op */ }
         try { this.getStreak(); } catch (e) { /* no-op */ }
+        try { this._fixTimedRanges(); } catch (e) { /* no-op */ }
+        try { if (this._realignLegacyCycle(meta)) this._tryWrite(this.KEYS.META, meta); } catch (e) { /* no-op */ }
         if ((this._int(meta.schemaVersion) || 1) < this.SCHEMA_VERSION) {
             try {
                 const oldPrs = localStorage.getItem(this.KEYS.PERSONAL_RECORDS);
@@ -2508,6 +2958,13 @@ const Storage = {
         return meta;
     }
 };
+
+// Un'altra scheda del browser ha cambiato i dati: la cache in memoria non vale più (R1-10)
+try {
+    if (typeof window !== 'undefined' && window && typeof window.addEventListener === 'function') {
+        window.addEventListener('storage', (e) => Storage._cacheDrop(e && e.key ? e.key : undefined));
+    }
+} catch (e) { /* no-op */ }
 
 // Migrazione all'avvio: protetta, l'app parte comunque
 try { Storage.migrate(); } catch (e) { try { console.warn('[Storage] migrazione', e); } catch (x) { /* no-op */ } }
