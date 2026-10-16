@@ -1425,6 +1425,21 @@ test('Timer: durata allenamento a timestamp e ripresa da un orario salvato', () 
     ok(!T.isRestRunning() && !T.workoutTimer, 'stopAll ferma tutto');
 });
 
+test('Migrazione: ciclo v1.25 con fasi sbagliate (durata 5, 6 fasi) → 5 fasi con scarico finale', () => {
+    const ph = (week, phase) => ({ week, phase, phaseName: phase, rirTarget: phase === 'deload' ? { min: 4, max: 5 } : (phase === 'intensification' ? { min: 0, max: 2 } : { min: 2, max: 4 }), volumeMultiplier: phase === 'deload' ? 0.5 : (phase === 'intensification' ? 0.9 : 1) });
+    const program = { name: 'Upper/Lower', days: [{ name: 'Upper A', type: 'Upper A', exercises: [{ exerciseId: 'bench-press', name: 'Panca', sets: 3, reps: '8-12', rest: 120 }] }],
+        metadata: { goal: 'hypertrophy', split: 'upper-lower', daysPerWeek: 4, level: 'intermediate',
+            cycle: { duration: 5, currentWeek: 1, startDate: new Date(2026, 9, 12).toISOString(), isDeloadActive: false,
+                phases: ['accumulation', 'accumulation', 'accumulation', 'intensification', 'intensification', 'deload'].map((p, i) => ph(i + 1, p)) } } };
+    const env = makeEnv({ seed: { gymtracker_active_program: program } });
+    const c = env.S.getCycleInfo();
+    eq(c.phases.length, 5);
+    eq(c.phases.map(p => p.phase), ['accumulation', 'accumulation', 'intensification', 'intensification', 'deload']);
+    eq(c.phases.map(p => p.week), [1, 2, 3, 4, 5]);
+    env.S.migrate();
+    eq(env.S.getCycleInfo().phases.length, 5);
+});
+
 test('Storage.requestPersistence chiama navigator.storage.persist una volta', async () => {
     const env = makeEnv();
     let n = 0;

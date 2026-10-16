@@ -2874,6 +2874,20 @@ const Storage = {
         }
         const cycle = this._getCycle(program);
         if (!cycle) return false;
+        // Ciclo della v1.25 con le fasi sbagliate (bug A3: durata 3 o 5 → d+1 fasi, lo scarico
+        // non arrivava mai): si rifanno le fasi sulla durata vera, ultima settimana di scarico.
+        const d = this._int(cycle.duration);
+        if (d > 1 && Array.isArray(cycle.phases) && cycle.phases.length !== d) {
+            const old = cycle.phases.filter(p => this._isObj(p));
+            const intensification = Math.max(1, Math.round((d - 1) * 0.4));
+            const accumulation = Math.max(0, d - 1 - intensification);
+            cycle.phases = Array.from({ length: d }, (_, i) => {
+                const kind = i < accumulation ? 'accumulation' : (i < d - 1 ? 'intensification' : 'deload');
+                const tpl = old.find(p => p.phase === kind) || { phase: kind };
+                return { ...tpl, week: i + 1 };
+            });
+            this.setActiveProgram(program);
+        }
         if (cycle.isDeloadActive === true && cycle.manualDeloadUntil === undefined) {
             cycle.manualDeloadUntil = GT.addDays(new Date(), 7).toISOString();
             this.setActiveProgram(program);
