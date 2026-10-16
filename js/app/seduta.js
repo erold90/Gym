@@ -1087,7 +1087,7 @@ Object.assign(App, {
                 if (ids.length >= 2 || ids.includes(ex.exerciseId)) return;
                 if ((ex.type || EXERCISES_DB[ex.exerciseId]?.type) !== 'compound') return;
                 const sug = this._exerciseContext(ex).suggestion;
-                if (sug?.status === 'new' && sug.calibrate) ids.push(ex.exerciseId);
+                if (sug?.calibrate) ids.push(ex.exerciseId);
             });
         }
         workout.calibPlan = [...new Set(ids)];
@@ -1364,7 +1364,7 @@ Object.assign(App, {
         const sug = this._exerciseContext(exercise).suggestion;
         const anyDone = exercise.setsData.some(s => s.completed);
         // "Trova il peso" solo sugli esercizi scelti per questa seduta (R3-06); gli altri partono dalla stima
-        if (!anyDone && sug?.status === 'new' && sug.calibrate && !exercise.calib && !Number.isFinite(Number(exercise.presetKg)) && this._calibPlanned(exercise)) {
+        if (!anyDone && sug?.calibrate && !exercise.calib && !Number.isFinite(Number(exercise.presetKg)) && this._calibPlanned(exercise)) {
             if (this._startCalibration(exercise, { seedKg: w0, testReps: sug.testReps })) return;
         }
         if (!anyDone && exercise.wantsRamp && !exercise.rampBuilt && !exercise.calib) this._buildRamp(exercise);
@@ -2103,8 +2103,8 @@ Object.assign(App, {
             } else {
                 // "Trova il peso" non previsto oggi per questo esercizio (R3-06): parte dalla stima, la
                 // prova resta a richiesta
-                const deferred = sug.status === 'new' && sug.calibrate && !this._calibPlanned(ex);
-                const canFind = free && sug.status === 'new' && (!sug.calibrate || deferred);
+                const deferred = !!sug.calibrate && !this._calibPlanned(ex);
+                const canFind = free && (sug.status === 'new' || sug.calibrate) && (!sug.calibrate || deferred);
                 let msg = sug.message;
                 if (deferred) {
                     const kg = GT.num(ex.setsData.find(s => this._isWork(s))?.weight);
