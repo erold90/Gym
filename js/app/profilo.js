@@ -511,7 +511,6 @@ Object.assign(App, {
             <div class="field"><span class="label" id="pf-wd-l">Quali giorni · facoltativo</span>
                 <div class="wd" role="group" aria-labelledby="pf-wd-l" id="pf-wdays">${this._weekdayChips(td0, 'data-wd')}</div>
                 <p class="pf-hint" id="pf-wd-hint">${td0.length ? 'Oggi ti dice quando riposare' : 'Nessun giorno fisso: decidi tu'}</p></div>
-            <div class="field"><span class="label" id="pf-tm-l">Orario abituale · facoltativo</span>${this._oggiTimePicker('pf-tm', this._oggiTimeOk(p.trainingTime) ? p.trainingTime : '', 'pf-tm-l')}</div>
             <div class="field"><span class="label" id="pf-min-l">Minuti a seduta</span>${pick('min', [30, 45, 60, 75, 90], p.sessionTime || 60, 'min')}</div>
             <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`,
         {
@@ -522,12 +521,6 @@ Object.assign(App, {
                     this._suggestRegen(`${now.daysPerWeek} giorni × ${now.sessionTime} min`, () => true);
                 }
             }
-        });
-        // Orario abituale: un tocco sceglie, un secondo tocco sulla stessa ora la toglie
-        const syncTm = this._oggiTimeBind(root, 'pf-tm', (time, chip) => {
-            const cur = Storage.getProfile().trainingTime || '';
-            const next = chip && time === cur ? '' : time;
-            if (this._saveProfilePatch({ trainingTime: next })) syncTm(next);
         });
         const syncWd = () => {
             const td = this._trainingDays();

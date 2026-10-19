@@ -16,11 +16,16 @@ Object.assign(App, {
             <div class="wide">
                 <div class="col">
                     <section class="today" id="quick-action" aria-labelledby="quick-action-title">
+                        <button type="button" class="oggi-now" id="oggi-now" hidden>
+                            <span class="oggi-now__ico">${this.ico('pill')}</span>
+                            <span class="oggi-now__txt" id="oggi-now-txt"></span>
+                            <span class="oggi-now__mark">${this.ico('check')}</span>
+                        </button>
                         <div class="today__eyebrow"><span class="cap" id="today-date"></span></div>
                         <div>
                             <h1 class="today__name" id="quick-action-title">Oggi</h1>
                             <p class="today__focus" id="quick-action-subtitle"></p>
-                            <button type="button" class="today__time" id="oggi-time" hidden></button>
+                            <div class="today__time" id="oggi-time" hidden></div>
                         </div>
                         <p class="today__meta muted" id="today-meta"></p>
                         <ul class="thumbs" id="today-thumbs" aria-label="Primi esercizi"></ul>
@@ -175,7 +180,12 @@ Object.assign(App, {
         });
         on('oggi-backup-btn', 'click', () => this._oggiOpenBackup());
         on('oggi-supp', 'click', () => this._oggiSuppOpen());
-        on('oggi-time', 'click', () => this._oggiTimeOpen());
+        on('oggi-time', 'click', (e) => this._oggiTimeClick(e));
+        on('oggi-now', 'click', () => this._oggiNowTake());
+        // Di ritorno nell'app: la riga "Adesso" segue l'ora
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.currentPage === 'oggi') this._safe(() => this._oggiNowRow());
+        });
         on('oggi-deload-yes', 'click', () => this._oggiAcceptEarly());
         on('oggi-deload-no', 'click', () => this._oggiDismissEarly());
         on('oggi-cycle-close', 'click', () => {
@@ -217,6 +227,7 @@ Object.assign(App, {
             () => this.updateRecentActivity(),
             () => this.updateOggiConditioning(),
             () => this._oggiSuppRow(),
+            () => this._oggiNowRow(),
             () => this.updateBackupReminder(),
             () => this.updateEarlyDeload(),
             () => this._maybePromptCycleEnd()
@@ -2114,17 +2125,20 @@ Object.assign(App, {
 
 // ========================================
 // INTEGRATORI E ORARIO DELL'ALLENAMENTO (Oggi). Li usano anche Profilo (_pfSupp…) e Seduta (_sedSupp…).
-// Dati: Storage.getSupplements / getSupplementsTaken / setSupplementTaken; orario abituale
-// profile.trainingTime ('HH:MM' | ''), solo per oggi settings.todayTrainingTime {date, time}
-// (scade da solo: il giorno dopo non vale più e si toglie).
+// Dati: Storage.getSupplements / getSupplementsTaken / setSupplementTaken. Orario di oggi, in ordine:
+// scelto in Oggi (settings.todayTrainingTime {date, time}; time '' = tolto per oggi; il giorno dopo scade)
+// → previsto dalle ultime sedute (mediana delle ore d'inizio) → profile.trainingTime (solo dati vecchi).
+// "Adesso" in cima a Oggi: voci Prima da orario −45' all'inizio, voci Dopo per 2 ore dalla fine.
 // ========================================
 
 Object.assign(App, {
     OGGI_SUPP_WHEN: [['colazione', 'Colazione'], ['pranzo', 'Pranzo'], ['pre', 'Prima'], ['post', 'Dopo'], ['sera', 'Sera']],
     // Ora indicativa dei pasti (minuti): Prima/Dopo vanno davanti al primo pasto che viene dopo l'inizio
     OGGI_SUPP_MEAL_MIN: { colazione: 8 * 60, pranzo: 13 * 60 + 30, sera: 20 * 60 + 30 },
-    OGGI_TIME_CHIPS: [['07:00', 'Mattina'], ['13:00', 'Pranzo'], ['18:00', 'Sera']],
+    OGGI_TIME_ASK: ['07:00', '13:00', '18:00'],
     OGGI_PRE_MIN: 45,
+    OGGI_POST_MIN: 120,
+    OGGI_LEARN_N: 6,
 
     _oggiTimeOk(t) {
         return typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
@@ -2143,78 +2157,308 @@ Object.assign(App, {
         return d;
     },
 
-    // Orario dell'allenamento di oggi: {time, today} (today = cambiato solo per oggi) o null
-    _oggiTrainTime() {
-        const s = Storage.getSettings().todayTrainingTime;
-        if (s && typeof s === 'object') {
-            if (s.date === GT.dateKey(new Date()) && this._oggiTimeOk(s.time)) return { time: s.time, today: true };
-            this._safe(() => Storage.saveSettings({ todayTrainingTime: null }));   // di un altro giorno: scaduto
+    // 'HH:MM' spostato di min minuti (anche negativi), sulle 24 ore
+    _oggiTimeAdd(t, min) {
+        const [h, m] = t.split(':').map(Number);
+        const x = ((((h * 60 + m + min) % 1440) + 1440) % 1440);
+        const p = n => String(n).padStart(2, '0');
+        return `${p(Math.floor(x / 60))}:${p(x % 60)}`;
+    },
+
+    // Inizio vero di una seduta salvata: startTime se c'è, altrimenti fine (date) − durata
+    _oggiWorkoutStart(w) {
+        if (!w) return null;
+        const st = Number(w.startTime) || Date.parse(w.startTime);
+        if (Number.isFinite(st) && st > 0) return new Date(st);
+        if (!GT.isValidDate(w.date)) return null;
+        const dur = Number(w.duration) || 0;   // secondi
+        return new Date(new Date(w.date).getTime() - (dur > 0 && dur < 6 * 3600 ? dur * 1000 : 0));
+    },
+
+    // Ora prevista: mediana delle ore d'inizio delle ultime 6 sedute non libere, al quarto d'ora ('' senza
+    // storico). Una lettura per giro di disegno: la usano riga, foglio, integratori e "Adesso"
+    _oggiTimeLearned() {
+        if (this._oggiLearnMemo !== undefined) return this._oggiLearnMemo;
+        const mins = [];
+        for (const w of Storage.getRecentWorkouts(40)) {
+            if (!w || w.isFreeWorkout) continue;
+            const d = this._oggiWorkoutStart(w);
+            if (!d || isNaN(d.getTime())) continue;
+            mins.push(d.getHours() * 60 + d.getMinutes());
+            if (mins.length >= this.OGGI_LEARN_N) break;
         }
+        let out = '';
+        if (mins.length) {
+            mins.sort((a, b) => a - b);
+            const k = mins.length >> 1;
+            const med = mins.length % 2 ? mins[k] : (mins[k - 1] + mins[k]) / 2;
+            out = this._oggiTimeAdd('00:00', Math.round(med / 15) * 15);
+        }
+        this._oggiLearnMemo = out;
+        Promise.resolve().then(() => { this._oggiLearnMemo = undefined; });
+        return out;
+    },
+
+    // Orario previsto senza le scelte di oggi: dalle sedute, o quello abituale dei dati vecchi
+    _oggiTimeUsual() {
+        const l = this._oggiTimeLearned();
+        if (l) return { time: l, today: false, learned: true };
         const p = Storage.getProfile().trainingTime;
         return this._oggiTimeOk(p) ? { time: p, today: false } : null;
     },
 
+    // Orario dell'allenamento di oggi: {time, today, learned} (today = scelto per oggi) o null
+    _oggiTrainTime() {
+        const s = Storage.getSettings().todayTrainingTime;
+        if (s && typeof s === 'object') {
+            if (s.date === GT.dateKey(new Date())) return this._oggiTimeOk(s.time) ? { time: s.time, today: true } : null;
+            this._safe(() => Storage.saveSettings({ todayTrainingTime: null }));   // di un altro giorno: scaduto
+        }
+        return this._oggiTimeUsual();
+    },
+
+    // 'HH:MM' = vale per oggi · '' = tolto per oggi
     _oggiSetTodayTime(time) {
-        const v = this._oggiTimeOk(time) ? { date: GT.dateKey(new Date()), time } : null;
+        const v = { date: GT.dateKey(new Date()), time: this._oggiTimeOk(time) ? time : '' };
         return this._save(() => Storage.saveSettings({ todayTrainingTime: v }), 'Orario NON salvato') !== false;
     },
 
-    // "Alle 18:00" sotto il focus (solo con la seduta di oggi da fare)
+    // Giorno di allenamento: oggi è un giorno fisso; senza giorni fissi, finché la seduta di oggi non è fatta
+    _oggiIsTrainDay() {
+        const td = this._trainingDays();
+        return td.length ? td.includes(this._isoWeekday()) : !this._oggiDoneToday();
+    },
+
+    // Sotto il focus, solo con la seduta di oggi da fare: "Oggi alle 18:00" o "A che ora ti alleni?" 07 · 13 · 18 · Altro
     _oggiTimeLine(show) {
         const el = document.getElementById('oggi-time');
         if (!el) return;
-        const t = show ? this._oggiTrainTime() : null;
-        el.hidden = !t;
-        if (!t) return;
-        el.innerHTML = `${this.ico('clock', 'ico--sm')}<span>Alle <span class="num">${GT.esc(t.time)}</span>${t.today ? ' · solo oggi' : ''}</span>`;
+        el.hidden = !show;
+        if (!show) {
+            el.innerHTML = '';
+            return;
+        }
+        const t = this._oggiTrainTime();
+        el.innerHTML = t
+            ? `<button type="button" class="tm-now" data-tm-open>${this.ico('clock', 'ico--sm')}<span>Oggi alle <span class="num">${GT.esc(t.time)}</span></span></button>`
+            : `<div class="tm-ask"><span class="tm-ask__q" id="oggi-tm-q">${this.ico('clock', 'ico--sm')}A che ora ti alleni?</span><span class="tm-ask__chips" role="group" aria-labelledby="oggi-tm-q">${
+                this.OGGI_TIME_ASK.map(x => `<button type="button" class="chip tm-chip" data-tm-set="${x}"><span class="num">${x.slice(0, 2)}</span><span class="sr-only">${x.slice(2)}</span></button>`).join('')
+            }<button type="button" class="chip tm-chip" data-tm-other>Altro</button></span></div>`;
     },
 
-    // Chip Mattina 07:00 · Pranzo 13:00 · Sera 18:00 + ora libera (anche nel foglio "Giorni e durata")
-    _oggiTimePicker(idp, cur, labelId) {
-        const chips = this.OGGI_TIME_CHIPS.map(([t, l]) => `<button type="button" role="radio" aria-checked="${cur === t}" data-tm="${t}">${t}<small>${l}</small></button>`).join('');
-        return `<div class="pick tm-pick" style="--n:3" role="radiogroup" ${labelId ? `aria-labelledby="${labelId}"` : 'aria-label="Orario"'} id="${idp}-chips">${chips}</div>
-            <div class="field"><label for="${idp}-in">Altra ora</label><input class="input num" type="time" id="${idp}-in" value="${GT.esc(cur || '')}"></div>`;
+    _oggiTimeClick(e) {
+        const set = e.target.closest('[data-tm-set]');
+        if (set) {
+            if (!this._oggiSetTodayTime(set.dataset.tmSet)) return;
+            this.loadDashboard();
+            document.querySelector('#oggi-time [data-tm-open]')?.focus({ preventScroll: true });
+            return;
+        }
+        if (e.target.closest('[data-tm-other]')) this._oggiTimeOpen();
+        else if (e.target.closest('[data-tm-open]')) this._oggiTimeOpen();
     },
 
-    // onPick(time | '') a ogni scelta; restituisce sync(time) per ridisegnare chip e campo
-    _oggiTimeBind(root, idp, onPick) {
-        const chips = root.querySelector(`#${idp}-chips`);
-        const input = root.querySelector(`#${idp}-in`);
-        const sync = (t) => {
-            chips?.querySelectorAll('[data-tm]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tm === t)));
-            if (input && input.value !== t) input.value = t || '';
-        };
-        chips?.addEventListener('click', (e) => {
-            const b = e.target.closest('[data-tm]');
-            if (b) onPick(b.dataset.tm, true);
-        });
-        input?.addEventListener('change', () => onPick(this._oggiTimeOk(input.value) ? input.value : '', false));
-        return sync;
+    // Chip del foglio: previsto, −1 h, +1 h, 07:00 (senza doppioni, in ordine di ora) → [['18:00', 'Previsto'], …]
+    _oggiTimeChips(t) {
+        const usual = this._oggiTimeUsual();
+        const base = (usual || t).time;
+        const seen = new Map();
+        [[base, usual ? 'Previsto' : 'Scelto'], [this._oggiTimeAdd(base, -60), '−1 h'], [this._oggiTimeAdd(base, 60), '+1 h'], ['07:00', 'Mattina']]
+            .forEach(([x, l]) => { if (!seen.has(x)) seen.set(x, l); });
+        return [...seen].sort((a, b) => a[0].localeCompare(b[0]));
     },
 
-    // Foglio dell'orario di oggi (dalla riga "Alle 18:00"): vale solo oggi
+    // Foglio dell'orario di oggi. Con l'orario: chip + Altro, "Ricordamelo" (voci Prima non prese, prima che
+    // tocchi), "Togli". Senza (da "Altro" della domanda): solo l'ora libera.
     _oggiTimeOpen() {
         const t = this._oggiTrainTime();
-        const usual = Storage.getProfile().trainingTime;
+        const chips = t ? this._oggiTimeChips(t) : [];
+        const custom = !!t && !chips.some(c => c[0] === t.time);
+        const pre = t ? this._oggiSuppPendingOf('pre') : [];
+        const remind = t && pre.length && this._oggiAt(t.time).getTime() - this.OGGI_PRE_MIN * 60000 > Date.now();
         const root = this._sheet('oggi-time-sheet', `
-            ${this._sheetHead('Orario di oggi', 'Chiudi l\'orario di oggi')}
-            ${this._oggiTimePicker('oggi-tm', t ? t.time : '')}
-            ${t && t.today && this._oggiTimeOk(usual) ? `<button type="button" class="btn btn--ghost btn--block" data-tm-reset>${this.ico('undo')}Come sempre, alle&nbsp;<span class="num">${GT.esc(usual)}</span></button>` : ''}
-            <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`);
+            ${this._sheetHead(t ? 'Orario di oggi' : 'A che ora ti alleni?', 'Chiudi l\'orario di oggi')}
+            ${t ? `<div class="pick tm-pick" style="--n:${chips.length + 1}" role="radiogroup" aria-label="Orario di oggi" id="oggi-tm-chips">${
+                chips.map(([x, l]) => `<button type="button" role="radio" aria-checked="${x === t.time}" data-tm="${x}">${x}<small>${GT.esc(l)}</small></button>`).join('')
+            }<button type="button" role="radio" aria-checked="${custom}" data-tm-alt>Altro</button></div>` : ''}
+            <div class="field" id="oggi-tm-f"${t && !custom ? ' hidden' : ''}><label for="oggi-tm-in">Ora</label><input class="input num" type="time" id="oggi-tm-in" value="${t ? GT.esc(t.time) : ''}"></div>
+            ${remind ? `<button type="button" class="btn btn--secondary btn--block" data-tm-remind>${this.ico('bell')}Ricordamelo</button>` : ''}
+            ${t ? `<button type="button" class="btn btn--ghost btn--block" data-tm-off>${this.ico('close')}Togli</button>` : ''}
+            <button type="button" class="btn btn--primary btn--xl btn--block" data-tm-done>Fatto</button>`, { cls: 'tm-sheet' });
+        const input = root.querySelector('#oggi-tm-in');
         const after = () => {
             this.loadDashboard();
             this._safe(() => this._oggiSuppRefreshSheet());
         };
-        const sync = this._oggiTimeBind(root, 'oggi-tm', (time, chip) => {
-            if (!time || !this._oggiSetTodayTime(time)) return;
-            sync(time);
+        const close = () => this._closeSheet('oggi-time-sheet');
+        const sync = (x) => root.querySelectorAll('#oggi-tm-chips [role="radio"]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tm ? b.dataset.tm === x : !chips.some(c => c[0] === x))));
+        const saveInput = () => {
+            const v = input?.value || '';
+            if (!this._oggiTimeOk(v) || v === this._oggiTrainTime()?.time) return true;
+            if (!this._oggiSetTodayTime(v)) return false;
+            sync(v);
             after();
-            if (chip) this._closeSheet('oggi-time-sheet');
+            return true;
+        };
+        input?.addEventListener('change', () => saveInput());
+        root.addEventListener('click', (e) => {
+            const chip = e.target.closest('[data-tm]');
+            if (chip) {
+                if (!this._oggiSetTodayTime(chip.dataset.tm)) return;
+                close();
+                after();
+                return;
+            }
+            if (e.target.closest('[data-tm-alt]')) {
+                sync('');
+                root.querySelector('#oggi-tm-f').hidden = false;
+                input?.focus();
+                return;
+            }
+            if (e.target.closest('[data-tm-remind]')) {
+                close();
+                this._oggiTimeRemind(t.time, pre);
+                return;
+            }
+            if (e.target.closest('[data-tm-off]')) {
+                if (!this._oggiSetTodayTime('')) return;
+                close();
+                after();
+                return;
+            }
+            if (e.target.closest('[data-tm-done]') && saveInput()) close();
         });
-        root.querySelector('[data-tm-reset]')?.addEventListener('click', () => {
-            if (!this._oggiSetTodayTime(null)) return;
-            this._closeSheet('oggi-time-sheet');
-            after();
+    },
+
+    // Evento di calendario .ics (orario −45', 15 minuti, avviso all'ora dell'evento). Sperimentale:
+    // condivisione del file se il telefono la accetta, altrimenti il file in una nuova finestra; mai errori
+    _oggiTimeRemind(time, items) {
+        const title = 'Integratori pre-allenamento';
+        const start = new Date(this._oggiAt(time).getTime() - this.OGGI_PRE_MIN * 60000);
+        const ics = this._oggiIcs({ start, minutes: 15, title, desc: (items || []).map(s => [s.name, s.amount].filter(Boolean).join(' ')).join('\n') });
+        const name = 'integratori-pre-allenamento.ics';
+        let file = null;
+        try { file = new File([ics], name, { type: 'text/calendar' }); } catch (e) { file = null; }
+        try {
+            if (file && typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title })
+                    .then(() => this.showNotification('Promemoria creato', 'success', { icon: 'bell' }))
+                    .catch((e) => { if (!e || e.name !== 'AbortError') this._oggiIcsOpen(ics); });
+                return;
+            }
+        } catch (e) { /* si passa al file */ }
+        this._oggiIcsOpen(ics);
+    },
+
+    _oggiIcsOpen(ics) {
+        try {
+            let url = '';
+            try { url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); } catch (e) { url = ''; }
+            if (!url) url = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.hidden = true;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            if (url.startsWith('blob:')) setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) { /* no-op */ } }, 60000);
+        } catch (e) { /* sperimentale: niente errori a schermo */ }
+    },
+
+    // Testo .ics (RFC 5545): ore in UTC, testi con gli escape, righe piegate a 75 byte
+    _oggiIcs({ start, minutes, title, desc }) {
+        const utc = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        const esc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+        const enc = typeof TextEncoder === 'function' ? new TextEncoder() : null;
+        const bytes = ch => (enc ? enc.encode(ch).length : unescape(encodeURIComponent(ch)).length);
+        const fold = (line) => {
+            const out = [];
+            let cur = '';
+            let n = 0;
+            for (const ch of line) {
+                const b = bytes(ch);
+                if (n + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; n = 0; }
+                cur += ch;
+                n += b;
+            }
+            out.push(cur);
+            return out.join('\r\n ');
+        };
+        const end = new Date(start.getTime() + minutes * 60000);
+        return [
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GymTracker//Integratori//IT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+            'BEGIN:VEVENT',
+            `UID:gymtracker-pre-${utc(start)}@gymtracker`,
+            `DTSTAMP:${utc(new Date())}`,
+            `DTSTART:${utc(start)}`,
+            `DTEND:${utc(end)}`,
+            `SUMMARY:${esc(title)}`,
+            desc ? `DESCRIPTION:${esc(desc)}` : '',
+            'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(title)}`, 'TRIGGER:PT0S', 'END:VALARM',
+            'END:VEVENT', 'END:VCALENDAR'
+        ].filter(Boolean).map(fold).join('\r\n') + '\r\n';
+    },
+
+    // Voci di oggi non ancora prese di un momento ('pre' | 'post'), in qualunque sezione del piano
+    _oggiSuppPendingOf(kind, plan = this._oggiSuppPlan()) {
+        if (!plan) return [];
+        return plan.sections.flatMap(x => x.items).filter(i => !i.taken && i.s.when === kind).map(i => i.s);
+    },
+
+    // "Adesso": voci Prima da orario −45' fino all'inizio; voci Dopo dalla fine della seduta di oggi per 2 ore
+    _oggiNowPending(plan) {
+        if (this.activeWorkout || !plan || !plan.times) return null;   // in seduta ci pensa la seduta
+        const now = Date.now();
+        let kind = '';
+        if (this._oggiDoneToday()) {
+            const end = plan.times.post.getTime();
+            if (now >= end && now < end + this.OGGI_POST_MIN * 60000) kind = 'post';
+        } else if (this._oggiIsTrainDay() && now >= plan.times.pre.getTime() && now < plan.times.start.getTime()) kind = 'pre';
+        if (!kind) return null;
+        const items = this._oggiSuppPendingOf(kind, plan);
+        return items.length ? { kind, key: plan.key, items, names: items.map(s => this._oggiSuppShort(s)).join(', ') } : null;
+    },
+
+    // Riga "Adesso: Citrullina, Beta-alanina" in cima a Oggi; si ridisegna da sola al prossimo cambio d'ora
+    _oggiNowRow() {
+        const el = document.getElementById('oggi-now');
+        if (!el) return;
+        clearTimeout(this._oggiNowTimer);
+        const plan = this.currentPage === 'oggi' ? this._safe(() => this._oggiSuppPlan()) : null;
+        const p = plan ? this._safe(() => this._oggiNowPending(plan)) : null;
+        this._oggiNow = p || null;
+        el.hidden = !p;
+        if (p) {
+            const txt = document.getElementById('oggi-now-txt');
+            if (txt) txt.innerHTML = `Adesso: ${GT.esc(p.names)}<span class="sr-only">, tocca quando le hai prese</span>`;
+        }
+        const t = plan?.times;
+        if (!t) return;
+        const now = Date.now();
+        const marks = [t.pre.getTime(), t.start.getTime(), t.post.getTime(), t.post.getTime() + this.OGGI_POST_MIN * 60000].filter(x => x > now);
+        if (marks.length) this._oggiNowTimer = setTimeout(() => this._safe(() => this._oggiNowRow()), Math.min(Math.min(...marks) - now + 500, 6 * 3600000));
+    },
+
+    // Tocco su "Adesso": prese tutte (con Annulla)
+    _oggiNowTake() {
+        const p = this._oggiNow;
+        if (!p) return;
+        const ids = p.items.map(s => s.id);
+        const refresh = () => {
+            this._safe(() => this._oggiNowRow());
+            this._safe(() => this._oggiSuppRow());
+            this._safe(() => this._oggiSuppRefreshSheet());
+        };
+        if (this._save(() => Storage.setSupplementTaken(p.key, ids, true), 'Integratori NON segnati') === false) return;
+        refresh();
+        this.showNotification(`Prese: ${p.names}`, 'success', {
+            icon: 'check',
+            action: {
+                label: 'Annulla',
+                onClick: () => { if (this._save(() => Storage.setSupplementTaken(p.key, ids, false), 'Integratori NON segnati') !== false) refresh(); }
+            }
         });
     },
 
@@ -2232,12 +2476,12 @@ Object.assign(App, {
         return (this.OGGI_SUPP_WHEN.find(x => x[0] === w) || [])[1] || '';
     },
 
-    // 'train' = seduta fatta o in corso oggi, o giorno fisso · 'rest' = giorno fisso di riposo · 'unknown'
+    // 'train' = seduta fatta o in corso oggi, giorno fisso o orario scelto oggi · 'rest' = giorno fisso di riposo · 'unknown'
     _oggiSuppDay() {
         if (this.activeWorkout && !this.activeWorkout.isSimulation) return 'train';
         if (this._oggiDoneToday()) return 'train';
         const td = this._trainingDays();
-        if (!td.length) return 'unknown';
+        if (!td.length) return this._oggiTrainTime()?.today ? 'train' : 'unknown';
         return td.includes(this._isoWeekday()) ? 'train' : 'rest';
     },
 
