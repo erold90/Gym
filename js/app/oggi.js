@@ -2270,6 +2270,17 @@ Object.assign(App, {
 
     // Foglio dell'orario di oggi. Con l'orario: chip + Altro, "Ricordamelo" (voci Prima non prese, prima che
     // tocchi), "Togli". Senza (da "Altro" della domanda): solo l'ora libera.
+    // Ora di partenza dell'ora libera: quella di oggi, se no la prevista, se no l'ora piena dopo adesso (al quarto d'ora)
+    _oggiTimeFreeStart(t) {
+        if (t?.time && this._oggiTimeOk(t.time)) return t.time;
+        const usual = this._oggiTimeUsual();
+        if (usual?.time && this._oggiTimeOk(usual.time)) return usual.time;
+        const d = new Date(Date.now() + 60 * 60000);
+        const q = Math.round(d.getMinutes() / 15) * 15;
+        const h = (d.getHours() + (q === 60 ? 1 : 0)) % 24;
+        return `${String(h).padStart(2, '0')}:${String(q % 60).padStart(2, '0')}`;
+    },
+
     _oggiTimeOpen() {
         const t = this._oggiTrainTime();
         const chips = t ? this._oggiTimeChips(t) : [];
@@ -2281,11 +2292,32 @@ Object.assign(App, {
             ${t ? `<div class="pick tm-pick" style="--n:${chips.length + 1}" role="radiogroup" aria-label="Orario di oggi" id="oggi-tm-chips">${
                 chips.map(([x, l]) => `<button type="button" role="radio" aria-checked="${x === t.time}" data-tm="${x}">${x}<small>${GT.esc(l)}</small></button>`).join('')
             }<button type="button" role="radio" aria-checked="${custom}" data-tm-alt>Altro</button></div>` : ''}
-            <div class="field" id="oggi-tm-f"${t && !custom ? ' hidden' : ''}><label for="oggi-tm-in">Ora</label><input class="input num" type="time" id="oggi-tm-in" value="${t ? GT.esc(t.time) : ''}"></div>
+            <div class="field" id="oggi-tm-f"${t && !custom ? ' hidden' : ''}>
+                <span class="label" id="oggi-tm-lbl">Ora</span>
+                <div class="tm-free" role="group" aria-labelledby="oggi-tm-lbl">
+                    <div class="stepper__box tm-free__h">
+                        <button type="button" class="stepper__btn" data-tm-h="-1" aria-label="Un'ora prima">${this.ico('minus')}</button>
+                        <output class="stepper__val num" id="oggi-tm-hv" aria-live="polite"></output>
+                        <button type="button" class="stepper__btn" data-tm-h="1" aria-label="Un'ora dopo">${this.ico('plus')}</button>
+                    </div>
+                    <div class="seg tm-free__m" role="radiogroup" aria-label="Minuti" id="oggi-tm-m">${
+                        ['00', '15', '30', '45'].map(m => `<button type="button" role="radio" aria-checked="false" data-tm-m="${m}"><span class="num">:${m}</span></button>`).join('')
+                    }</div>
+                </div>
+                <input type="hidden" id="oggi-tm-in" value="${GT.esc(this._oggiTimeFreeStart(t))}">
+            </div>
             ${remind ? `<button type="button" class="btn btn--secondary btn--block" data-tm-remind>${this.ico('bell')}Ricordamelo</button>` : ''}
             ${t ? `<button type="button" class="btn btn--ghost btn--block" data-tm-off>${this.ico('close')}Togli</button>` : ''}
             <button type="button" class="btn btn--primary btn--xl btn--block" data-tm-done>Fatto</button>`, { cls: 'tm-sheet' });
         const input = root.querySelector('#oggi-tm-in');
+        // Ora libera: stepper delle ore (0-23, gira) e quarti d'ora. Niente <input type="time">: su iPhone
+        // usciva dal foglio e partiva vuoto.
+        const paintFree = () => {
+            const [h, m] = (input.value || '18:00').split(':');
+            root.querySelector('#oggi-tm-hv').textContent = `${h}:${m}`;
+            root.querySelectorAll('#oggi-tm-m [data-tm-m]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tmM === m)));
+        };
+        paintFree();
         const after = () => {
             this.loadDashboard();
             this._safe(() => this._oggiSuppRefreshSheet());
@@ -2300,7 +2332,6 @@ Object.assign(App, {
             after();
             return true;
         };
-        input?.addEventListener('change', () => saveInput());
         root.addEventListener('click', (e) => {
             const chip = e.target.closest('[data-tm]');
             if (chip) {
@@ -2309,10 +2340,23 @@ Object.assign(App, {
                 after();
                 return;
             }
+            const hb = e.target.closest('[data-tm-h]');
+            if (hb) {
+                const [h, m] = input.value.split(':').map(Number);
+                input.value = `${String((h + Number(hb.dataset.tmH) + 24) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                paintFree();
+                return;
+            }
+            const mb = e.target.closest('[data-tm-m]');
+            if (mb) {
+                input.value = `${input.value.split(':')[0]}:${mb.dataset.tmM}`;
+                paintFree();
+                return;
+            }
             if (e.target.closest('[data-tm-alt]')) {
                 sync('');
                 root.querySelector('#oggi-tm-f').hidden = false;
-                input?.focus();
+                root.querySelector('[data-tm-h="1"]')?.focus();
                 return;
             }
             if (e.target.closest('[data-tm-remind]')) {

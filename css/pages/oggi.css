@@ -145,3 +145,10 @@
 .sp-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .sp-item__name { font-weight: 600; overflow-wrap: anywhere; }
 .sp-item__sub { font-size: var(--fs-sm); color: var(--text-2); }
+
+/* Ora libera nel foglio dell'orario: stepper delle ore + quarti d'ora (niente input time nativo) */
+.tm-free { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+.tm-free__h { height: 64px; }
+.tm-free__h .stepper__val { display: grid; place-items: center; height: 100%; font-size: var(--fn-md, 2.5rem); }
+.tm-free__m { align-self: stretch; }
+.tm-free__m button { min-height: 56px; font-size: 1.0625rem; }
