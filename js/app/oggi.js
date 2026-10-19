@@ -181,6 +181,10 @@ Object.assign(App, {
         on('oggi-backup-btn', 'click', () => this._oggiOpenBackup());
         on('oggi-supp', 'click', () => this._oggiSuppOpen());
         on('oggi-time', 'click', (e) => this._oggiTimeClick(e));
+        on('quick-action-subtitle', 'click', (e) => {
+            const b = e.target.closest('[data-tm-next]');
+            if (b) this._oggiTimeOpen(b.dataset.tmNext);
+        });
         on('oggi-now', 'click', () => this._oggiNowTake());
         // Di ritorno nell'app: la riga "Adesso" segue l'ora
         document.addEventListener('visibilitychange', () => {
@@ -328,14 +332,16 @@ Object.assign(App, {
         // Fatta la seduta di oggi: niente "Inizia" in evidenza, si vede quando tocca la prossima (R2-05)
         const doneToday = this._oggiDoneToday();
         const td = this._trainingDays();
-        const restDay = td.length > 0 && !td.includes(this._isoWeekday());
+        // Riposo = giorno non fisso, a meno che per oggi non si sia scelto un orario
+        const restDay = td.length > 0 && !td.includes(this._isoWeekday()) && !this._oggiChosenToday();
         if (doneToday || restDay) {
             const next = this._oggiNextWhen(program, td);
             titleEl.innerHTML = doneToday
                 ? `<span class="today__ok">${this.ico('check')}</span>Fatto oggi`
                 : 'Riposo';
             titleEl.classList.toggle('today__name--done', !!doneToday);
-            focusEl.textContent = `Prossima: ${dayName}, ${next.label}`;
+            // "Prossima: Lower A, domani alle 18:00": un tocco apre l'orario di quel giorno
+            focusEl.innerHTML = this._oggiNextLine({ ...next, key: GT.dateKey(next.date), name: dayName });
             thumbsEl.innerHTML = '';
             if (doneToday) {
                 const w = doneToday;
@@ -446,7 +452,8 @@ Object.assign(App, {
 
     /**
      * Quando tocca la prossima seduta (da domani): con i giorni fissi il primo giorno fisso, senza il
-     * primo giorno previsto della settimana (o lunedì). → {days, label: 'domani' | 'giovedì' | 'lunedì prossimo'}
+     * primo giorno previsto della settimana (o lunedì); prima ancora un giorno con l'orario scelto.
+     * → {days, date, label: 'domani' | 'giovedì' | 'lunedì prossimo'}
      */
     _oggiNextWhen(program, td = this._trainingDays()) {
         const now = new Date();
@@ -463,6 +470,11 @@ Object.assign(App, {
             k = after.length ? after[0] - plan.todayOffset : 7 - plan.todayOffset;
         }
         k = Math.max(1, k || 1);
+        // un giorno con l'orario scelto apposta (es. "domani alle 07:00") viene prima
+        const map = this._safe(() => this._oggiTimeMap()) || {};
+        for (let i = 1; i < k; i++) {
+            if (this._oggiTimeOk(map[GT.dateKey(GT.addDays(GT.startOfDay(now), i))])) { k = i; break; }
+        }
         const date = GT.addDays(GT.startOfDay(now), k);
         const n = this._isoWeekday(date);
         let label = this._weekdayName(n);
@@ -539,6 +551,12 @@ Object.assign(App, {
             if (remaining >= avail) for (let i = 1; i <= avail; i++) planned.add(todayOffset + i);
             else for (let i = 0; i < remaining; i++) planned.add(todayOffset + 1 + Math.floor((i + 1) * avail / (remaining + 1)));
         }
+        // giorni di questa settimana con l'orario scelto apposta (es. domani alle 07:00): previsti anche loro
+        const times = this._safe(() => this._oggiTimeMap()) || {};
+        Object.keys(times).forEach(k => {
+            const o = GT.calendarDaysBetween(monday, new Date(`${k}T00:00`));
+            if (this._oggiTimeOk(times[k]) && o > todayOffset && o <= 6) planned.add(o);
+        });
         return { monday, todayKey, doneBy, target, done, todayOffset, todayDone, planned };
     },
 
@@ -556,7 +574,7 @@ Object.assign(App, {
 
         const td = this._trainingDays();
         const plan = this._oggiWeekPlan(program, td);
-        const todayRest = td.length > 0 && !td.includes(plan.todayOffset + 1);
+        const todayRest = td.length > 0 && !td.includes(plan.todayOffset + 1) && !this._oggiChosenToday();
 
         // Nomi dei prossimi giorni della scheda (per chi legge con lo screen reader)
         const order = [];
@@ -2126,8 +2144,8 @@ Object.assign(App, {
 // ========================================
 // INTEGRATORI E ORARIO DELL'ALLENAMENTO (Oggi). Li usano anche Profilo (_pfSupp…) e Seduta (_sedSupp…).
 // Dati: Storage.getSupplements / getSupplementsTaken / setSupplementTaken. Orario di oggi, in ordine:
-// scelto in Oggi (settings.todayTrainingTime {date, time}; time '' = tolto per oggi; il giorno dopo scade)
-// → previsto dalle ultime sedute (mediana delle ore d'inizio) → profile.trainingTime (solo dati vecchi).
+// scelto in Oggi per quel giorno (settings.trainingTimes {'AAAA-MM-GG': 'HH:MM' | ''}, da oggi a +14 giorni;
+// '' = tolto per quel giorno; i giorni passati scadono) → previsto dalle ultime sedute (mediana delle ore d'inizio) → profile.trainingTime (solo dati vecchi).
 // "Adesso" in cima a Oggi: voci Prima da orario −45' all'inizio, voci Dopo per 2 ore dalla fine.
 // ========================================
 
@@ -2139,6 +2157,7 @@ Object.assign(App, {
     OGGI_PRE_MIN: 45,
     OGGI_POST_MIN: 120,
     OGGI_LEARN_N: 6,
+    OGGI_TIME_DAYS: 14,
 
     _oggiTimeOk(t) {
         return typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
@@ -2149,10 +2168,11 @@ Object.assign(App, {
         return `${p(d.getHours())}:${p(d.getMinutes())}`;
     },
 
-    // Oggi all'ora 'HH:MM'
-    _oggiAt(t) {
+    // Ora 'HH:MM' di oggi (o del giorno 'AAAA-MM-GG')
+    _oggiAt(t, key = '') {
         const [h, m] = t.split(':').map(Number);
-        const d = new Date();
+        const k = /^(\d{4})-(\d\d)-(\d\d)$/.exec(key);
+        const d = k ? new Date(Number(k[1]), Number(k[2]) - 1, Number(k[3])) : new Date();
         d.setHours(h, m, 0, 0);
         return d;
     },
@@ -2202,31 +2222,86 @@ Object.assign(App, {
     // Orario previsto senza le scelte di oggi: dalle sedute, o quello abituale dei dati vecchi
     _oggiTimeUsual() {
         const l = this._oggiTimeLearned();
-        if (l) return { time: l, today: false, learned: true };
+        if (l) return { time: l, chosen: false, learned: true };
         const p = Storage.getProfile().trainingTime;
-        return this._oggiTimeOk(p) ? { time: p, today: false } : null;
+        return this._oggiTimeOk(p) ? { time: p, chosen: false } : null;
     },
 
-    // Orario dell'allenamento di oggi: {time, today, learned} (today = scelto per oggi) o null
-    _oggiTrainTime() {
-        const s = Storage.getSettings().todayTrainingTime;
-        if (s && typeof s === 'object') {
-            if (s.date === GT.dateKey(new Date())) return this._oggiTimeOk(s.time) ? { time: s.time, today: true } : null;
-            this._safe(() => Storage.saveSettings({ todayTrainingTime: null }));   // di un altro giorno: scaduto
+    // Orari scelti per giorno: {'AAAA-MM-GG': 'HH:MM' | ''} da oggi a +14 giorni. I giorni passati scadono;
+    // il vecchio settings.todayTrainingTime {date, time} (v2.0.3-2.0.4) si sposta qui una volta.
+    _oggiTimeMap() {
+        const s = Storage.getSettings();
+        const raw = s.trainingTimes && typeof s.trainingTimes === 'object' && !Array.isArray(s.trainingTimes) ? s.trainingTimes : {};
+        const from = GT.dateKey(new Date());
+        const to = GT.dateKey(GT.addDays(new Date(), this.OGGI_TIME_DAYS));
+        const map = {};
+        let dirty = s.trainingTimes != null && raw !== s.trainingTimes;
+        Object.keys(raw).forEach(k => {
+            const v = raw[k];
+            if (/^\d{4}-\d\d-\d\d$/.test(k) && k >= from && k <= to && (v === '' || this._oggiTimeOk(v))) map[k] = v;
+            else dirty = true;
+        });
+        const old = s.todayTrainingTime;
+        if (old && typeof old === 'object') {
+            if (typeof old.date === 'string' && old.date >= from && old.date <= to && !(old.date in map)) map[old.date] = this._oggiTimeOk(old.time) ? old.time : '';
+            dirty = true;
         }
+        if (dirty) this._safe(() => Storage.saveSettings({ trainingTimes: map, todayTrainingTime: null }));
+        return map;
+    },
+
+    // Orario dell'allenamento di un giorno (default oggi): {time, chosen, learned} (chosen = scelto per quel
+    // giorno) → previsto → null. '' scelto = tolto per quel giorno.
+    _oggiTrainTime(key = GT.dateKey(new Date())) {
+        const map = this._oggiTimeMap();
+        if (key in map) return this._oggiTimeOk(map[key]) ? { time: map[key], chosen: true } : null;
         return this._oggiTimeUsual();
     },
 
-    // 'HH:MM' = vale per oggi · '' = tolto per oggi
-    _oggiSetTodayTime(time) {
-        const v = { date: GT.dateKey(new Date()), time: this._oggiTimeOk(time) ? time : '' };
-        return this._save(() => Storage.saveSettings({ todayTrainingTime: v }), 'Orario NON salvato') !== false;
+    // 'HH:MM' = vale per quel giorno · '' = tolto per quel giorno
+    _oggiSetTime(key, time) {
+        const map = { ...this._oggiTimeMap(), [key]: this._oggiTimeOk(time) ? time : '' };
+        return this._save(() => Storage.saveSettings({ trainingTimes: map }), 'Orario NON salvato') !== false;
     },
 
-    // Giorno di allenamento: oggi è un giorno fisso; senza giorni fissi, finché la seduta di oggi non è fatta
+    _oggiSetTodayTime(time) {
+        return this._oggiSetTime(GT.dateKey(new Date()), time);
+    },
+
+    // Orario scelto apposta per oggi (anche in un giorno fisso di riposo: allora oggi ci si allena)
+    _oggiChosenToday() {
+        return !!this._oggiTrainTime()?.chosen;
+    },
+
+    // Giorno di allenamento: oggi è un giorno fisso (o con l'orario scelto); senza giorni fissi, finché la
+    // seduta di oggi non è fatta
     _oggiIsTrainDay() {
         const td = this._trainingDays();
-        return td.length ? td.includes(this._isoWeekday()) : !this._oggiDoneToday();
+        return td.length ? td.includes(this._isoWeekday()) || this._oggiChosenToday() : !this._oggiDoneToday();
+    },
+
+    // Prossimo allenamento dopo oggi (giorni fissi, se no il piano della settimana) e la seduta prevista
+    // → {key, date, days, label: 'domani' | 'giovedì' | 'lunedì prossimo', name} o null senza scheda
+    _oggiNextTrain(program = Storage.getActiveProgram()) {
+        if (!program?.days?.length) return null;
+        const next = this._oggiNextWhen(program);
+        const day = program.days[this.getSuggestedDayIndex(program)];
+        return { ...next, key: GT.dateKey(next.date), name: day?.type || day?.name || '' };
+    },
+
+    // Giorni del foglio dell'orario: Oggi (se oggi ci si allena ancora) · Domani · il prossimo allenamento
+    // se non è domani ("Gio") → [{key, seg, sr, label}]
+    _oggiTimeDays() {
+        const now = new Date();
+        const out = [];
+        if (this._oggiIsTrainDay() && !this._oggiDoneToday()) out.push({ key: GT.dateKey(now), seg: 'Oggi', sr: '', label: 'oggi' });
+        out.push({ key: GT.dateKey(GT.addDays(now, 1)), seg: 'Domani', sr: '', label: 'domani' });
+        const next = this._safe(() => this._oggiNextTrain());
+        if (next && next.days > 1 && next.days <= this.OGGI_TIME_DAYS) {
+            const full = this._weekdayName(this._isoWeekday(next.date), false);
+            out.push({ key: next.key, seg: full.slice(0, 3), sr: full.slice(3), label: next.label });
+        }
+        return out;
     },
 
     // Sotto il focus, solo con la seduta di oggi da fare: "Oggi alle 18:00" o "A che ora ti alleni?" 07 · 13 · 18 · Altro
@@ -2254,12 +2329,22 @@ Object.assign(App, {
             document.querySelector('#oggi-time [data-tm-open]')?.focus({ preventScroll: true });
             return;
         }
-        if (e.target.closest('[data-tm-other]')) this._oggiTimeOpen();
+        if (e.target.closest('[data-tm-other]')) this._oggiTimeOpen(GT.dateKey(new Date()), { free: true });
         else if (e.target.closest('[data-tm-open]')) this._oggiTimeOpen();
     },
 
-    // Chip del foglio: previsto, −1 h, +1 h, 07:00 (senza doppioni, in ordine di ora) → [['18:00', 'Previsto'], …]
+    // "Prossima: Lower A, domani alle 18:00" (o "· a che ora?") nella riga sotto "Fatto oggi" / "Riposo":
+    // un tocco apre l'orario di quel giorno
+    _oggiNextLine(next) {
+        const t = this._oggiTrainTime(next.key);
+        return `<button type="button" class="tm-next" data-tm-next="${GT.esc(next.key)}"><span>Prossima: ${GT.esc(next.name)}, <span class="tm-next__when">${GT.esc(next.label)}${
+            t ? ` alle <span class="num">${GT.esc(t.time)}</span>` : ' · <span class="tm-next__ask">a che ora?</span>'}</span></span></button>`;
+    },
+
+    // Chip del foglio: previsto, −1 h, +1 h, 07:00 (senza doppioni, in ordine di ora) → [['18:00', 'Previsto'], …];
+    // senza orario: mattina, pranzo, sera
     _oggiTimeChips(t) {
+        if (!t) return [['07:00', 'Mattina'], ['13:00', 'Pranzo'], ['18:00', 'Sera']];
         const usual = this._oggiTimeUsual();
         const base = (usual || t).time;
         const seen = new Map();
@@ -2268,9 +2353,7 @@ Object.assign(App, {
         return [...seen].sort((a, b) => a[0].localeCompare(b[0]));
     },
 
-    // Foglio dell'orario di oggi. Con l'orario: chip + Altro, "Ricordamelo" (voci Prima non prese, prima che
-    // tocchi), "Togli". Senza (da "Altro" della domanda): solo l'ora libera.
-    // Ora di partenza dell'ora libera: quella di oggi, se no la prevista, se no l'ora piena dopo adesso (al quarto d'ora)
+    // Ora di partenza dell'ora libera: quella del giorno, se no la prevista, se no l'ora piena dopo adesso (al quarto d'ora)
     _oggiTimeFreeStart(t) {
         if (t?.time && this._oggiTimeOk(t.time)) return t.time;
         const usual = this._oggiTimeUsual();
@@ -2281,18 +2364,26 @@ Object.assign(App, {
         return `${String(h).padStart(2, '0')}:${String(q % 60).padStart(2, '0')}`;
     },
 
-    _oggiTimeOpen() {
-        const t = this._oggiTrainTime();
-        const chips = t ? this._oggiTimeChips(t) : [];
-        const custom = !!t && !chips.some(c => c[0] === t.time);
-        const pre = t ? this._oggiSuppPendingOf('pre') : [];
-        const remind = t && pre.length && this._oggiAt(t.time).getTime() - this.OGGI_PRE_MIN * 60000 > Date.now();
+    // Voci Prima ancora da prendere quel giorno (oggi: quelle non segnate; un altro giorno: tutte)
+    _oggiTimePre(key) {
+        if (key === GT.dateKey(new Date())) return this._oggiSuppPendingOf('pre');
+        return Storage.getSupplements().filter(s => s.active && s.when === 'pre');
+    },
+
+    // Foglio dell'orario di un giorno (default oggi). In alto Oggi · Domani (· Gio): il giorno a cui valgono
+    // chip, ora libera, "Ricordamelo" (voci Prima non prese, prima che tocchi) e "Togli".
+    // free = apre con l'ora libera ("Altro" della domanda)
+    _oggiTimeOpen(key = GT.dateKey(new Date()), { free = false } = {}) {
+        const days = this._oggiTimeDays();
+        if (!days.some(d => d.key === key)) key = days[0].key;
+        const todayKey = GT.dateKey(new Date());
         const root = this._sheet('oggi-time-sheet', `
-            ${this._sheetHead(t ? 'Orario di oggi' : 'A che ora ti alleni?', 'Chiudi l\'orario di oggi')}
-            ${t ? `<div class="pick tm-pick" style="--n:${chips.length + 1}" role="radiogroup" aria-label="Orario di oggi" id="oggi-tm-chips">${
-                chips.map(([x, l]) => `<button type="button" role="radio" aria-checked="${x === t.time}" data-tm="${x}">${x}<small>${GT.esc(l)}</small></button>`).join('')
-            }<button type="button" role="radio" aria-checked="${custom}" data-tm-alt>Altro</button></div>` : ''}
-            <div class="field" id="oggi-tm-f"${t && !custom ? ' hidden' : ''}>
+            ${this._sheetHead('', 'Chiudi l\'orario')}
+            ${days.length > 1 ? `<div class="seg tm-days" role="radiogroup" aria-label="Giorno" id="oggi-tm-days">${
+                days.map(d => `<button type="button" role="radio" aria-checked="false" data-tm-day="${GT.esc(d.key)}">${GT.esc(d.seg)}${d.sr ? `<span class="sr-only">${GT.esc(d.sr)}</span>` : ''}</button>`).join('')
+            }</div>` : ''}
+            <div class="pick tm-pick" role="radiogroup" id="oggi-tm-chips"></div>
+            <div class="field" id="oggi-tm-f" hidden>
                 <span class="label" id="oggi-tm-lbl">Ora</span>
                 <div class="tm-free" role="group" aria-labelledby="oggi-tm-lbl">
                     <div class="stepper__box tm-free__h">
@@ -2304,12 +2395,14 @@ Object.assign(App, {
                         ['00', '15', '30', '45'].map(m => `<button type="button" role="radio" aria-checked="false" data-tm-m="${m}"><span class="num">:${m}</span></button>`).join('')
                     }</div>
                 </div>
-                <input type="hidden" id="oggi-tm-in" value="${GT.esc(this._oggiTimeFreeStart(t))}">
+                <input type="hidden" id="oggi-tm-in" value="">
             </div>
-            ${remind ? `<button type="button" class="btn btn--secondary btn--block" data-tm-remind>${this.ico('bell')}Ricordamelo</button>` : ''}
-            ${t ? `<button type="button" class="btn btn--ghost btn--block" data-tm-off>${this.ico('close')}Togli</button>` : ''}
+            <button type="button" class="btn btn--secondary btn--block" data-tm-remind hidden>${this.ico('bell')}Ricordamelo</button>
+            <button type="button" class="btn btn--ghost btn--block" data-tm-off hidden>${this.ico('close')}Togli</button>
             <button type="button" class="btn btn--primary btn--xl btn--block" data-tm-done>Fatto</button>`, { cls: 'tm-sheet' });
         const input = root.querySelector('#oggi-tm-in');
+        const field = root.querySelector('#oggi-tm-f');
+        const box = root.querySelector('#oggi-tm-chips');
         // Ora libera: stepper delle ore (0-23, gira) e quarti d'ora. Niente <input type="time">: su iPhone
         // usciva dal foglio e partiva vuoto.
         const paintFree = () => {
@@ -2317,25 +2410,55 @@ Object.assign(App, {
             root.querySelector('#oggi-tm-hv').textContent = `${h}:${m}`;
             root.querySelectorAll('#oggi-tm-m [data-tm-m]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tmM === m)));
         };
-        paintFree();
+        // Il giorno scelto: titolo, chip, ora libera, Ricordamelo e Togli
+        let cur = null;
+        const paint = (k, openFree = false) => {
+            const d = days.find(x => x.key === k);
+            const t = this._oggiTrainTime(k);
+            const chips = this._oggiTimeChips(t);
+            const custom = !!t && !chips.some(c => c[0] === t.time);
+            const pre = t ? this._oggiTimePre(k) : [];
+            cur = { key: k, t, chips, pre };
+            const title = !t && k === todayKey ? 'A che ora ti alleni?' : `Orario di ${d.label}`;
+            root.querySelector('.sheet__head h2').textContent = title;
+            root.querySelectorAll('#oggi-tm-days [data-tm-day]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tmDay === k)));
+            box.setAttribute('aria-label', title);
+            box.style.setProperty('--n', chips.length + 1);
+            box.innerHTML = chips.map(([x, l]) => `<button type="button" role="radio" aria-checked="${!!t && x === t.time}" data-tm="${x}">${x}<small>${GT.esc(l)}</small></button>`).join('')
+                + `<button type="button" role="radio" aria-checked="${custom || (openFree && !t)}" data-tm-alt>Altro</button>`;
+            field.hidden = !(custom || openFree);
+            input.value = this._oggiTimeFreeStart(t);
+            paintFree();
+            root.querySelector('[data-tm-remind]').hidden = !(t && pre.length && this._oggiAt(t.time, k).getTime() - this.OGGI_PRE_MIN * 60000 > Date.now());
+            root.querySelector('[data-tm-off]').hidden = !t;
+        };
+        paint(key, free);
         const after = () => {
+            const was = document.activeElement;
             this.loadDashboard();
             this._safe(() => this._oggiSuppRefreshSheet());
+            // la riga ridisegnata ha un bottone nuovo: il fuoco torna lì
+            if (was && !was.isConnected) document.querySelector('#quick-action-subtitle [data-tm-next], #oggi-time [data-tm-open], #oggi-time [data-tm-set]')?.focus({ preventScroll: true });
         };
         const close = () => this._closeSheet('oggi-time-sheet');
-        const sync = (x) => root.querySelectorAll('#oggi-tm-chips [role="radio"]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tm ? b.dataset.tm === x : !chips.some(c => c[0] === x))));
+        const sync = (x) => box.querySelectorAll('[role="radio"]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.tm ? b.dataset.tm === x : !cur.chips.some(c => c[0] === x))));
         const saveInput = () => {
             const v = input?.value || '';
-            if (!this._oggiTimeOk(v) || v === this._oggiTrainTime()?.time) return true;
-            if (!this._oggiSetTodayTime(v)) return false;
+            if (field.hidden || !this._oggiTimeOk(v) || v === cur.t?.time) return true;
+            if (!this._oggiSetTime(cur.key, v)) return false;
             sync(v);
             after();
             return true;
         };
         root.addEventListener('click', (e) => {
+            const day = e.target.closest('[data-tm-day]');
+            if (day) {
+                if (day.dataset.tmDay !== cur.key) paint(day.dataset.tmDay);
+                return;
+            }
             const chip = e.target.closest('[data-tm]');
             if (chip) {
-                if (!this._oggiSetTodayTime(chip.dataset.tm)) return;
+                if (!this._oggiSetTime(cur.key, chip.dataset.tm)) return;
                 close();
                 after();
                 return;
@@ -2355,17 +2478,17 @@ Object.assign(App, {
             }
             if (e.target.closest('[data-tm-alt]')) {
                 sync('');
-                root.querySelector('#oggi-tm-f').hidden = false;
+                field.hidden = false;
                 root.querySelector('[data-tm-h="1"]')?.focus();
                 return;
             }
             if (e.target.closest('[data-tm-remind]')) {
                 close();
-                this._oggiTimeRemind(t.time, pre);
+                this._oggiTimeRemind(cur.t.time, cur.pre, cur.key);
                 return;
             }
             if (e.target.closest('[data-tm-off]')) {
-                if (!this._oggiSetTodayTime('')) return;
+                if (!this._oggiSetTime(cur.key, '')) return;
                 close();
                 after();
                 return;
@@ -2374,11 +2497,11 @@ Object.assign(App, {
         });
     },
 
-    // Evento di calendario .ics (orario −45', 15 minuti, avviso all'ora dell'evento). Sperimentale:
+    // Evento di calendario .ics nel giorno scelto (orario −45', 15 minuti, avviso all'ora dell'evento). Sperimentale:
     // condivisione del file se il telefono la accetta, altrimenti il file in una nuova finestra; mai errori
-    _oggiTimeRemind(time, items) {
+    _oggiTimeRemind(time, items, key = '') {
         const title = 'Integratori pre-allenamento';
-        const start = new Date(this._oggiAt(time).getTime() - this.OGGI_PRE_MIN * 60000);
+        const start = new Date(this._oggiAt(time, key).getTime() - this.OGGI_PRE_MIN * 60000);
         const ics = this._oggiIcs({ start, minutes: 15, title, desc: (items || []).map(s => [s.name, s.amount].filter(Boolean).join(' ')).join('\n') });
         const name = 'integratori-pre-allenamento.ics';
         let file = null;
@@ -2520,13 +2643,13 @@ Object.assign(App, {
         return (this.OGGI_SUPP_WHEN.find(x => x[0] === w) || [])[1] || '';
     },
 
-    // 'train' = seduta fatta o in corso oggi, giorno fisso o orario scelto oggi · 'rest' = giorno fisso di riposo · 'unknown'
+    // 'train' = seduta fatta o in corso oggi, giorno fisso o orario scelto per oggi · 'rest' = giorno fisso di riposo · 'unknown'
     _oggiSuppDay() {
         if (this.activeWorkout && !this.activeWorkout.isSimulation) return 'train';
         if (this._oggiDoneToday()) return 'train';
         const td = this._trainingDays();
-        if (!td.length) return this._oggiTrainTime()?.today ? 'train' : 'unknown';
-        return td.includes(this._isoWeekday()) ? 'train' : 'rest';
+        if (!td.length) return this._oggiChosenToday() ? 'train' : 'unknown';
+        return td.includes(this._isoWeekday()) || this._oggiChosenToday() ? 'train' : 'rest';
     },
 
     // Minuti della seduta di oggi (stima della scheda; ripiego: la durata scelta)

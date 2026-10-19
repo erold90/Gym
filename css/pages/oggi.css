@@ -113,6 +113,12 @@
 .tm-ask__chips { display: flex; gap: var(--s-2); }
 .tm-chip { justify-content: center; min-width: 52px; padding: 0 var(--s-3); color: var(--text); font-weight: 600; }
 .tm-chip .num { font-size: 1.0625rem; }
+/* "Prossima: Lower A, domani alle 18:00" sotto "Fatto oggi" / "Riposo": tocco = orario di quel giorno.
+   17 px per stare in una riga a 360; se proprio va a capo, "domani alle 18:00" resta intero */
+.tm-next { display: inline-flex; align-items: center; min-height: var(--tap-min); margin-left: calc(var(--s-2) * -1); padding: 0 var(--s-2); border-radius: var(--r-sm); font-size: var(--fs-body); text-align: left; line-height: 1.25; }
+.tm-next__when { white-space: nowrap; }
+.tm-next .num, .tm-next__ask { color: var(--text); font-weight: 600; }
+.tm-next:active { background: var(--surface-2); }
 .tm-sheet > * { flex-shrink: 0; }
 .tm-pick button { height: 60px; font-size: var(--fs-lg); }
 

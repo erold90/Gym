@@ -72,8 +72,9 @@ tests/       storage, progression, algorithm (Node puro: node tests/<x>.test.js)
 `gymtracker_` + profile · settings · workouts · active_program · measurements · prs · streak ·
 cycle_history · conditioning · supplements (integratori) · supplements_log ({data: {id: true}}, max
 120 giorni) · meta (versione schema, migrazioni) · active_session (seduta in corso) · active_cardio ·
-corrupt_* (copie di dati rotti). Orario dell'allenamento: si sceglie in Oggi, settings.todayTrainingTime
-{date, time} (time '' = tolto per oggi; scade da solo); senza scelta è previsto (mediana delle ore d'inizio
+corrupt_* (copie di dati rotti). Orario dell'allenamento: si sceglie in Oggi per oggi, domani o il prossimo
+allenamento, settings.trainingTimes {'AAAA-MM-GG': 'HH:MM' | ''} ('' = tolto quel giorno; da oggi a +14
+giorni, i passati scadono; il vecchio todayTrainingTime {date, time} si migra da solo); senza scelta è previsto (mediana delle ore d'inizio
 delle ultime 6 sedute non libere, al quarto d'ora); profile.trainingTime della v2.0.2 resta solo come
 ripiego di lettura. Lettura protetta (JSON rotto → copia e
 default), cache in memoria, migrazione idempotente all'avvio (`Storage.migrate`) dai dati v1.25:
