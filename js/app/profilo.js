@@ -70,6 +70,11 @@ Object.assign(App, {
                         </div>
                     </section>
 
+                    <section class="section" id="pf-supp" aria-labelledby="pf-supp-t">
+                        <div class="section__head"><h2 class="cap" id="pf-supp-t">Integratori</h2><span class="count" id="pf-supp-count"></span></div>
+                        <div class="group" id="pf-supp-list"></div>
+                    </section>
+
                     <section class="section" aria-labelledby="pf-eq-t">
                         <div class="section__head"><h2 class="cap" id="pf-eq-t">Attrezzatura</h2><span class="count" id="pf-eq-count"></span></div>
                         <div class="chips" role="group" aria-labelledby="pf-eq-t" id="equipment-checkboxes">
@@ -203,6 +208,11 @@ Object.assign(App, {
         on('pf-days', 'click', () => this._openDaysSheet());
         on('pf-regen', 'click', () => this._regenerateProgram());
         on('pf-avoid', 'click', () => this._openAvoidSheet());
+        on('pf-supp-list', 'click', (e) => {
+            const row = e.target.closest('[data-pf-supp]');
+            if (row) this._pfSuppEdit(row.dataset.pfSupp);
+            else if (e.target.closest('#pf-supp-add')) this._pfSuppCatalogOpen();
+        });
 
         on('equipment-checkboxes', 'click', (e) => {
             const chip = e.target.closest('[data-eq]');
@@ -313,6 +323,7 @@ Object.assign(App, {
     enterProfilo() {
         this._safe(() => this.loadProfile());
         this._safe(() => this.loadSettings());
+        this._safe(() => this._pfSuppRender());
     },
 
     // ========================================
@@ -500,6 +511,7 @@ Object.assign(App, {
             <div class="field"><span class="label" id="pf-wd-l">Quali giorni · facoltativo</span>
                 <div class="wd" role="group" aria-labelledby="pf-wd-l" id="pf-wdays">${this._weekdayChips(td0, 'data-wd')}</div>
                 <p class="pf-hint" id="pf-wd-hint">${td0.length ? 'Oggi ti dice quando riposare' : 'Nessun giorno fisso: decidi tu'}</p></div>
+            <div class="field"><span class="label" id="pf-tm-l">Orario abituale · facoltativo</span>${this._oggiTimePicker('pf-tm', this._oggiTimeOk(p.trainingTime) ? p.trainingTime : '', 'pf-tm-l')}</div>
             <div class="field"><span class="label" id="pf-min-l">Minuti a seduta</span>${pick('min', [30, 45, 60, 75, 90], p.sessionTime || 60, 'min')}</div>
             <button type="button" class="btn btn--primary btn--xl btn--block" data-sheet-close>Fatto</button>`,
         {
@@ -510,6 +522,12 @@ Object.assign(App, {
                     this._suggestRegen(`${now.daysPerWeek} giorni × ${now.sessionTime} min`, () => true);
                 }
             }
+        });
+        // Orario abituale: un tocco sceglie, un secondo tocco sulla stessa ora la toglie
+        const syncTm = this._oggiTimeBind(root, 'pf-tm', (time, chip) => {
+            const cur = Storage.getProfile().trainingTime || '';
+            const next = chip && time === cur ? '' : time;
+            if (this._saveProfilePatch({ trainingTime: next })) syncTm(next);
         });
         const syncWd = () => {
             const td = this._trainingDays();
@@ -932,5 +950,160 @@ Object.assign(App, {
             }
         };
         reader.readAsText(file);
+    },
+});
+
+// ========================================
+// INTEGRATORI (sezione del Profilo): elenco, catalogo a scelta multipla, foglio della voce.
+// Dati: Storage.getSupplements / saveSupplements; catalogo SUPPLEMENTS_CATALOG (js/data/supplements.js).
+// ========================================
+
+Object.assign(App, {
+    PF_SUPP_DAYS: [['sempre', 'Ogni giorno'], ['allenamento', 'Solo allenamento']],
+    PF_SUPP_REST: [['colazione', 'Colazione'], ['pranzo', 'Pranzo'], ['sera', 'Sera']],
+
+    // In ordine di momento (colazione → sera), a parità nell'ordine in cui li hai aggiunti
+    _pfSuppSorted() {
+        const order = this.OGGI_SUPP_WHEN.map(x => x[0]);
+        return Storage.getSupplements().map((s, i) => ({ s, i }))
+            .sort((a, b) => (order.indexOf(a.s.when) - order.indexOf(b.s.when)) || (a.i - b.i))
+            .map(x => x.s);
+    },
+
+    _pfSuppRender() {
+        const box = document.getElementById('pf-supp-list');
+        if (!box) return;
+        const list = this._pfSuppSorted();
+        const count = document.getElementById('pf-supp-count');
+        if (count) count.innerHTML = list.length ? `<span class="num">${list.length}</span>` : '';
+        box.innerHTML = list.map(s => `
+            <button type="button" class="row" data-pf-supp="${GT.esc(s.id)}">
+                <span class="row__icon">${this.ico('pill')}</span>
+                <span class="row__body"><span class="row__title">${GT.esc(s.name)}</span><span class="row__sub">${[s.amount, this._oggiSuppWhenLabel(s.when)].filter(Boolean).map(x => GT.esc(x)).join(' · ')}</span></span>
+                <span class="row__end">${this.ico('next')}</span>
+            </button>`).join('') + `
+            <button type="button" class="row" id="pf-supp-add">
+                <span class="row__icon">${this.ico('plus')}</span>
+                <span class="row__body"><span class="row__title">Aggiungi</span>${list.length ? '' : '<span class="row__sub">Momento e quantità di ogni giorno</span>'}</span>
+            </button>`;
+    },
+
+    // Catalogo: si spuntano più voci e si aggiungono insieme; "Altro" ne crea una libera
+    _pfSuppCatalogOpen() {
+        const have = new Set(Storage.getSupplements().map(s => s.catalogId).filter(Boolean));
+        const items = this._oggiSuppCatalog().filter(c => !have.has(c.catalogId));
+        const root = this._sheet('pf-supp-cat-sheet', `
+            ${this._sheetHead('Aggiungi integratori', 'Chiudi il catalogo degli integratori')}
+            <div class="choices" role="group" aria-label="Catalogo">
+                ${items.map(c => `<button type="button" class="choice" role="checkbox" aria-checked="false" data-cat="${GT.esc(c.catalogId)}">
+                    <span class="choice__icon">${this.ico('pill')}</span>
+                    <span class="choice__body"><b>${GT.esc(c.name)}</b><span>${GT.esc(c.amount)} · ${GT.esc(this._oggiSuppWhenLabel(c.when))}</span></span>
+                    <span class="choice__mark">${this.ico('check')}</span></button>`).join('')}
+                <button type="button" class="choice" data-act="other">
+                    <span class="choice__icon">${this.ico('plus')}</span>
+                    <span class="choice__body"><b>Altro</b><span>Nome e quantità li scrivi tu</span></span>
+                </button>
+            </div>
+            <div class="sp-cat-dock"><button type="button" class="btn btn--primary btn--xl btn--block" data-act="add" disabled>${this.ico('plus')}<span id="pf-supp-cat-add">Aggiungi</span></button></div>`, { tall: true });
+        const addBtn = root.querySelector('[data-act="add"]');
+        const picked = () => [...root.querySelectorAll('[data-cat][aria-checked="true"]')].map(b => b.dataset.cat);
+        root.addEventListener('click', (e) => {
+            const c = e.target.closest('[data-cat]');
+            if (c) {
+                c.setAttribute('aria-checked', String(c.getAttribute('aria-checked') !== 'true'));
+                const n = picked().length;
+                addBtn.disabled = n === 0;
+                this._setText('pf-supp-cat-add', n ? `Aggiungi ${n}` : 'Aggiungi');
+                return;
+            }
+            if (e.target.closest('[data-act="other"]')) {
+                this._closeSheet('pf-supp-cat-sheet');
+                this._pfSuppEdit(null);
+                return;
+            }
+            if (e.target.closest('[data-act="add"]')) {
+                const ids = new Set(picked());
+                const add = this._oggiSuppCatalog().filter(x => ids.has(x.catalogId)).map(x => ({
+                    catalogId: x.catalogId, name: x.name, amount: x.amount, when: x.when, days: x.days, restWhen: x.restWhen, note: x.note, active: true
+                }));
+                if (!add.length) return;
+                if (this._save(() => Storage.saveSupplements([...Storage.getSupplements(), ...add]), 'Integratori NON salvati') === false) return;
+                this._closeSheet('pf-supp-cat-sheet');
+                this._pfSuppRender();
+                this.showNotification(add.length === 1 ? `${add[0].name} aggiunto` : `${add.length} integratori aggiunti`, 'success');
+            }
+        });
+    },
+
+    _pfSuppSeg(key, items, val, labelId) {
+        return `<div class="seg sp-seg" role="radiogroup" aria-labelledby="${labelId}" data-seg="${key}">
+            ${items.map(([v, l]) => `<button type="button" role="radio" aria-checked="${val === v}" data-val="${v}">${l}</button>`).join('')}</div>`;
+    },
+
+    // Foglio della voce: nome, quantità, momento, giorni, dove va a riposo (solo pre/post), nota; Elimina
+    _pfSuppEdit(id) {
+        const cur = id ? Storage.getSupplements().find(s => s.id === id) : null;
+        if (id && !cur) return;
+        const v = cur || { name: '', amount: '', when: 'colazione', days: 'sempre', restWhen: 'pranzo', note: '' };
+        const field = (fid, label, input) => `<div class="field"><label for="${fid}">${label}</label>${input}</div>`;
+        const root = this._sheet('pf-supp-edit-sheet', `
+            ${this._sheetHead(cur ? cur.name : 'Nuovo integratore', 'Chiudi senza salvare')}
+            <form class="pf-form" id="pf-supp-form" novalidate>
+                ${field('pf-sp-name', 'Nome', `<input class="input" type="text" id="pf-sp-name" maxlength="40" autocomplete="off" value="${GT.esc(v.name)}">`)}
+                ${field('pf-sp-amount', 'Quantità', `<input class="input" type="text" id="pf-sp-amount" maxlength="40" autocomplete="off" placeholder="3 g" value="${GT.esc(v.amount)}">`)}
+                <div class="field"><span class="label" id="pf-sp-when-l">Momento</span>${this._pfSuppSeg('when', this.OGGI_SUPP_WHEN, v.when, 'pf-sp-when-l')}</div>
+                <div class="field"><span class="label" id="pf-sp-days-l">Giorni</span>${this._pfSuppSeg('days', this.PF_SUPP_DAYS, v.days, 'pf-sp-days-l')}</div>
+                <div class="field" id="pf-sp-rest-f"><span class="label" id="pf-sp-rest-l">A riposo</span>${this._pfSuppSeg('rest', this.PF_SUPP_REST, v.restWhen || 'pranzo', 'pf-sp-rest-l')}</div>
+                ${field('pf-sp-note', 'Nota · facoltativa', `<input class="input" type="text" id="pf-sp-note" maxlength="80" autocomplete="off" value="${GT.esc(v.note || '')}">`)}
+                <button type="submit" class="btn btn--primary btn--xl btn--block">${this.ico('check')}Salva</button>
+                ${cur ? `<button type="button" class="btn btn--ghost btn--block btn--danger-text" data-act="del">${this.ico('trash')}Elimina</button>` : ''}
+            </form>`, { tall: true });
+        const segVal = (key) => root.querySelector(`[data-seg="${key}"] [aria-checked="true"]`)?.dataset.val || '';
+        const syncRest = () => {
+            const w = segVal('when');
+            root.querySelector('#pf-sp-rest-f').hidden = !((w === 'pre' || w === 'post') && segVal('days') === 'sempre');
+        };
+        syncRest();
+        root.addEventListener('click', async (e) => {
+            const b = e.target.closest('[data-seg] [data-val]');
+            if (b) {
+                b.parentElement.querySelectorAll('[data-val]').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+                syncRest();
+                return;
+            }
+            if (cur && e.target.closest('[data-act="del"]')) {
+                const ok = await this.confirmSheet({ title: `Eliminare ${cur.name}?`, ok: 'Elimina', danger: true });
+                if (!ok) return;
+                if (this._save(() => Storage.saveSupplements(Storage.getSupplements().filter(s => s.id !== cur.id)), 'Integratore NON eliminato') === false) return;
+                this._closeSheet('pf-supp-edit-sheet');
+                this._pfSuppRender();
+                this.showNotification(`${cur.name} eliminato`, 'success', { icon: 'trash' });
+            }
+        });
+        root.querySelector('#pf-supp-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = (fid) => String(root.querySelector('#' + fid)?.value || '').trim();
+            const name = val('pf-sp-name');
+            if (!name) {
+                this.showNotification('Scrivi il nome', 'warning');
+                root.querySelector('#pf-sp-name')?.focus();
+                return;
+            }
+            const item = {
+                ...(cur || { catalogId: null, active: true }),
+                name,
+                amount: val('pf-sp-amount'),
+                when: segVal('when'),
+                days: segVal('days'),
+                restWhen: segVal('rest'),
+                note: val('pf-sp-note')
+            };
+            const list = Storage.getSupplements();
+            const next = cur ? list.map(s => (s.id === cur.id ? item : s)) : [...list, item];
+            if (this._save(() => Storage.saveSupplements(next), 'Integratore NON salvato') === false) return;
+            this._closeSheet('pf-supp-edit-sheet');
+            this._pfSuppRender();
+            this.showNotification(`${name} salvato`, 'success');
+        });
     },
 });

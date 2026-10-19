@@ -750,6 +750,82 @@ test('Import: rollback se una scrittura fallisce, rifiuto dei formati sbagliati'
     eq(target.ls._snapshot(), before, 'rifiuti senza effetti');
 });
 
+test('Integratori: elenco normalizzato, id unici, voci senza nome scartate, riposo solo per pre/post', () => {
+    const env = makeEnv();
+    eq(env.S.getSupplements(), [], 'vuoto di default');
+    ok(env.S.saveSupplements([
+        { catalogId: 'creatina', name: '  Creatina   monoidrato ', amount: '3 g', when: 'post', days: 'sempre', restWhen: 'sera', note: 'x' },
+        { name: 'Whey', amount: '1 misurino', when: 'post', days: 'allenamento', restWhen: 'pranzo' },
+        { name: 'Zinco', when: 'boh', days: 'boh', restWhen: 'pranzo', active: false },
+        { name: '' }, null, 'testo'
+    ]), 'salvato');
+    const l = env.S.getSupplements();
+    eq(l.length, 3, 'tre voci valide');
+    eq(l.map(s => s.name), ['Creatina monoidrato', 'Whey', 'Zinco']);
+    ok(l.every(s => typeof s.id === 'string' && s.id) && new Set(l.map(s => s.id)).size === 3, 'id assegnati e unici');
+    eq([l[0].catalogId, l[0].restWhen, l[0].active], ['creatina', 'sera', true], 'creatina: riposo a cena');
+    eq([l[1].catalogId, l[1].restWhen], [null, null], 'solo allenamento: niente riposo');
+    eq([l[2].when, l[2].days, l[2].restWhen, l[2].active], ['colazione', 'sempre', null, false], 'valori sconosciuti → default');
+    // risalvare l'elenco letto non cambia gli id; un id doppio ne riceve uno nuovo
+    ok(env.S.saveSupplements([...l, { ...l[0], name: 'Copia' }]));
+    const l2 = env.S.getSupplements();
+    eq(l2.slice(0, 3).map(s => s.id), l.map(s => s.id), 'id stabili');
+    ok(l2[3].id !== l[0].id, 'id doppio sostituito');
+    // dato rotto: messo da parte, elenco vuoto, mai un'eccezione
+    env.ls.setItem('gymtracker_supplements', '{rotto');
+    eq(env.S.getSupplements(), []);
+    ok(env.ls.getItem('gymtracker_corrupt_supplements') === '{rotto', 'copia del dato rotto');
+});
+
+test('Integratori presi: per giorno, togliere, più voci insieme, al massimo 120 giorni', () => {
+    const now = D(2026, 10, 15, 10);
+    const env = makeEnv({ now });
+    const today = env.GT.dateKey(new Date(now));
+    eq(env.S.getSupplementsTaken(today), {}, 'niente di default');
+    ok(env.S.setSupplementTaken(today, 'a', true));
+    ok(env.S.setSupplementTaken(today, ['b', 'c'], true), 'più voci in una volta');
+    eq(env.S.getSupplementsTaken(today), { a: true, b: true, c: true });
+    ok(env.S.setSupplementTaken(today, 'b', false));
+    eq(env.S.getSupplementsTaken(today), { a: true, c: true }, 'b tolto');
+    eq(env.S.setSupplementTaken('15/10/2026', 'a', true), false, 'data non valida rifiutata');
+    eq(env.S.getSupplementsTaken('2026-10-14'), {}, 'altro giorno vuoto');
+    // giorni vecchi: oltre 120 si tolgono alla prossima scrittura
+    const log = env.get('gymtracker_supplements_log');
+    log['2026-01-01'] = { a: true };
+    log[env.GT.dateKey(new Date(now - 100 * DAY))] = { a: true };
+    log['rotto'] = { a: true };
+    env.ls.setItem('gymtracker_supplements_log', JSON.stringify(log));
+    ok(env.S.setSupplementTaken(today, 'd', true));
+    const keys = Object.keys(env.get('gymtracker_supplements_log')).sort();
+    eq(keys, [env.GT.dateKey(new Date(now - 100 * DAY)), today].sort(), 'tenuti 100 giorni fa e oggi');
+    // l'ultima voce tolta toglie il giorno
+    env.S.setSupplementTaken(today, ['a', 'c', 'd'], false);
+    ok(!(today in env.get('gymtracker_supplements_log')), 'giorno vuoto tolto');
+});
+
+test('Integratori nel backup: export → import, backup vecchi senza integratori li lasciano, tipi controllati', () => {
+    const now = D(2026, 10, 15, 10);
+    const a = makeEnv({ now, seed: fullSeed(now) });
+    a.S.saveSupplements([{ catalogId: 'omega3', name: 'Omega-3', amount: '2 softgel', when: 'colazione' }]);
+    const id = a.S.getSupplements()[0].id;
+    a.S.setSupplementTaken('2026-10-15', id, true);
+    const data = JSON.parse(a.S.exportAllData());
+    ok(Array.isArray(data.supplements) && data.supplements.length === 1 && data.supplementsLog['2026-10-15'][id] === true, 'nel backup');
+    ok(!data.extra || !('gymtracker_supplements' in data.extra), 'come campi, non come extra');
+    const b = makeEnv({ now });
+    ok(b.S.importAllData(JSON.stringify(data)), 'import: ' + b.S.lastImportError);
+    eq(b.S.getSupplements(), a.S.getSupplements(), 'elenco identico');
+    eq(b.S.getSupplementsTaken('2026-10-15'), { [id]: true }, 'prese identiche');
+    // backup di prima (v2.0.1, senza integratori): quelli del telefono restano
+    const old = JSON.stringify({ version: '2.0.1', schemaVersion: 2, workouts: [] });
+    ok(b.S.importAllData(old));
+    eq(b.S.getSupplements().length, 1, 'integratori del telefono NON cancellati');
+    const before = b.ls._snapshot();
+    eq(b.S.importAllData(JSON.stringify({ version: '2.0.2', supplements: { a: 1 } })), false, 'supplements non array');
+    eq(b.S.importAllData(JSON.stringify({ version: '2.0.2', supplementsLog: [1] })), false, 'supplementsLog non oggetto');
+    eq(b.ls._snapshot(), before, 'rifiuti senza effetti');
+});
+
 // ============================================================
 // 6. Dati corrotti
 // ============================================================

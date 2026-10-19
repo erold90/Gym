@@ -54,7 +54,9 @@ const Storage = {
         CYCLE_HISTORY: 'gymtracker_cycle_history',
         CONDITIONING: 'gymtracker_conditioning',
         ACTIVE_SESSION: 'gymtracker_active_session',
-        META: 'gymtracker_meta'
+        META: 'gymtracker_meta',
+        SUPPLEMENTS: 'gymtracker_supplements',
+        SUPPLEMENTS_LOG: 'gymtracker_supplements_log'
     },
 
     PREFIX: 'gymtracker_',
@@ -2520,6 +2522,94 @@ const Storage = {
     },
 
     // ========================================
+    // INTEGRATORI: elenco (gymtracker_supplements) e prese del giorno (gymtracker_supplements_log)
+    // ========================================
+
+    // Momento: colazione | pranzo | pre (prima dell'allenamento) | post (dopo) | sera.
+    // Nei giorni di riposo le voci pre/post di tutti i giorni vanno in restWhen (colazione | pranzo | sera).
+    SUPP_WHEN: ['colazione', 'pranzo', 'pre', 'post', 'sera'],
+    SUPP_REST_WHEN: ['colazione', 'pranzo', 'sera'],
+    SUPP_LOG_DAYS: 120,
+
+    _suppText(v, max) {
+        if (typeof v === 'number' && Number.isFinite(v)) v = String(v);
+        return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '';
+    },
+
+    /** Voce valida o null (senza nome non è un integratore). */
+    _normalizeSupplement(s) {
+        if (!this._isObj(s)) return null;
+        const name = this._suppText(s.name, 40);
+        if (!name) return null;
+        const when = this.SUPP_WHEN.includes(s.when) ? s.when : 'colazione';
+        const days = s.days === 'allenamento' ? 'allenamento' : 'sempre';
+        const prePost = when === 'pre' || when === 'post';
+        return {
+            id: this._suppText(s.id, 40),
+            catalogId: typeof s.catalogId === 'string' && s.catalogId ? s.catalogId.slice(0, 40) : null,
+            name,
+            amount: this._suppText(s.amount, 40),
+            when,
+            days,
+            restWhen: prePost && days === 'sempre' ? (this.SUPP_REST_WHEN.includes(s.restWhen) ? s.restWhen : 'pranzo') : null,
+            note: this._suppText(s.note, 80),
+            active: s.active !== false
+        };
+    },
+
+    /** Elenco degli integratori: [{id, catalogId|null, name, amount, when, days, restWhen, note, active}]. */
+    getSupplements() {
+        return this._read(this.KEYS.SUPPLEMENTS, [], Array.isArray)
+            .map(s => this._normalizeSupplement(s))
+            .filter(s => s && s.id);
+    },
+
+    /** Salva l'elenco intero (le voci senza id ne ricevono uno). true/false. */
+    saveSupplements(list) {
+        const seen = new Set();
+        let n = 0;
+        const out = (Array.isArray(list) ? list : []).map(s => this._normalizeSupplement(s)).filter(Boolean).map(s => {
+            let id = s.id;
+            while (!id || seen.has(id)) id = `sp${Date.now().toString(36)}${(n++).toString(36)}`;
+            seen.add(id);
+            return { ...s, id };
+        });
+        return this._tryWrite(this.KEYS.SUPPLEMENTS, out);
+    },
+
+    _suppDateOk(k) {
+        return typeof k === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(k);
+    },
+
+    /** Integratori presi in un giorno ('AAAA-MM-GG'): { [id]: true }. */
+    getSupplementsTaken(dateKey) {
+        const log = this._read(this.KEYS.SUPPLEMENTS_LOG, {}, v => this._isObj(v));
+        const day = this._suppDateOk(dateKey) && this._isObj(log[dateKey]) ? log[dateKey] : {};
+        const out = {};
+        Object.keys(day).forEach(id => { if (day[id] === true) out[id] = true; });
+        return out;
+    },
+
+    /**
+     * Segna (o toglie) uno o più integratori come presi in un giorno. Tiene al massimo
+     * SUPP_LOG_DAYS giorni (i più vecchi si tolgono a ogni scrittura). true/false.
+     */
+    setSupplementTaken(dateKey, id, taken = true) {
+        if (!this._suppDateOk(dateKey)) return false;
+        const ids = (Array.isArray(id) ? id : [id]).map(x => this._suppText(x, 40)).filter(Boolean);
+        if (!ids.length) return false;
+        const log = this._read(this.KEYS.SUPPLEMENTS_LOG, {}, v => this._isObj(v));
+        const day = this._isObj(log[dateKey]) ? log[dateKey] : {};
+        ids.forEach(x => { if (taken) day[x] = true; else delete day[x]; });
+        if (Object.keys(day).length) log[dateKey] = day; else delete log[dateKey];
+        const oldest = GT.dateKey(GT.addDays(new Date(), -this.SUPP_LOG_DAYS));
+        Object.keys(log).forEach(k => {
+            if (!this._suppDateOk(k) || !this._isObj(log[k]) || k < oldest) delete log[k];
+        });
+        return this._tryWrite(this.KEYS.SUPPLEMENTS_LOG, log);
+    },
+
+    // ========================================
     // EXPORT / IMPORT
     // ========================================
 
@@ -2534,7 +2624,9 @@ const Storage = {
         ['personalRecords', 'PERSONAL_RECORDS', 'object'],
         ['streak', 'STREAK', 'object'],
         ['cycleHistory', 'CYCLE_HISTORY', 'array'],
-        ['conditioning', 'CONDITIONING', 'array']
+        ['conditioning', 'CONDITIONING', 'array'],
+        ['supplements', 'SUPPLEMENTS', 'array'],
+        ['supplementsLog', 'SUPPLEMENTS_LOG', 'object']
     ],
 
     // Chiavi di progresso: con un backup schemaVersion ≥ 2, se mancano si svuotano

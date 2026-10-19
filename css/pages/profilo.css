@@ -51,3 +51,10 @@
 /* giorni fissi: iniziali nella riga "Giorni e durata", nota sotto le chip */
 .pf-wd { font-weight: 650; letter-spacing: 0.02em; color: var(--text); }
 .pf-hint { font-size: var(--fs-sm); color: var(--text-2); }
+
+/* integratori: momento a 5 segmenti larghi quanto il testo; "Aggiungi" del catalogo sempre in vista */
+.sp-seg { grid-auto-columns: auto; }
+.sp-seg button { padding: 0 6px; font-size: 0.875rem; }
+/* il foglio ha il suo margine sotto: il riquadro lo copre (niente voci che spuntano sotto il bottone) */
+.sp-cat-dock { --sp-pb: calc(var(--s-5) + var(--safe-b)); position: sticky; bottom: calc(var(--sp-pb) * -1); margin-bottom: calc(var(--sp-pb) * -1); padding: var(--s-3) 0 var(--sp-pb); background: var(--surface-1); }
+.field[hidden] { display: none; }

@@ -35,7 +35,8 @@ css/  tokens.css + tokens-colors.css (GENERATO da .analisi-2026-10/design/tools/
 js/modules/  utils.js (GT: esc, num, date, formati) · storage.js (Storage) · algorithm.js
              (TrainingAlgorithm) · timer.js (Timer) · exerciseMedia.js (funzioni GLOBALI) ·
              conditioningExercises.js
-js/data/     exercises.js (EXERCISES_DB 139 + EXERCISE_TAGS) · warmups.js (IIFE Warmups)
+js/data/     exercises.js (EXERCISES_DB 139 + EXERCISE_TAGS) · warmups.js (IIFE Warmups) ·
+             supplements.js (SUPPLEMENTS_CATALOG, catalogo generico degli integratori)
 js/app/      core.js (App: router, fogli, avvisi, etichette) + un file per area che fa
              Object.assign(App, …): oggi (anche primo avvio), seduta (anche riepilogo), scheda,
              progressi, profilo, esercizi, conditioning · main.js (guardia di versione + avvio)
@@ -69,8 +70,10 @@ tests/       storage, progression, algorithm (Node puro: node tests/<x>.test.js)
 
 ## Dati (`localStorage`)
 `gymtracker_` + profile · settings · workouts · active_program · measurements · prs · streak ·
-cycle_history · conditioning · meta (versione schema, migrazioni) · active_session (seduta in
-corso) · active_cardio · corrupt_* (copie di dati rotti). Lettura protetta (JSON rotto → copia e
+cycle_history · conditioning · supplements (integratori) · supplements_log ({data: {id: true}}, max
+120 giorni) · meta (versione schema, migrazioni) · active_session (seduta in corso) · active_cardio ·
+corrupt_* (copie di dati rotti). Orario dell'allenamento: profile.trainingTime ('HH:MM' o ''),
+solo per oggi settings.todayTrainingTime {date, time} (scade da solo). Lettura protetta (JSON rotto → copia e
 default), cache in memoria, migrazione idempotente all'avvio (`Storage.migrate`) dai dati v1.25:
 mai cancellare chiavi né `exerciseId` (si marca `hidden:true`). Export = tutte le chiavi tranne la
 seduta in corso; import valida e annulla tutto se una scrittura fallisce.
@@ -94,7 +97,7 @@ Corpo libero/zavorra: il peso salvato è la **zavorra** (0 senza). Esercizi a te
 
 ## Prove
 ```
-node tests/storage.test.js        # 50
+node tests/storage.test.js        # 53
 node tests/progression.test.js    # 215
 node tests/algorithm.test.js      # matrice completa del wizard + rotazione, 0 violazioni (~60 s)
 node .analisi-2026-10/e2e/{smoke,seduta,oggi-scheda,progressi-profilo}.mjs   # Playwright, locale

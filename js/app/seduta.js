@@ -856,6 +856,7 @@ Object.assign(App, {
         };
 
         this._enterWorkout(activeWorkout, null);
+        if (!isSimulation) this._safe(() => this._sedSuppPre());
         if (compressInfo) {
             const est = Math.round(compressInfo.estimatedMinutes || minutes);
             this.showNotification(compressInfo.fits ? `Seduta da circa ${est} min` : `Circa ${est} min: più di ${minutes}`, compressInfo.fits ? 'info' : 'warning', { icon: 'timer' });
@@ -3542,6 +3543,7 @@ Object.assign(App, {
                         <div class="stat"><span class="stat__v num">${GT.esc(this._fmtInt(sum.volume))}<small>kg</small></span><span class="stat__k">volume ${vDelta}</span></div>
                         <div class="stat"><span class="stat__v num">${sum.sets}</span><span class="stat__k">serie</span></div>
                     </div>
+                    ${this._safe(() => this._sedSuppNowHTML(sum)) || ''}
                     ${records}
                 </div>
                 <div class="col">
@@ -3554,6 +3556,7 @@ Object.assign(App, {
                 </div>
             </div>
         `;
+        this._safe(() => this._sedSuppNowBind(el));
         const share = document.getElementById('riep-share');
         if (share) share.hidden = !(navigator.share || navigator.clipboard?.writeText);
     },
@@ -3588,5 +3591,63 @@ Object.assign(App, {
         if (sum && !sum.isSimulation && !fromHistory && typeof this._afterWorkoutPrompts === 'function') {
             this._safe(() => this._afterWorkoutPrompts());
         }
+    },
+});
+
+// ========================================
+// INTEGRATORI in seduta: all'avvio le voci "Prima" non ancora prese (avviso con "Prese"),
+// nel riepilogo quelle "Dopo" ("Ora: Whey, Creatina", un tocco le segna). Piano: App._oggiSuppPlan.
+// ========================================
+
+Object.assign(App, {
+    _sedSuppPending(key) {
+        if (typeof this._oggiSuppPlan !== 'function') return null;
+        const plan = this._oggiSuppPlan();
+        const sec = plan?.sections.find(x => x.key === key);
+        const items = (sec?.items || []).filter(i => !i.taken).map(i => i.s);
+        return items.length ? { plan, items, names: items.map(s => this._oggiSuppShort(s)).join(', ') } : null;
+    },
+
+    _sedSuppPre() {
+        const w = this.activeWorkout;
+        if (!w || w.isSimulation) return;
+        const p = this._sedSuppPending('pre');
+        if (!p) return;
+        this.showNotification(`Prima: ${p.names}`, 'info', {
+            icon: 'pill',
+            duration: 12000,
+            action: {
+                label: 'Prese',
+                onClick: () => {
+                    if (this._save(() => Storage.setSupplementTaken(p.plan.key, p.items.map(s => s.id), true), 'Integratori NON segnati') !== false) {
+                        this.showNotification(`Prese: ${p.names}`, 'success', { icon: 'check' });
+                    }
+                }
+            }
+        });
+    },
+
+    // Solo nel riepilogo di una seduta appena finita, oggi
+    _sedSuppNowHTML(sum) {
+        this._sedSuppNow = null;
+        if (!sum || sum.isSimulation || this._summaryFromHistory || GT.dateKey(new Date(sum.date)) !== GT.dateKey(new Date())) return '';
+        const p = this._sedSuppPending('post');
+        if (!p) return '';
+        this._sedSuppNow = { key: p.plan.key, ids: p.items.map(s => s.id) };
+        return `<button type="button" class="sp-item sp-now" role="checkbox" aria-checked="false" id="riep-supp">
+            <span class="sp-item__mark">${this.ico('check')}</span>
+            <span class="sp-item__body"><span class="sp-item__name">Ora: ${GT.esc(p.names)}</span><span class="sp-item__sub">Integratori</span></span>
+        </button>`;
+    },
+
+    _sedSuppNowBind(el) {
+        const btn = el?.querySelector('#riep-supp');
+        const now = this._sedSuppNow;
+        if (!btn || !now) return;
+        btn.addEventListener('click', () => {
+            const on = btn.getAttribute('aria-checked') !== 'true';
+            if (this._save(() => Storage.setSupplementTaken(now.key, now.ids, on), 'Integratori NON segnati') === false) return;
+            btn.setAttribute('aria-checked', String(on));
+        });
     },
 });

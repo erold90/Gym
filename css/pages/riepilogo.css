@@ -31,3 +31,6 @@
 .cmp__name { overflow-wrap: anywhere; }
 .riep__next { font-size: var(--fs-sm); }
 .riep__next b { color: var(--text-2); font-weight: 600; }
+
+/* "Ora: Whey, Creatina": integratori di dopo, un tocco li segna (stile .sp-item di pages/oggi.css) */
+.riep .sp-now { box-shadow: var(--shadow-1); }
